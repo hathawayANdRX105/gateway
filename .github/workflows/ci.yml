@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
 
-# 同一分支的新推送取消排队中的旧运行，省 runner 分钟。
+# Same-branch re-push cancels queued runs to save runner minutes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -14,10 +14,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Job 1：格式 + clippy + check。工具链来自 rust-toolchain.toml（pinned nightly，
-  # rustfmt/clippy 由 toolchain file 的 components 提供）；lint 用 --profile ci
-  # （LLVM），与本地日常编译（dev profile，Cranelift）区分：CI 验证的是要发布的
-  # 后端产物，本地开发循环要的是编译速度。
+  # Job 1: fmt + clippy + check. The toolchain is pinned by rust-toolchain.toml
+  # (nightly-2026-08-20); lint runs on --profile ci (LLVM), the same backend CI
+  # validates, while local dev loops use the Cranelift dev profile for speed.
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +25,6 @@ jobs:
         with:
           toolchain: nightly-2026-08-20
           components: rustfmt, clippy
-        with:
       - uses: Swatinem/rust-cache@v2
         with:
           key: cargo-shared
@@ -37,9 +35,7 @@ jobs:
       - name: Check
         run: cargo check --workspace --all-targets --profile ci
 
-  # Job 2：全量测试（nextest）。与 lint 共享缓存键空间：lint 的 --profile ci
-  # 编译产物直接被这里复用。nextest 是 process-per-test + 并行 test binary，
-  # 序列化需求走仓根 .config/nextest.toml 的 test-groups。
+  # Job 2: full tests with nextest. Shares the lint's cache key space.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -48,7 +44,6 @@ jobs:
         with:
           toolchain: nightly-2026-08-20
           components: rustfmt, clippy
-        with:
       - uses: Swatinem/rust-cache@v2
         with:
           key: cargo-shared
