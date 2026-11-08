@@ -1,0 +1,69 @@
+name: Task
+description: 内部重构、CI、基建、文档或设计决策
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **填写规范（人和自动化 Agent 都必须遵守）**
+
+        - 模板名称和类型 label 使用英文；Issue 标题不要求固定前缀，可用自然的简短标题。
+        - Issue 正文使用中文，按下面字段填写，不要粘贴未经整理的 Agent 输出或思考过程。
+        - 一个 Issue 只描述一个主要结果；较大的工作可以拆成子 Issue。
+        - 不要包含密钥、真实配置、生产环境信息或未脱敏日志。
+        - 面向使用者的新能力用 Feature；可复现故障用 Bug。
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: 这是内部工作（重构 / CI / 基建 / 文档 / 设计决策），不新增面向使用者的能力。
+          required: true
+        - label: 我已搜索已有 Issue，没有重复。
+          required: true
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: 完成后仓库变成什么样；为什么是现在做。
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: 涉及的 crate / 文件 / 配置；明确不做什么（out of scope）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: 验收条件清单（每行一条，可被命令或评审验证；关闭前必须全部勾选）。
+      placeholder: |
+        - [ ] `just verify` 通过
+        - [ ] …
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and rollback
+      description: 影响面、回滚方式（revert 是否足够）。
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: 链接或脱敏说明。
+    validations:
+      required: false

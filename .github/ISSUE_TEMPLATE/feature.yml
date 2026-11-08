@@ -1,0 +1,85 @@
+name: Feature
+description: gateway 的新能力或公开 API 扩展
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **填写规范（人和自动化 Agent 都必须遵守）**
+
+        - 模板名称和类型 label 使用英文；Issue 标题不要求固定前缀，可用自然的简短标题。
+        - Issue 正文使用中文，按下面字段填写，不要粘贴未经整理的 Agent 输出或思考过程。
+        - 一个 Issue 只描述一个主要结果；较大的工作可以拆成子 Issue。
+        - 不要包含 API key、token、生产环境信息或未脱敏日志。
+        - 可复现的故障使用 Bug 模板；内部重构、CI、文档使用 Task 模板。
+
+        **提交前检查**
+
+        - 已搜索已有 Issue 和 PR，避免重复提议。
+        - 已确认该能力属于数据面库（无进程入口、无数据库、无管理面），或说明为什么必须放在这里。
+        - 涉及公开 API（facade 表面 / contract 类型）的变化，已考虑下游消费方的迁移成本。
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: 这是新的数据面能力或 API 扩展，不是故障报告。
+          required: true
+        - label: 我已搜索已有 Issue 和 PR，没有重复提议。
+          required: true
+        - label: 我已删除描述中的密钥与生产环境信息。
+          required: true
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: 想解决什么问题？不做的代价是什么？谁受影响？
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: 期望的形态：涉及哪个 crate / stage / 契约类型，公开 API 大致长什么样（伪代码可以）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: 考虑过的其他方案，以及为什么落选（包括“消费方自己做”）。
+    validations:
+      required: false
+
+  - type: textarea
+    id: api-impact
+    attributes:
+      label: Public API impact
+      description: 是否改变 `gateway-facade` 表面或 contract 类型？是破坏性变化吗？消费方怎么迁移？
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: 验收条件清单（每行一条，可被测试或评审验证）。
+      placeholder: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: 链接、上游参照或脱敏说明。
+    validations:
+      required: false

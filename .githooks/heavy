@@ -1,0 +1,65 @@
+#!/bin/sh
+# heavy — 用 cgroup CPU 配额跑 CPU 密集命令（cargo / 测试 / 索引重建 …）。
+#
+# 用法:
+#   .githooks/heavy cargo build -p gateway-facade
+#   .githooks/heavy cargo test -p <crate>
+#   .githooks/heavy testless index
+#
+# 为什么按核数现算, 而不是写死百分比:
+#   systemd 的 CPUQuota 百分比是**相对单个 CPU** 的, 不是整机。
+#   systemd.resource-control(5) 原文: "The percentage specifies how much CPU time the
+#   unit shall get at maximum, relative to the total CPU time available on one CPU.
+#   Use values > 100% for allotting CPU time on more than one CPU."
+#   所以写死 CPUQuota=70% 在 8 核机器上只有 0.7 个核 —— 实测: 同批 4 并发负载
+#   70% = 33.1s / 200% = 14.3s / 400% = 8.4s; 一次冷编 0.7 核 463s, 无配额 ~77s。
+#   固定百分比在不同核数的机器上含义完全不同, 故这里按 nproc 现算。
+#
+# 配额 = 一半核 (下限 100%): 8 核机器上 400% —— 比 0.7 核快约 5.7 倍,
+# 同时留一半核给桌面与其它会话。
+#
+# 平台降级:
+#   无 systemd 的环境（WSL1 / 纯容器 / 无用户会话）没有配额可言, 直接裸跑命令,
+#   只打印一行提示——heavy 的意义是防多会话抢占, 单用户环境无此需求。
+#
+# 环境变量:
+#   HEAVY_VERBOSE=1  打印实际配额到 stderr
+#   HEAVY_IN_SCOPE=1 本脚本在配额内注入的"已在配额内"标记; 嵌套调用见到它就直接
+#                    透传, 不再新建 scope(幂等)。理由见下方标记判断处的注释。
+set -eu
+
+# 已在配额 scope 内 → 直接执行, 不重复套一层。
+#
+# 为什么判据必须是显式标记, 不能是"能不能起 systemd":
+#   嵌套创建 transient scope 时, 内层 systemd-run 会生成与外层已在运行的那个 scope
+#   相同的 unit 名, 于是直接启动失败(实测 10/10):
+#     Failed to start transient scope unit: Unit run-p<pid>-i<n>.scope was already
+#     loaded or has a fragment file.
+#   而调用方常用 `| tail` 之类看输出, 管道退出码取的是 tail 的状态(0), 于是失败被
+#   当成通过 —— 命令其实压根没跑, 门却变绿了。
+#   也不能改用"探测能否起 systemd"来判: 那种探测在没有用户 systemd 会话的环境里
+#   一样失败, 但那是**另一种**处境(该裸跑, 且没有配额可继承), 两者必须区分开。
+if [ "${HEAVY_IN_SCOPE:-}" = "1" ]; then
+    if [ "${HEAVY_VERBOSE:-}" = "1" ]; then
+        echo "heavy: 已在配额内 (HEAVY_IN_SCOPE=1), 直接执行不新建 scope" >&2
+    fi
+    exec "$@"
+fi
+
+# 无 systemd → 裸跑, 打印提示。
+if ! command -v systemd-run >/dev/null 2>&1; then
+    if [ "${HEAVY_VERBOSE:-}" = "1" ]; then
+        echo "heavy: 无 systemd-run, 裸跑（无配额）" >&2
+    fi
+    exec "$@"
+fi
+
+cores=$(nproc 2>/dev/null || echo 2)
+quota=$(( cores * 50 ))
+if [ "$quota" -lt 100 ]; then quota=100; fi
+
+if [ "${HEAVY_VERBOSE:-}" = "1" ]; then
+    echo "heavy: CPUQuota=${quota}% (nproc=${cores})" >&2
+fi
+
+exec systemd-run --user --scope -q -p "CPUQuota=${quota}%" --setenv=HEAVY_IN_SCOPE=1 -- "$@"

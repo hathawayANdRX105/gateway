@@ -107,3 +107,11 @@ incremental = false
 
 [profile.dev.package."*"]
 opt-level = 1
+
+# CI quality gate: LLVM codegen (host dev builds use Cranelift via
+# .cargo/config.toml; this profile opts out — same contract as ferrite).
+# debug is restored to line-tables-only because a CI panic without file:line
+# is not triageable.
+[profile.ci]
+inherits = "dev"
+debug = "line-tables-only"

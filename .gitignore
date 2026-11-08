@@ -1,1 +1,6 @@
 /target
+
+# tooling caches / local scratch (never committed)
+/.testless/
+/.tmp/
+/.codegraph/

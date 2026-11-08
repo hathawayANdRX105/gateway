@@ -1,0 +1,20 @@
+# The workspace builds host targets with the Cranelift codegen backend in the
+# dev profile (see .cargo/config.toml); stable cargo hard-errors on
+# `[profile.*] codegen-backend`, so the whole workspace pins this nightly.
+# It is the same nightly the rust-specs dylint gate uses in the sibling repos
+# (ferrite / harn), so one toolchain serves cranelift + dylint + rust-analyzer.
+#
+# rustc-codegen-cranelift-preview: the alternate backend itself.
+# rustc-dev + rust-src: the rust-specs dylint rule-library gate + rust-analyzer.
+#
+# CI honors this pin too and compiles with --profile ci (LLVM): Cranelift is
+# for the local dev loop only, the shipped-quality gate stays on LLVM.
+[toolchain]
+channel = "nightly-2026-08-20"
+components = [
+    "rustfmt",
+    "clippy",
+    "rust-src",
+    "rustc-dev",
+    "rustc-codegen-cranelift-preview",
+]

@@ -1,20 +1,54 @@
-name: ci
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
 
+# 同一分支的新推送取消排队中的旧运行，省 runner 分钟。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  check:
+  # Job 1：格式 + clippy + check。工具链来自 rust-toolchain.toml（pinned nightly，
+  # rustfmt/clippy 由 toolchain file 的 components 提供）；lint 用 --profile ci
+  # （LLVM），与本地日常编译（dev profile，Cranelift）区分：CI 验证的是要发布的
+  # 后端产物，本地开发循环要的是编译速度。
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          components: rustfmt, clippy
+          toolchain-file: rust-toolchain.toml
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo check --workspace --all-targets
-      - run: cargo test --workspace
+        with:
+          key: cargo-shared
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy (workspace, --profile ci, -D warnings)
+        run: cargo clippy --workspace --all-targets --profile ci -- -D warnings
+      - name: Check
+        run: cargo check --workspace --all-targets --profile ci
+
+  # Job 2：全量测试（nextest）。与 lint 共享缓存键空间：lint 的 --profile ci
+  # 编译产物直接被这里复用。nextest 是 process-per-test + 并行 test binary，
+  # 序列化需求走仓根 .config/nextest.toml 的 test-groups。
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain-file: rust-toolchain.toml
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-shared
+      - name: Install nextest
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+      - name: Test (workspace, cargo-profile ci)
+        run: cargo nextest run --workspace --cargo-profile ci
