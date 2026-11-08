@@ -1,0 +1,46 @@
+[package]
+name = "gateway-proxy"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Egress proxy nodes: parsing + selecting a node by channel_key + leased Client.
+# HTTP/SOCKS handshakes go to reqwest; protocol nodes go to meow-config's `parse_proxy`
+# (clash-style config map → an adapter with protocol/transport/TLS already assembled) —
+# this crate does not hand-write protocol wiring.
+
+[dependencies]
+# Proxy vocabulary (node types, URL/share-link parsers, snapshot, admin port) lives on the
+# injection surface; this crate re-exports it and implements the port.
+gateway-contract    = { path = "../gateway-contract" }
+gateway-cache  = { path = "../gateway-cache" }
+reqwest        = { workspace = true }
+serde          = { workspace = true }
+thiserror      = { workspace = true }
+arc-swap       = { workspace = true }
+rand           = { workspace = true }
+futures-util   = { workspace = true }
+tokio          = { workspace = true, features = ["rt-multi-thread", "macros", "time", "io-util", "net"] }
+tracing        = { workspace = true }
+url            = "2"
+meow-common = { workspace = true }
+
+# Egress protocol assembly (meow-rs, MIT): `meow_config::proxy_parser::parse_proxy`
+# consumes a clash-style map and assembles the protocol + transport chain
+# (ws/grpc/h2/httpupgrade) + TLS/REALITY/uTLS itself. It absorbs the protocol/transport
+# combinatorial explosion — this crate only does the ProxyNode → map field mapping.
+meow-config = { workspace = true }
+serde_yaml = { workspace = true }
+smol_str = { workspace = true }
+
+
+[features]
+# uTLS fingerprint impersonation (BoringSSL; needs system cmake, see README)
+utls = ["meow-config/boring-tls"]
+
+[dev-dependencies]
+# Tests build vmess:// payloads, which are base64-encoded JSON.
+base64 = { workspace = true }
+
+[lints]
+workspace = true

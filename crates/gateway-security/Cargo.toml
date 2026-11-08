@@ -1,0 +1,15 @@
+[package]
+name = "gateway-security"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Filter-word scanning: replaces matches in request/response text (streaming included)
+# using the configured word list. Pure logic, no pipeline stage.
+
+[dependencies]
+aho-corasick = { workspace = true }
+serde = { workspace = true }
+
+[lints]
+workspace = true

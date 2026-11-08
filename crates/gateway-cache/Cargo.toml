@@ -1,0 +1,30 @@
+[package]
+name = "gateway-cache"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Cache substrate for the gateway data plane.
+#
+# This crate owns the only `moka` dependency in the gateway closure: the bounded
+# concurrent store primitive lives here once, and every gateway cache (sticky
+# bindings, egress client pools, the response cache) configures and uses it
+# instead of re-deriving the capacity / TTL / eviction spell per consumer.
+#
+# The response cache is the data-plane layer of "skip the repeat LLM call": a
+# byte-identical non-streaming request is served from the previous upstream
+# answer. Keys are isolation-scoped (user + group), so a cached answer is only
+# ever replayed to the identity that produced it.
+
+[dependencies]
+moka    = { workspace = true }
+sha2    = { workspace = true }
+hex     = { workspace = true }
+bytes   = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+
+[lints]
+workspace = true

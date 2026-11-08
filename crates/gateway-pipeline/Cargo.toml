@@ -1,0 +1,28 @@
+[package]
+name = "gateway-pipeline"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+app-contract = { path = "../app-contract" }
+gateway-contract = { path = "../gateway-contract" }
+
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+axum = { workspace = true }
+http = { workspace = true }
+bytes = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v7"] }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+# Used only by tests/pipeline.rs to construct SyncMeta(updated_at).
+chrono = { workspace = true }
+
+[lints]
+workspace = true

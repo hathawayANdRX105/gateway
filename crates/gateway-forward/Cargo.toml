@@ -1,0 +1,53 @@
+[package]
+name = "gateway-forward"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Upstream forwarding — protocol adaptation + streaming pipeline. Forwarding is pure IO,
+# no business decisions.
+
+[dependencies]
+gateway-pipeline = { path = "../gateway-pipeline" }
+gateway-dispatch = { path = "../gateway-dispatch" }
+gateway-protocol-bridge = { path = "../gateway-protocol-bridge" }
+gateway-proxy = { path = "../gateway-proxy" }
+gateway-gate  = { path = "../gateway-gate" }
+gateway-security = { path = "../gateway-security" }
+gateway-contract = { path = "../gateway-contract" }
+app-contract = { path = "../app-contract" }
+serde    = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+reqwest  = { workspace = true }
+gateway-metering = { path = "../gateway-metering" }
+gateway-cache = { path = "../gateway-cache" }
+tokio    = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = { workspace = true }
+axum = { workspace = true }
+bytes    = { workspace = true }
+tracing  = { workspace = true }
+chrono   = { workspace = true }
+arc-swap = { workspace = true }
+hyper = { version = "1", features = ["client", "http1"] }
+http     = { workspace = true }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tokio-rustls = "0.26"
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
+webpki-roots = "0.26"
+
+[dev-dependencies]
+tokio = { workspace = true }
+futures-util = { workspace = true }
+# parking_lot stays a crates.io dep (not in the workspace table)
+parking_lot = "0.12"
+http = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,109 @@
+# Workspace root for the gateway data plane.
+#
+# This is the public home of the gateway: the contract vocabulary shared by the
+# two planes, the engine stages (admission / selection / forwarding / metering /
+# protocol / proxy / security), and the assembly facade a consumer wires up.
+#
+# Layout:
+#   crates/app-contract          Cross-boundary DTOs (records + protocol errors).
+#   crates/gateway-contract      Injection surface: shared vocabulary + minimal ports.
+#   crates/gateway-cache         Bounded store primitive + response cache (moka).
+#   crates/gateway-dispatch      Catalog selection (P2C) + health table.
+#   crates/gateway-forward       Upstream forwarding and stream orchestration.
+#   crates/gateway-gate          Admission gates (auth / quota / rate / model).
+#   crates/gateway-metering      Prehold / settle / price arithmetic.
+#   crates/gateway-pipeline      Stage trait, RequestCtx, Pipeline runner, axum.
+#   crates/gateway-protocol-bridge  Inbound dialect + codec adaptation.
+#   crates/gateway-proxy         Egress proxy pool (reqwest + meow-rs).
+#   crates/gateway-security      Sensitive-word filter (Aho-corasick).
+#   crates/gateway-facade        Public assembly facade: GatewayBuilder + insertion points.
+#
+# Dependency direction is one-way: facades and engines depend on the contract
+# crates, never the reverse; the facade depends on the engines, never the other
+# way around.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/app-contract",
+    "crates/gateway-facade",
+    "crates/gateway-*",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+# Publishing to crates.io is a later phase of the split; every member
+# stays private until that release step flips this per crate.
+publish = false
+
+[workspace.lints.clippy]
+# A two-way choice is a plain if/else; chained combinators that disguise it are denied.
+obfuscated_if_else = "deny"
+manual_map = "deny"
+manual_filter = "deny"
+manual_filter_map = "deny"
+manual_find = "deny"
+manual_flatten = "deny"
+manual_unwrap_or = "deny"
+manual_ok_or = "deny"
+manual_let_else = "deny"
+question_mark = "deny"
+map_entry = "deny"
+while_let_on_iterator = "deny"
+needless_range_loop = "deny"
+bool_comparison = "deny"
+redundant_pattern_matching = "deny"
+derivable_impls = "deny"
+needless_return = "deny"
+collapsible_if = "deny"
+collapsible_else_if = "deny"
+single_match = "deny"
+redundant_else = "deny"
+unnecessary_map_or = "deny"
+
+[workspace.dependencies]
+tokio       = { version = "1", features = ["rt-multi-thread", "macros", "signal", "fs", "sync", "time", "io-util"] }
+axum        = "0.8"
+http        = "1"
+tower       = "0.5"
+reqwest     = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "socks"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+serde_yaml  = "0.9"
+tracing     = "0.1"
+thiserror   = "2"
+async-trait = "0.1"
+anyhow      = "1"
+url         = "2"
+sha2        = "0.10"
+hex         = "0.4"
+bytes       = "1"
+base64      = "0.22"
+arc-swap    = "1"
+chrono      = { version = "0.4", features = ["serde"] }
+uuid        = { version = "1", features = ["serde", "v4", "v7"] }
+rand        = "0.8"
+futures-util = "0.3"
+# Egress protocol assembly (meow-rs): clash-style config → protocol/transport chain.
+meow-common  = "0.21"
+meow-config  = { version = "0.21", default-features = false, features = ["ss", "trojan", "vless", "vless-vision", "vmess", "hysteria2", "anytls", "snell"] }
+smol_str     = "0.3"
+# Cache substrate (crates/gateway-cache is the only owner).
+moka        = { version = "0.12", features = ["sync", "atomic64"] }
+dashmap     = "6"
+aho-corasick = "1"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.dev.package."*"]
+opt-level = 1

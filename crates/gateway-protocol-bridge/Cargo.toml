@@ -1,0 +1,23 @@
+[package]
+name = "gateway-protocol-bridge"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+gateway-pipeline = { path = "../gateway-pipeline" }
+app-contract     = { path = "../app-contract" }
+
+axum = { workspace = true }
+http = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true

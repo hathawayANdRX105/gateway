@@ -1,0 +1,49 @@
+[package]
+name = "gateway-facade"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# Public assembly facade: builds the default relay data-plane chain (gate chain →
+# forwarding stage → protocol bridge) from already-loaded consumer values, and
+# exposes the named Stage insertion points. The consumer's only dependency for
+# using the gateway.
+
+[dependencies]
+gateway-contract         = { path = "../gateway-contract" }
+gateway-pipeline         = { path = "../gateway-pipeline" }
+gateway-gate             = { path = "../gateway-gate" }
+gateway-dispatch         = { path = "../gateway-dispatch" }
+gateway-forward          = { path = "../gateway-forward" }
+gateway-protocol-bridge  = { path = "../gateway-protocol-bridge" }
+gateway-proxy            = { path = "../gateway-proxy" }
+gateway-security         = { path = "../gateway-security" }
+gateway-cache            = { path = "../gateway-cache" }
+axum                     = { workspace = true }
+arc-swap                 = { workspace = true }
+tracing                  = { workspace = true }
+
+[dev-dependencies]
+# Tests build a minimally authenticated chain: token / user snapshots with one
+# enabled pair, empty catalog so the forwarding stage fails before egress.
+app-contract     = { path = "../app-contract" }
+gateway-contract = { path = "../gateway-contract" }
+gateway-forward  = { path = "../gateway-forward" }
+gateway-gate     = { path = "../gateway-gate" }
+gateway-pipeline = { path = "../gateway-pipeline" }
+gateway-proxy    = { path = "../gateway-proxy" }
+gateway-security = { path = "../gateway-security" }
+arc-swap         = { workspace = true }
+async-trait      = { workspace = true }
+axum             = { workspace = true }
+bytes            = { workspace = true }
+chrono           = { workspace = true }
+http             = { workspace = true }
+serde_json       = { workspace = true }
+tokio            = { workspace = true, features = ["rt", "macros"] }
+tower            = { workspace = true }
+uuid             = { workspace = true }
+
+[lints]
+workspace = true
