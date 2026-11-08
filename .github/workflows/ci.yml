@@ -1,20 +1,53 @@
-name: ci
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
 
+# Same-branch re-push cancels queued runs to save runner minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  check:
+  # Job 1: fmt + clippy + check. The toolchain is pinned by rust-toolchain.toml
+  # (nightly-2026-08-20); lint runs on --profile ci (LLVM), the same backend CI
+  # validates, while local dev loops use the Cranelift dev profile for speed.
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly-2026-08-20
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo check --workspace --all-targets
-      - run: cargo test --workspace
+        with:
+          key: cargo-shared
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy (workspace, --profile ci, -D warnings)
+        run: cargo clippy --workspace --all-targets --profile ci -- -D warnings
+      - name: Check
+        run: cargo check --workspace --all-targets --profile ci
+
+  # Job 2: full tests with nextest. Shares the lint's cache key space.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-20
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-shared
+      - name: Install nextest
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+      - name: Test (workspace, cargo-profile ci)
+        run: cargo nextest run --workspace --cargo-profile ci

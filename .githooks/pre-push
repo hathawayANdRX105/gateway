@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# pre-push gate — 本地轻量守卫：fmt --check + clippy（gateway CI lint job 的本地版）。
+#
+# rust-specs spec-check 门暂未接入：规则库（rust-specs checks）目前硬编码的是
+# ferrite 仓的规则参数，gateway 的依赖方向红线由 README/AGENTS.md 约束 + PR
+# 评审把关。待 rust-specs 支持本仓规则后，在这里加 spec-check gate（harn 的
+# .githooks/pre-push 头注有同款 TODO，口径一致）。
+set -euo pipefail
+REPO=$(git rev-parse --show-toplevel 2>/dev/null)
+cd "$REPO" || exit 1
+
+echo "== fmt --check =="
+cargo fmt --all -- --check
+
+echo "== clippy (workspace, --profile ci, -D warnings) =="
+# --profile ci：与 CI 同一后端（LLVM）做 lint，本地日常编译走 cranelift 不冲突。
+cargo clippy --workspace --all-targets --profile ci -- -D warnings
+
+echo "✓ pre-push gate passed"

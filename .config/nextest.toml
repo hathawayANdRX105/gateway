@@ -1,0 +1,25 @@
+# nextest 配置（仓根 `.config/nextest.toml`）
+#
+# 为什么需要这个文件
+# ------------------
+# nextest 是 **process-per-test**：每个测试用例独立起一个进程（官方设计，见
+# nextest 文档 "Why process-per-test?"）。这与 `cargo test` 的 shared-process
+# 模型根本不同：同一个 test binary 内的用例不再共享进程，进程内互斥量
+# （`static SERIAL` 之类）跨用例失效，nextest 也会并行跑不同 test binary。
+#
+# 若将来出现「共享资源被并行测试插行」的问题（例如共享端口 / mock 上游 /
+# 共享临时目录根），用 nextest 的 **test group** 把相关测试归入单线程组：
+# test group 是 nextest 的跨进程互斥机制（需 nextest >= 0.9.48）。
+#
+# gateway 目前的测试是纯单元 / 集成（内存快照 + 本地 mock 上游），无共享
+# 数据库，暂不需要 test-group；保留本文件作为框架与说明。
+#
+# 路径是 nextest 固定的（workspace-root/.config/nextest.toml），不要移动、
+# 不要挪进 .cargo/。验证配置：cargo nextest show-config test-groups
+
+# [test-groups]
+# serial = { max-threads = 1 }
+
+# [[profile.default.overrides]]
+# filter = 'package(gateway-forward)'
+# test-group = 'serial'

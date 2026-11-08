@@ -1,0 +1,37 @@
+# gateway — cargo shared baseline + profile-scoped codegen backend.
+#
+# Design principle (same model as harn): this file holds only what any
+# contributor's machine can run. Machine-specific optimizations (sccache
+# compile cache, mold linker) are NOT hardcoded here — a machine without the
+# tool would fail cargo startup. They are injected per machine by sourcing
+# scripts/dev-env.sh (env vars outrank this file in cargo's precedence).
+#
+# The one repo-wide opt-in that does live here is Cranelift, because it is a
+# workspace-wide build contract, not a machine detail (see below).
+
+[build]
+# Concurrent-session ceiling: each cargo process runs at most 6 parallel units.
+# A ceiling, not a target: fewer-core machines never exceed it.
+jobs = 6
+
+# Cranelift codegen backend: host debug/test builds (dev profile) use Cranelift,
+# ~2x faster codegen than LLVM in the dev loop (measured on ferrite ui/util:
+# 46s -> 20s cold). Profile-scoped, NOT target-scoped rustflags: rustflags apply
+# to every profile including release, which would silently ship Cranelift code
+# in published library builds. The ci profile opts back out to LLVM — CI is the
+# quality gate for code that ships — and rustc-codegen-cranelift-preview ships
+# with the pinned nightly (rust-toolchain.toml).
+#
+# Why config.toml (not Cargo.toml [profile.*]): the manifest form needs
+# cargo-features = ["codegen-backend"], which stable cargo rejects at parse time;
+# this config form keeps the feature behind the [unstable] gate below.
+[unstable]
+codegen-backend = true
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+# CI + any shipped-quality run: `cargo ... --profile ci` /
+# `cargo nextest run --cargo-profile ci` (LLVM, the backend that validates).
+[profile.ci]
+codegen-backend = "llvm"
