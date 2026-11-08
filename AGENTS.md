@@ -120,16 +120,17 @@ Follow `.agent/rules/testing-ci.md`. Highlights:
   inside `src/`. Assert **real behavior** — never decorate with `assert!(true)`.
 - Every test carries an English comment stating purpose, scenarios and the
   acceptance criterion.
-- **Daily entry: run `just test-fast` for local tests, not bare `cargo test`**
-  — testless selects the cases your diff can actually break, while `cargo test`
-  re-runs the whole suite. Every fallback (no testless / empty selection) is loud:
-  it declares itself and runs the full workspace `just test`. Full runs:
-  `just test` locally, or the commitment above that picks one up in CI.
-- **CI is the merge gate** — PR CI (the repo's own `.github/workflows/ci.yml`,
-  lint + nextest, `--profile ci`) is the required test verification: a PR merges
-  only when it is green, and a green `just test-fast` locally does **not**
-  authorize a push, because the committed tree is what CI checks. Fix failures on
-  the same PR, pulling logs with `gh run view <id> --log-failed`.
+- **GitHub PR CI is the primary test path — never "finish locally".** CI
+  runs the committed tree (the repo's `.github/workflows/ci.yml`: lint +
+  nextest, `--profile ci`); a PR merges only when it is green. Fix failures on
+  the same PR (pull logs with `gh run view <id> --log-failed`). Local
+  loops exist for fast feedback on small scopes only — they never stand in
+  for CI and never authorize a push.
+- **When you do run locally, use `just test-fast`, not bare `cargo test`.**
+  testless (or the changed-packages fallback) keeps the run to what the diff
+  can actually break; `cargo test` re-runs whole crates. Every fallback is
+  loud — a declared degrade to a full-workspace `just test`, never a silent
+  skip and never "0 hits" reported as clean.
 
 ## 5. Wrap up
 
