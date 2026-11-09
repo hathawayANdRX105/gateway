@@ -24,12 +24,11 @@ use gateway_core::gate::{
 };
 use gateway_core::health::HealthSetting;
 use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
-use gateway_facade::{Context, GatewayBuilder, GatewayConfig, ResponseCacheTuning, State};
+use gateway_facade::{Components, Config, Context, GatewayBuilder, ResponseCacheTuning, State};
 use gateway_forward::egress::{Egress, ForwardedResponse};
 use gateway_gate::auth::sha256;
 use gateway_pipeline::{RequestCtx, Stage, StageError, StageOutcome};
 use gateway_proxy::{ProxyManager, ProxySnapshot};
-use gateway_security::FilterConfig;
 
 /// The only egress in this test: never called — selection fails on the empty
 /// catalog before the forwarding stage would reach the upstream.
@@ -141,18 +140,7 @@ fn facade_context() -> Context {
         Arc::new(ArcSwap::from(Arc::new(GroupSnapshot::default())));
 
     Context {
-        egress: Arc::new(UnreachableEgress),
-        wire_proxy_pool: false,
-        proxies: Arc::new(ProxyManager::new()),
-        proxy_snapshot: ProxySnapshot::default(),
-        security: FilterConfig::default(),
-        state: State {
-            dispatch: Snapshot::default(),
-            token_snapshot,
-            user_snapshot,
-            group_snapshot,
-        },
-        tuning: GatewayConfig {
+        config: Config {
             health: HealthSetting::default(),
             retry_policy: gateway_core::dispatch::RetryPolicy::default(),
             timeouts: Timeouts::default(),
@@ -168,10 +156,23 @@ fn facade_context() -> Context {
                 max_total_bytes: 1 << 20,
                 max_entry_bytes: 1 << 18,
             }),
+            ..Config::default()
         },
-        quota_gate: None,
-        settle: None,
-        ledger: None,
+        components: Components {
+            egress: Some(Arc::new(UnreachableEgress)),
+            wire_proxy_pool: false,
+            proxies: Arc::new(ProxyManager::new()),
+            proxy_snapshot: ProxySnapshot::default(),
+            state: State {
+                dispatch: Snapshot::default(),
+                token_snapshot,
+                user_snapshot,
+                group_snapshot,
+            },
+            quota_gate: None,
+            settle: None,
+            ledger: None,
+        },
     }
 }
 

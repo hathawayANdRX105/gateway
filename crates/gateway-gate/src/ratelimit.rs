@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
@@ -26,22 +27,38 @@ pub enum LimitScope {
 
 /// Rate limiter (sliding window by second buckets).
 ///
-/// Maintains one [`SecondWindow`] per `(scope, key)` internally.
+/// Maintains one [`SecondWindow`] per `(scope, key)` internally. The limit pair is
+/// interior-mutable so an operator can retune it at runtime (see [`Self::set_limits`]);
+/// windows in flight keep their history and the new pair applies from the next acquire.
 pub struct RateLimiter {
     inner: Mutex<HashMap<(LimitScope, String), SecondWindow>>,
     /// Default limit: N requests per window_secs seconds. For simplicity all scopes currently
     /// share this pair of values.
-    pub max_requests: u32,
-    pub window_secs: u32,
+    max_requests: AtomicU32,
+    window_secs: AtomicU32,
 }
 
 impl RateLimiter {
     pub fn new(max_requests: u32, window_secs: u32) -> Self {
         Self {
             inner: Mutex::new(HashMap::new()),
-            max_requests,
-            window_secs,
+            max_requests: AtomicU32::new(max_requests),
+            window_secs: AtomicU32::new(window_secs),
         }
+    }
+
+    /// Limit pair currently in effect.
+    pub fn limits(&self) -> (u32, u32) {
+        (
+            self.max_requests.load(Ordering::Relaxed),
+            self.window_secs.load(Ordering::Relaxed),
+        )
+    }
+
+    /// Replace the limit pair at runtime; existing per-key windows keep their history.
+    pub fn set_limits(&self, max_requests: u32, window_secs: u32) {
+        self.max_requests.store(max_requests, Ordering::Relaxed);
+        self.window_secs.store(window_secs, Ordering::Relaxed);
     }
 
     /// Try to acquire one permit. true = allowed, false = over limit.
@@ -49,7 +66,8 @@ impl RateLimiter {
         let now = now_secs();
         let mut map = self.inner.lock();
         let bucket = map.entry((scope, key.to_string())).or_default();
-        bucket.try_acquire(now, self.max_requests, self.window_secs)
+        let (max_requests, window_secs) = self.limits();
+        bucket.try_acquire(now, max_requests, window_secs)
     }
 }
 

@@ -52,5 +52,6 @@ pub use metering::{Hold, Insufficient, Ledger, ModelPrice, PriceTable, SettleSin
 pub use protocol::{ProtocolKind, RequestPath};
 pub use proxy::{ProxyNode, ProxyPoolHandle, ProxyScheme, ProxySnapshot};
 pub use records::{
-    ChannelKey, ChannelRecord, GroupRecord, RouteUnitRecord, TokenRecord, UsageEvent, UserRecord,
+    ChannelKey, ChannelRecord, GroupRecord, RouteUnitRecord, SyncMeta, TokenRecord, UsageEvent,
+    UserRecord,
 };

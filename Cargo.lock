@@ -115,16 +115,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
-name = "app-contract"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "arc-swap"
 version = "1.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1176,22 +1166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gateway-contract"
-version = "0.1.0"
-dependencies = [
- "app-contract",
- "arc-swap",
- "base64 0.22.1",
- "dashmap",
- "percent-encoding",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "gateway-core"
 version = "0.1.0"
 dependencies = [
@@ -1253,6 +1227,7 @@ dependencies = [
  "gateway-security",
  "http",
  "serde_json",
+ "thiserror 2.0.21",
  "tokio",
  "tower",
  "tracing",

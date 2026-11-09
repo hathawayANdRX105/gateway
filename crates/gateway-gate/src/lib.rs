@@ -44,7 +44,7 @@ pub use graylist as graylist_mod;
 pub use graylist::{
     BLOCK_DURATION, FAIL_STREAK_THRESHOLD, FailEntry, GrayListGate, GrayListState, STREAK_WINDOW,
 };
-pub use model::{GroupModelGate, ModelGate};
+pub use model::{GroupModelGate, ModelGate, ModelParseGate};
 pub use quota::QuotaGate;
 pub use ratelimit::{LimitScope, RateLimitGate, RateLimiter};
 pub use rewrite::{InjectSpec, rewrite_body};
