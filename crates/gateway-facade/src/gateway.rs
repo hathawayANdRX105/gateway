@@ -80,9 +80,8 @@ pub async fn gateway_path_guard(
         || path == "/v1"
         || path.starts_with("/v1/")
         || path.starts_with("/v1beta");
-    if scoped {
-        next.run(req).await
-    } else {
-        (axum::http::StatusCode::NOT_FOUND, "not found").into_response()
+    if !scoped {
+        return (axum::http::StatusCode::NOT_FOUND, "not found").into_response();
     }
+    next.run(req).await
 }

@@ -29,6 +29,20 @@ use gateway_gate::state::StateGate;
 
 use crate::config::State;
 
+/// Gate names a consumer may `without_gate` by, kept in sync with the `name()`
+/// of each gate the presets install. The builder's removal takes the string,
+/// not the type, so no engine type needs naming here.
+pub const GATE_NAMES: &[&str] = &[
+    "auth",
+    "state",
+    "model",
+    "model-parse",
+    "group_model",
+    "quota",
+    "ratelimit",
+    "graylist",
+];
+
 /// Runtime state the preset-built gates need beyond the directory snapshots.
 ///
 /// Built by the builder and shared with the runtime knobs, so a retune made
@@ -87,17 +101,3 @@ impl Shape {
         chain
     }
 }
-
-/// Gate names a consumer may `without_gate` by. Kept in sync with the `name()`
-/// of each gate above; the builder's removal takes the string, not the type, so
-/// no engine type needs naming here.
-pub const GATE_NAMES: &[&str] = &[
-    "auth",
-    "state",
-    "model",
-    "model-parse",
-    "group_model",
-    "quota",
-    "ratelimit",
-    "graylist",
-];

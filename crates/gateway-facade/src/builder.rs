@@ -177,19 +177,11 @@ impl GatewayBuilder {
         // Windowed t-digest latency signal gray switch: when true the
         // LatencyDigestTable is installed and health records are dual-written to
         // the window digest; false installs nothing.
-        let digest_table = if digest_enabled {
-            Some(LatencyDigestTable::new())
-        } else {
-            None
-        };
+        let digest_table = digest_enabled.then(LatencyDigestTable::new);
         // Prefix-cache sticky routing: one StickyTable shared by the write side
         // (ForwardStage settlement commit point) and the read side (route
         // selection). false = no table, degrading byte for byte to pure P2C.
-        let sticky_table = if sticky_enabled {
-            Some(StickyTable::new())
-        } else {
-            None
-        };
+        let sticky_table = sticky_enabled.then(StickyTable::new);
         let mut health = MemoryHealthTable::with_config(health_setting);
         if let Some(digest) = &digest_table {
             health = health.with_digest(digest.clone());
@@ -257,75 +249,69 @@ impl GatewayBuilder {
         let adaptors = Arc::new(FormatRegistry::with_defaults());
 
         // Egress wiring: production attaches the proxy pool (leased Client first),
-        // tests keep the mock egress passthrough.
-        let forward_stage = ForwardStage::new(egress, adaptors.clone());
-        let forward_stage = forward_stage.with_ledger(ledger.clone());
-        let forward_stage = if wire_proxy_pool {
-            forward_stage.with_proxies(proxies.clone())
-        } else {
-            forward_stage
-        };
+        // tests keep the mock egress passthrough. Every mount below is a bare
+        // conditional: absent knob/port → the stage stays untouched, so there is
+        // no else branch that exists only to echo the value back.
+        let mut forward_stage =
+            ForwardStage::new(egress, adaptors.clone()).with_ledger(ledger.clone());
+        if wire_proxy_pool {
+            forward_stage = forward_stage.with_proxies(proxies.clone());
+        }
 
         // Billing wiring: the pipeline settlement point is the only charging write
         // point; the price table + settlement sink are built by the consumer and
         // injected here as a pair. `None` = no settlement, no charge, no
         // usage_logs writes (the data plane keeps forwarding as usual).
-        let forward_stage = match settle {
-            Some(Settle { price_table, sink }) => forward_stage.with_price_table(price_table, sink),
-            None => forward_stage,
-        };
+        if let Some(Settle { price_table, sink }) = settle {
+            forward_stage = forward_stage.with_price_table(price_table, sink);
+        }
 
         // Sticky binding table installation (write side): shares the same Arc
         // with the read-side route selection. Not installed when sticky is off.
-        let forward_stage = if let Some(table) = &sticky_table {
-            forward_stage.with_sticky_table(table.clone())
-        } else {
-            forward_stage
-        };
+        if let Some(table) = &sticky_table {
+            forward_stage = forward_stage.with_sticky_table(table.clone());
+        }
 
         // Response-cache mount (read once at boot): identical non-streaming
         // requests replay the previous upstream answer at the top of the forward
         // stage, settled exactly like the original call. `None` = not mounted.
-        let forward_stage = if let Some(cfg) = &response_cache {
+        if let Some(cfg) = &response_cache {
             tracing::info!(
                 ttl_secs = cfg.ttl_secs,
                 max_total_bytes = cfg.max_total_bytes,
                 max_entry_bytes = cfg.max_entry_bytes,
                 "response cache mounted"
             );
-            forward_stage.with_response_cache(gateway_cache::ResponseCache::with_limits(
-                Duration::from_secs(u64::from(cfg.ttl_secs)),
-                u64::from(cfg.max_total_bytes),
-                usize::try_from(cfg.max_entry_bytes).unwrap_or(usize::MAX),
-            ))
-        } else {
-            forward_stage
-        };
+            forward_stage =
+                forward_stage.with_response_cache(gateway_cache::ResponseCache::with_limits(
+                    Duration::from_secs(u64::from(cfg.ttl_secs)),
+                    u64::from(cfg.max_total_bytes),
+                    usize::try_from(cfg.max_entry_bytes).unwrap_or(usize::MAX),
+                ));
+        }
 
         // Word filter (dormant by default): only a non-empty word list builds the
         // WordFilter and attaches the request-side switch; an empty list = not
         // attached, forward skips the whole thing. The info! log records only the
         // word count, never the words themselves.
-        let forward_stage = if security.words.is_empty() {
-            forward_stage
-        } else {
+        if !security.words.is_empty() {
             tracing::info!(
                 words = security.words.len(),
                 filter_request = security.filter_request,
                 "word-filter enabled on the request path"
             );
-            forward_stage
+            forward_stage = forward_stage
                 .with_word_filter(Arc::new(WordFilter::new(&security)))
-                .with_word_filter_request(security.filter_request)
-        };
+                .with_word_filter_request(security.filter_request);
+        }
 
         // Default chain: gates → (consumer stages) → forwarding stage → protocol
         // bridge → (consumer stages). Route selection lives inside the forwarding
         // stage (see the module docs), so no DispatchStage sits in the chain.
         let mut pipeline = Pipeline::new().push(gates);
-        for stage in pre_forward {
-            pipeline = pipeline.push_shared(stage);
-        }
+        pipeline = pre_forward
+            .into_iter()
+            .fold(pipeline, |pipeline, stage| pipeline.push_shared(stage));
         let mut pipeline = pipeline
             .push(
                 forward_stage
@@ -344,9 +330,9 @@ impl GatewayBuilder {
                     .with_stream_resilience(Some(StreamResilience::default())),
             )
             .push(ProtocolBridgeStage::new(adaptors));
-        for stage in post {
-            pipeline = pipeline.push_shared(stage);
-        }
+        pipeline = post
+            .into_iter()
+            .fold(pipeline, |pipeline, stage| pipeline.push_shared(stage));
         // The prehold ledger is shared with the admission track (QuotaGate) and
         // the gate chain (release on later-gate rejection): the pipeline releases
         // a still-outstanding hold exactly once on any terminal outcome where no
