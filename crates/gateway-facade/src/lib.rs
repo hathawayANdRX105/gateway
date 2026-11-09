@@ -47,11 +47,11 @@ use axum::Router;
 use axum::middleware::from_fn;
 use axum::response::IntoResponse;
 
-use gateway_contract::dispatch::{DispatcherHandle, RetryPolicy, Snapshot};
-use gateway_contract::egress::Timeouts;
-use gateway_contract::gate::{SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot};
-use gateway_contract::health::{HealthHandle, HealthSetting};
-use gateway_contract::metering::{Ledger, PriceTable, SettleSink};
+use gateway_core::dispatch::{DispatcherHandle, RetryPolicy, Snapshot};
+use gateway_core::egress::Timeouts;
+use gateway_core::gate::{SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot};
+use gateway_core::health::{HealthHandle, HealthSetting};
+use gateway_core::metering::{Ledger, PriceTable, SettleSink};
 use gateway_dispatch::{Dispatcher, LatencyDigestTable, MemoryHealthTable, StickyTable};
 use gateway_forward::StreamResilience;
 use gateway_forward::egress::Egress;

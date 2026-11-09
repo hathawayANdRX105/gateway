@@ -5,8 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
-app-contract = { path = "../app-contract" }
-gateway-contract = { path = "../gateway-contract" }
+gateway-core = { path = "../gateway-core" }
 
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 axum = { workspace = true }

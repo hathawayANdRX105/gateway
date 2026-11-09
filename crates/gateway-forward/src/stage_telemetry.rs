@@ -9,8 +9,8 @@
 //! never emitting an ownerless bill and never changing the caller's control flow,
 //! which still returns `StageError` as usual.
 
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
+use gateway_core::error::NormalizedError;
 use gateway_dispatch::{Dispatch, TpsSample};
 use gateway_metering::ledger::Hold;
 use gateway_pipeline::{RequestCtx, SelectedRoute, StageError};
@@ -313,7 +313,7 @@ pub(crate) fn millis_saturating(elapsed: Duration) -> u32 {
 /// event.
 pub(crate) fn submit_event(
     sink: &Option<Arc<dyn gateway_metering::SettleSink>>,
-    event: Option<app_contract::records::UsageEventRecord>,
+    event: Option<gateway_core::records::UsageEvent>,
     group_id: &str,
 ) {
     if let (Some(mut event), Some(sink)) = (event, sink.as_ref()) {

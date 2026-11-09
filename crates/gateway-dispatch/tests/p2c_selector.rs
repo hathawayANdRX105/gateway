@@ -1,7 +1,7 @@
 //! Observable behavior of the P2C selector: prior×likelihood, sampling floor, prior
 //! fallback, starvation prevention, slow-start ramp discount.
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{
     AttemptReport, FailureClass, HealthSetting, HealthTable, MemoryHealthTable,
 };

@@ -71,7 +71,7 @@ fn spawn_mock(status: u16, body: &'static [u8]) -> u16 {
 
 /// Real send → classification, returns the `NormalizedError` the egress layer
 /// hands back to the retry loop.
-async fn classify(status: u16, body: &'static [u8]) -> app_contract::error::NormalizedError {
+async fn classify(status: u16, body: &'static [u8]) -> gateway_core::error::NormalizedError {
     let port = spawn_mock(status, body);
     let egress = ReqwestEgress::with_client(reqwest::Client::new(), Duration::from_secs(2));
     let url = format!("http://127.0.0.1:{port}/v1/chat/completions");
@@ -90,7 +90,7 @@ async fn upstream_408_is_a_retryable_upstream_error() {
     // another channel may well succeed, so it must be retryable and must not
     // be treated as a request-side fault.
     let err = classify(408, br#"{"error":{"message":"upstream timed out"}}"#).await;
-    assert_eq!(err.code, app_contract::error::code::UPSTREAM_ERROR);
+    assert_eq!(err.code, gateway_core::error::code::UPSTREAM_ERROR);
     assert_eq!(err.status, 408, "status is passed through unchanged");
     assert!(
         err.retryable,
@@ -111,7 +111,7 @@ async fn other_4xx_stay_non_retryable() {
     // Control case: the `400..=499` catch-all still reads as a bad request (non-retryable).
     // If adding the 408 arm made the catch-all retryable, this turns red.
     let err = classify(400, br#"{"error":{"message":"bad request"}}"#).await;
-    assert_eq!(err.code, app_contract::error::code::UPSTREAM_ERROR);
+    assert_eq!(err.code, gateway_core::error::code::UPSTREAM_ERROR);
     assert_eq!(err.status, 400);
     assert!(
         !err.retryable,
@@ -125,12 +125,12 @@ async fn neighbouring_retryable_codes_are_unaffected() {
     // 429 / 5xx already shared the retryable semantics; pinning them prevents
     // the 408 arm from shadowing them.
     let throttled = classify(429, br#"{"error":{"message":"slow down"}}"#).await;
-    assert_eq!(throttled.code, app_contract::error::code::RATE_LIMITED);
+    assert_eq!(throttled.code, gateway_core::error::code::RATE_LIMITED);
     assert_eq!(throttled.status, 429);
     assert!(throttled.retryable);
 
     let server_error = classify(503, br#"{"error":{"message":"unavailable"}}"#).await;
-    assert_eq!(server_error.code, app_contract::error::code::UPSTREAM_ERROR);
+    assert_eq!(server_error.code, gateway_core::error::code::UPSTREAM_ERROR);
     assert_eq!(server_error.status, 503);
     assert!(server_error.retryable);
 }

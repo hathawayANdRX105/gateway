@@ -4,8 +4,8 @@
 //! untouched, stickiness never hard-pins a channel, and the prior is explicitly
 //! renormalized after the boost (Σprior == 1).
 
-use app_contract::records::RouteUnitRecord;
-use app_contract::records::SyncMeta;
+use gateway_core::records::RouteUnitRecord;
+use gateway_core::records::SyncMeta;
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};
 use gateway_dispatch::retry::{AttemptOutcome, FakeTimeControl, RetryPolicy, run_retry_loop};
 use gateway_dispatch::selector::{DEFAULT_EXPLORE_RATE, MAX_STICKY_BOOST, P2CSelector, Selector};

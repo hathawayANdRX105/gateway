@@ -115,7 +115,7 @@ async fn node_alive(host: &str, port: u16) -> bool {
 /// Free nodes are extremely sensitive to TLS fingerprints / availability (with meow's
 /// boring-tls feature off, rustls fingerprints are rejected by some reality/trojan servers),
 /// and node-side failures are not code defects.
-fn on_dial_failure(what: &str, e: &app_contract::error::NormalizedError) {
+fn on_dial_failure(what: &str, e: &gateway_core::error::NormalizedError) {
     if std::env::var("FERRITE_PROXY_LIVE_STRICT").is_err() {
         eprintln!(
             "skip: {what} dial failed ({e:?}). Set FERRITE_PROXY_LIVE_STRICT=1 to make this a hard failure"

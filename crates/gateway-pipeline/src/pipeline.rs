@@ -10,7 +10,7 @@
 //! let resp = pipe.run(ctx).await?;
 //! ```
 
-use gateway_contract::metering::Ledger;
+use gateway_core::metering::Ledger;
 
 use crate::ctx::{RequestCtx, RouteAttribution};
 use crate::stage::{Stage, StageError, StageOutcome};

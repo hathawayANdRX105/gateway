@@ -9,7 +9,7 @@
 //! directly; `map_error` assertions cover only the status code and content type, not the body
 //! (reading the body needs an async runtime, and this crate has no tokio dependency).
 
-use app_contract::error::{NormalizedError, code};
+use gateway_core::error::{NormalizedError, code};
 use gateway_pipeline::{ProtocolKind, StageError};
 use gateway_protocol_bridge::error_mapping::{
     map_error, to_anthropic_shape, to_gemini_shape, to_openai_shape, to_responses_shape,
@@ -130,7 +130,7 @@ fn error_type_classification_follows_code() {
 
 // **Typed-classification fix**: contract-vocabulary codes must classify even though they do
 // not contain the old probe substrings ("auth"/"quota"/"rate"). Scenario: the upstream
-// classifier (app_contract NormalizedError::from_status) labels an upstream 401 with
+// classifier (gateway_core NormalizedError::from_status) labels an upstream 401 with
 // INVALID_API_KEY; the old substring probe missed it and rendered `api_error`. Acceptance:
 // exact-match classification renders every auth/quota code as its class, in both OpenAI and
 // Anthropic naming.

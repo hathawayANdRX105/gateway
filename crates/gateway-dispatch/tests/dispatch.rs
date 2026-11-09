@@ -1,6 +1,6 @@
 //! Behavioral tests for the dispatch health table / global P2C selection / failover budget.
 
-use app_contract::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::Dispatch;
 use gateway_dispatch::candidate::resolve_candidate;
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};

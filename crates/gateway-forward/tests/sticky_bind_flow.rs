@@ -117,7 +117,7 @@ const TTL_MS: u64 = 300_000;
 /// trait signature).
 type ExecFuture<'a> = Pin<
     Box<
-        dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+        dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
             + Send
             + 'a,
     >,

@@ -9,16 +9,14 @@ publish.workspace = true
 # blocks billing.
 
 [dependencies]
-app-contract = { path = "../app-contract" }
+gateway-core = { path = "../gateway-core" }
 # Settlement vocabulary + ports (SettleSink, PriceTable) live on the injection surface so
 # the billing crate can implement them without depending on this engine.
-gateway-contract  = { path = "../gateway-contract" }
 serde    = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono   = { workspace = true }
 bytes    = { workspace = true }
-uuid = { workspace = true }
 
 [lints]
 workspace = true

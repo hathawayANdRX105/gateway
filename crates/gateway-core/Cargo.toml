@@ -1,0 +1,38 @@
+[package]
+name = "gateway-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = true
+
+# Vocabulary and ports of the gateway data plane — the bottom of the dependency graph.
+#
+# Everything the engines pass around and every port the admin plane calls into a
+# running data plane lives here; `gateway-facade` re-exports it so consumers depend
+# on exactly one crate. Engines and the admin plane never name each other's types
+# directly.
+#
+# Dependency discipline (hard rule): pure data + pure serialization only
+# (serde / chrono / uuid / thiserror / base64 / url / percent-encoding, plus arc-swap
+# and dashmap which the snapshot vocabulary's Shared* handles are built from).
+# tokio / axum / reqwest / any engine crate are forbidden — that is what keeps this
+# crate wasm-safe and what stops it growing back into implementations.
+#
+# Record identity (sync key / schema version / origin / time) is deliberately NOT
+# here: `UsageEvent` carries the payload only, and the consumer's settle sink assigns
+# identity from its own persistence machinery.
+
+[dependencies]
+arc-swap = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+dashmap = { workspace = true }
+percent-encoding = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }
+
+[lints]
+workspace = true

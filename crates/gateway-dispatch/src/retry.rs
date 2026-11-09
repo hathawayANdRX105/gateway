@@ -40,7 +40,7 @@ use async_trait::async_trait;
 
 /// Retry policy parameters — defined on the injection surface so the admin plane can
 /// read the budget from options and hot-swap it without depending on this engine.
-pub use gateway_contract::dispatch::RetryPolicy;
+pub use gateway_core::dispatch::RetryPolicy;
 
 /// Time control for the retry loop — cooldown-recovery waits go through here. Production =
 /// real `tokio` sleep; tests inject [`FakeTimeControl`] so a cooldown wait takes 0 ms of real

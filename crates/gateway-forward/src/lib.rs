@@ -54,9 +54,9 @@ use bytes::Bytes;
 /// Concurrency/budget rejections are not upstream errors: they are `retryable` and
 /// channel-independent, the caller does **not** report `submit_failed`, and the health
 /// side treats them as Throttled.
-pub(crate) fn rate_limited(message: impl Into<String>) -> app_contract::error::NormalizedError {
-    app_contract::error::NormalizedError {
-        code: app_contract::error::code::RATE_LIMITED,
+pub(crate) fn rate_limited(message: impl Into<String>) -> gateway_core::error::NormalizedError {
+    gateway_core::error::NormalizedError {
+        code: gateway_core::error::code::RATE_LIMITED,
         status: 429,
         retryable: true,
         channel_scoped: false,

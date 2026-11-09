@@ -15,8 +15,7 @@ gateway-protocol-bridge = { path = "../gateway-protocol-bridge" }
 gateway-proxy = { path = "../gateway-proxy" }
 gateway-gate  = { path = "../gateway-gate" }
 gateway-security = { path = "../gateway-security" }
-gateway-contract = { path = "../gateway-contract" }
-app-contract = { path = "../app-contract" }
+gateway-core = { path = "../gateway-core" }
 serde    = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }

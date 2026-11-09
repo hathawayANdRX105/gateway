@@ -127,7 +127,7 @@ fn ledger_reseed_preserves_in_flight_holds() {
         "prehold reserves 500 of 1000"
     );
 
-    let quotas = gateway_contract::gate::QuotaSnapshot::default();
+    let quotas = gateway_core::gate::QuotaSnapshot::default();
     quotas.upsert("tok1".into(), 3000);
     ledger.reseed(&quotas);
     assert_eq!(

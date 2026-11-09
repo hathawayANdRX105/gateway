@@ -2,7 +2,7 @@
 //! cooling down, pick recalls the channel with the shortest remaining cooldown
 //! instead of letting the caller report an unavailable error.
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::STATUS_ENABLED;
 use gateway_dispatch::health::{AttemptReport, HealthSetting, HealthTable, MemoryHealthTable};
 use gateway_dispatch::selector::{DEFAULT_EXPLORE_RATE, P2CSelector, Selector};

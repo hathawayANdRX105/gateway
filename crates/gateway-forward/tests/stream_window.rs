@@ -99,7 +99,7 @@ impl Egress for ScriptedSseEgress {
         _timeouts: &'a Timeouts,
     ) -> Pin<
         Box<
-            dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
                 + Send
                 + 'a,
         >,

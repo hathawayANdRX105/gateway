@@ -10,7 +10,7 @@
 
 use std::sync::Arc;
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{HealthSetting, HealthTable, MemoryHealthTable, TpsSample};
 use gateway_dispatch::selector::{DEFAULT_EXPLORE_RATE, P2CSelector, Selector};
 use gateway_gate::concurrency::ConcurrencyState;

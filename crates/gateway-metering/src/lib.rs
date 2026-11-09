@@ -29,7 +29,7 @@ pub mod pricing;
 pub mod scanner;
 pub mod settle;
 
-pub use gateway_contract::metering::SettleSink;
+pub use gateway_core::metering::SettleSink;
 pub use ledger::{Hold, Ledger};
 pub use scanner::StreamScanner;
 pub use settle::{extract_finish_reason, extract_usage, settle_event};

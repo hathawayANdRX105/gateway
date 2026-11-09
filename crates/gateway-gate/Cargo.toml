@@ -7,8 +7,7 @@ publish = false
 [dependencies]
 gateway-pipeline = { path = "../gateway-pipeline" }
 gateway-metering = { path = "../gateway-metering" }
-gateway-contract      = { path = "../gateway-contract" }
-app-contract     = { path = "../app-contract" }
+gateway-core = { path = "../gateway-core" }
 
 tokio = { workspace = true, features = ["sync", "rt-multi-thread", "macros"] }
 arc-swap = { workspace = true }

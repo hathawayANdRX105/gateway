@@ -32,7 +32,7 @@
 //! mix** (sampling probability), while the EWMA family determines only **who is better right now**
 //! (the duel). `weight_expresses_sampling_share_not_duel_score` pins down that separation.
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{
     AttemptReport, FailureClass, HealthSetting, HealthTable, MemoryHealthTable,
 };

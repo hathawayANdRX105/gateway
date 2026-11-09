@@ -21,7 +21,7 @@
 
 mod common;
 
-use app_contract::records::UsageEventRecord;
+use gateway_core::records::UsageEvent;
 use gateway_dispatch::RetryPolicy;
 use gateway_forward::ForwardStage;
 use gateway_metering::pricing::{ModelPrice, PriceTable};
@@ -59,7 +59,7 @@ fn priced_stage(egress: Arc<ScriptedEgress>) -> (ForwardStage, Arc<VecSink>) {
 
 /// Baseline assertions for a failure observation event: all-zero counts, cost=0, and
 /// attribution keys from the same source as the success path.
-fn assert_zero_cost_observation(ev: &UsageEventRecord, unit_key: &str) {
+fn assert_zero_cost_observation(ev: &UsageEvent, unit_key: &str) {
     assert_eq!(
         (ev.prompt_tokens, ev.completion_tokens, ev.cached_tokens),
         (0, 0, 0),

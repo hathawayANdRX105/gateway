@@ -13,11 +13,11 @@
 use super::pool::ProxyPool;
 use super::probe::ProbeResult;
 use gateway_cache::TtlCache;
-use gateway_contract::proxy::node::{ProxyNode, ProxyScheme};
+use gateway_core::proxy::node::{ProxyNode, ProxyScheme};
 /// Per-node runtime counters — defined on the injection surface; re-exported so the
 /// historical `gateway_proxy::manager::NodeStats` path keeps resolving.
-pub use gateway_contract::proxy::pool::NodeStats;
-use gateway_contract::proxy::pool::{ProxyPoolHandle, ProxySnapshot};
+pub use gateway_core::proxy::pool::NodeStats;
+use gateway_core::proxy::pool::{ProxyPoolHandle, ProxySnapshot};
 use meow_common::ProxyAdapter;
 use rand::seq::SliceRandom;
 use reqwest::redirect::Policy as RedirectPolicy;

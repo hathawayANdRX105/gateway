@@ -10,7 +10,7 @@ use gateway_protocol_bridge::FormatRegistry;
 use std::sync::Arc;
 use std::time::Duration;
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::candidate::Candidate;
 use gateway_pipeline::ProtocolKind;
 

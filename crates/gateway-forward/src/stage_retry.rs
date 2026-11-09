@@ -5,9 +5,9 @@
 //! stores `Forwarded` in the slot; on failure it reports per arm by
 //! `retryable`/`degraded`/`channel_scoped`), and once the loop ends the hit structure commits.
 
-use app_contract::error::NormalizedError;
 use arc_swap::ArcSwap;
 use bytes::Bytes;
+use gateway_core::error::NormalizedError;
 use gateway_dispatch::retry::{AttemptOutcome, RealTimeControl, run_retry_loop};
 use gateway_dispatch::{AttemptReport, Dispatch, DispatchError, FailureClass, RetryPolicy};
 use gateway_pipeline::{RequestCtx, StageError, StageOutcome};

@@ -25,11 +25,11 @@ mod common;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
 use futures_util::Stream;
 use futures_util::StreamExt;
-use gateway_contract::metering::{ModelPrice, PriceTable};
+use gateway_core::error::NormalizedError;
+use gateway_core::metering::{ModelPrice, PriceTable};
 use gateway_dispatch::{RetryPolicy, token_budget::TokenBudgetState};
 use gateway_forward::ForwardStage;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};

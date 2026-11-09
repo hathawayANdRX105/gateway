@@ -11,9 +11,9 @@ use super::snapshot::{PricingSnapshot, QuotaSnapshot};
 use gateway_metering::ledger::Ledger;
 
 /// Cost estimation from the output token limit — defined on the injection surface next
-/// to [`gateway_contract::gate::PriceRow`], re-exported so
+/// to [`gateway_core::gate::PriceRow`], re-exported so
 /// `gateway_gate::quota::estimate_cost` keeps resolving.
-pub use gateway_contract::gate::estimate_cost;
+pub use gateway_core::gate::estimate_cost;
 
 pub struct QuotaGate {
     quotas: Arc<ArcSwap<QuotaSnapshot>>,

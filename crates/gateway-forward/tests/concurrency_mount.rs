@@ -22,8 +22,8 @@
 //! Dispatch mock therefore always returns the same candidate (ignoring exclude) — the
 //! same outcome as "every retry rejected" in a real multi-candidate scenario.
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
 use bytes::Bytes;
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{AttemptReport, TpsSample};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, RetryPolicy};
 use gateway_forward::ForwardStage;
@@ -120,7 +120,7 @@ impl Egress for DelayedEgress {
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,

@@ -10,7 +10,7 @@
 //! either: reqwest cannot perform them, so [`super::adapter`] maps the node onto a meow
 //! `ProxyAdapter` and the handshake happens inside its `dial_tcp`.
 
-pub use gateway_contract::proxy::node::{BasicAuth, NodeOpts, ParseError, ProxyNode, ProxyScheme};
+pub use gateway_core::proxy::node::{BasicAuth, NodeOpts, ParseError, ProxyNode, ProxyScheme};
 
 /// Convert into a `reqwest::Proxy` (for injection via `ClientBuilder::proxy()`)
 ///

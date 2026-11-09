@@ -14,7 +14,7 @@
 
 use std::collections::HashMap;
 
-pub use gateway_contract::metering::{ModelPrice, PriceTable};
+pub use gateway_core::metering::{ModelPrice, PriceTable};
 
 /// Settlement price computation.
 ///

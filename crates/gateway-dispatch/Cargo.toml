@@ -10,8 +10,7 @@ publish.workspace = true
 
 [dependencies]
 gateway-pipeline = { path = "../gateway-pipeline" }
-gateway-contract      = { path = "../gateway-contract" }
-app-contract    = { path = "../app-contract" }
+gateway-core = { path = "../gateway-core" }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 arc-swap = { workspace = true }

@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 gateway-pipeline = { path = "../gateway-pipeline" }
-app-contract     = { path = "../app-contract" }
+gateway-core = { path = "../gateway-core" }
 
 axum = { workspace = true }
 http = { workspace = true }

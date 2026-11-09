@@ -18,9 +18,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
 use futures_util::StreamExt;
+use gateway_core::error::NormalizedError;
 use http::Uri;
 use http_body_util::{BodyExt, Full};
 use hyper::Request;

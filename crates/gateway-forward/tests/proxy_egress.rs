@@ -44,7 +44,7 @@ impl Egress for SpyEgress {
         _timeouts: &'a Timeouts,
     ) -> Pin<
         Box<
-            dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
                 + Send
                 + 'a,
         >,
@@ -63,6 +63,10 @@ impl Egress for SpyEgress {
         })
     }
 }
+
+/// Fixture envelope version: record identity is assigned by the consumer, so gateway
+/// tests only need a stable placeholder.
+const FIXTURE_SCHEMA_VERSION: u32 = 1;
 
 fn make_ctx(route: Option<SelectedRoute>) -> gateway_pipeline::RequestCtx {
     gateway_pipeline::RequestCtx {
@@ -97,10 +101,10 @@ fn make_ctx(route: Option<SelectedRoute>) -> gateway_pipeline::RequestCtx {
 }
 
 fn route_for(key: &str, base: &str) -> SelectedRoute {
-    let unit = app_contract::records::RouteUnitRecord {
-        meta: app_contract::records::SyncMeta {
+    let unit = gateway_core::records::RouteUnitRecord {
+        meta: gateway_core::records::SyncMeta {
             key: format!("unit-{key}"),
-            schema_version: app_contract::SCHEMA_VERSION,
+            schema_version: FIXTURE_SCHEMA_VERSION,
             logical_version: 1,
             origin: "test".into(),
             updated_at: chrono::Utc::now(),

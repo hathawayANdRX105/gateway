@@ -8,8 +8,8 @@
 
 use std::net::IpAddr;
 
-use gateway_contract::metering::Hold;
-use gateway_contract::protocol::{ProtocolKind, RequestPath};
+use gateway_core::metering::Hold;
+use gateway_core::protocol::{ProtocolKind, RequestPath};
 
 use crate::stage::StageError;
 use bytes::Bytes;
@@ -74,7 +74,7 @@ pub struct RequestMeta {
 #[derive(Debug, Clone)]
 pub struct SelectedRoute {
     /// Matched route unit (raw record, referenced by metering / logging).
-    pub unit: app_contract::records::RouteUnitRecord,
+    pub unit: gateway_core::records::RouteUnitRecord,
     /// Resolved upstream credential (`channel.keys[key_index].secret`).
     pub secret: String,
     /// Upstream base_url (path joining rules in `gateway_forward::adapter::build_url`).

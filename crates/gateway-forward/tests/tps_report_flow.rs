@@ -35,10 +35,10 @@
 
 mod common;
 
-use app_contract::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use bytes::Bytes;
 use futures_util::Stream;
 use futures_util::StreamExt;
+use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{HealthTable, MemoryHealthTable, TpsSample};
 use gateway_dispatch::{
     AttemptReport, Candidate, Dispatch, DispatchError, Dispatcher, RetryPolicy, Snapshot,
@@ -59,7 +59,7 @@ const CHANNEL_KEY: &str = "ch-c1";
 
 type ExecFuture<'a> = Pin<
     Box<
-        dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+        dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
             + Send
             + 'a,
     >,

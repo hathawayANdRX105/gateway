@@ -23,15 +23,15 @@
 //! non-streaming branch), so streaming Claude/Gemini clients always received
 //! OpenAI event shapes (G2).
 //!
-//! Failures funnel through app_contract::error::NormalizedError →
+//! Failures funnel through gateway_core::error::NormalizedError →
 //! gateway_dispatch::FailureClass.
 
 use crate::ForwardTask;
 use crate::adapter::{self, PreparedRequest};
 use crate::egress::{ByteStream, Egress, ForwardedResponse, body_preview, upstream_error};
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
 use futures_util::{StreamExt, TryStreamExt};
+use gateway_core::error::NormalizedError;
 use gateway_protocol_bridge::adaptor::Protocol;
 use gateway_protocol_bridge::format_codec::{FormatCodec, FormatRegistry, StreamEncoder};
 use gateway_protocol_bridge::ir::StreamEvent;
@@ -275,7 +275,7 @@ async fn read_error_preview(mut body: ByteStream, total_ms: u64) -> String {
     }
 }
 
-/// protocol-bridge error → app_contract::error::NormalizedError, the single exit.
+/// protocol-bridge error → gateway_core::error::NormalizedError, the single exit.
 fn protocol_bridge_error(
     e: gateway_protocol_bridge::adaptor::AdaptorError,
     status: u16,

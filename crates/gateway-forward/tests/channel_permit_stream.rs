@@ -100,7 +100,7 @@ impl Egress for JsonEgress {
     ) -> Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,
@@ -128,7 +128,7 @@ impl Egress for GatedSseEgress {
     ) -> Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,

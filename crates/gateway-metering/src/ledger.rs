@@ -10,11 +10,11 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 /// Settlement delivery port — the trait lives on the injection surface; re-exported here
 /// so the historical `gateway_metering::ledger::SettleSink` path keeps resolving.
-pub use gateway_contract::metering::SettleSink;
+pub use gateway_core::metering::SettleSink;
 
-/// Admission ledger port: re-exported from `gateway_contract::metering` so the admin plane
+/// Admission ledger port: re-exported from `gateway_core::metering` so the admin plane
 /// (api-gateway-state) can name it without depending on the metering engine.
-pub use gateway_contract::metering::{Hold, Insufficient, Ledger};
+pub use gateway_core::metering::{Hold, Insufficient, Ledger};
 
 /// Balance query side — read-only access to the ledger's available amount.
 pub trait BalanceLedger: Ledger {
@@ -146,7 +146,7 @@ impl Ledger for MemoryLedger {
             *balance += hold.amount;
         }
     }
-    fn reseed(&self, quotas: &gateway_contract::gate::QuotaSnapshot) {
+    fn reseed(&self, quotas: &gateway_core::gate::QuotaSnapshot) {
         let mut balances = self.lock_balances();
         quotas.iter().for_each(|(token_key, remaining)| {
             balances.insert(token_key, remaining);

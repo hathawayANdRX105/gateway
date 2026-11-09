@@ -137,7 +137,7 @@ fn health_table_concurrent_streak_trips_breaker() {
 
 #[test]
 fn dispatcher_concurrent_select_returns_valid_candidate() {
-    use app_contract::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+    use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
     use gateway_dispatch::Dispatch;
 
     fn unit(key: &str) -> RouteUnitRecord {

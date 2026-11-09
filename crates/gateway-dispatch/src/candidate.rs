@@ -1,9 +1,9 @@
 //! Candidate artifact — the complete executable target of a routing decision.
 
-use app_contract::records::{ChannelRecord, RouteUnitRecord};
+use gateway_core::records::{ChannelRecord, RouteUnitRecord};
 
 /// Route-unit enable status — defined on the injection surface (both planes test it).
-pub use gateway_contract::dispatch::STATUS_ENABLED;
+pub use gateway_core::dispatch::STATUS_ENABLED;
 
 /// The final output of dispatch: one concrete target that can be forwarded.
 ///

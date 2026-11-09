@@ -4,7 +4,7 @@
 //! `api-gateway-state`.
 //!
 //! The snapshot containers themselves are vocabulary shared with the admin plane and
-//! live on the injection surface (`gateway_contract::gate`); this module re-exports
+//! live on the injection surface (`gateway_core::gate`); this module re-exports
 //! them so existing `gateway_gate::snapshot::…` paths keep resolving, and keeps the
 //! gate-local view helpers: the IP allowlist and the contract-record projections the
 //! gates read.
@@ -18,9 +18,9 @@ use std::net::IpAddr;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use app_contract::records::{TokenRecord, UserRecord};
+use gateway_core::records::{TokenRecord, UserRecord};
 
-pub use gateway_contract::gate::{
+pub use gateway_core::gate::{
     GroupEntry, GroupSnapshot, PriceRow, PricingSnapshot, QuotaSnapshot, SharedGroupSnapshot,
     SharedPricing, SharedQuota, SharedTokenSnapshot, SharedUserSnapshot, TokenEntry, TokenSnapshot,
     UserSnapshot, estimate_cost,

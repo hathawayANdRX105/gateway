@@ -11,7 +11,7 @@ publish = false
 # using the gateway.
 
 [dependencies]
-gateway-contract         = { path = "../gateway-contract" }
+gateway-core = { path = "../gateway-core" }
 gateway-pipeline         = { path = "../gateway-pipeline" }
 gateway-gate             = { path = "../gateway-gate" }
 gateway-dispatch         = { path = "../gateway-dispatch" }
@@ -27,8 +27,6 @@ tracing                  = { workspace = true }
 [dev-dependencies]
 # Tests build a minimally authenticated chain: token / user snapshots with one
 # enabled pair, empty catalog so the forwarding stage fails before egress.
-app-contract     = { path = "../app-contract" }
-gateway-contract = { path = "../gateway-contract" }
 gateway-forward  = { path = "../gateway-forward" }
 gateway-gate     = { path = "../gateway-gate" }
 gateway-pipeline = { path = "../gateway-pipeline" }

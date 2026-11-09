@@ -8,7 +8,7 @@
 //! Assembly convention: `max = 0` means unlimited concurrency, i.e.
 //! [`ForwardStage::with_concurrency`] is not called.
 
-use app_contract::error::NormalizedError;
+use gateway_core::error::NormalizedError;
 use gateway_gate::concurrency::ConcurrencyState;
 use std::sync::Arc;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore, TryAcquireError};
@@ -76,7 +76,7 @@ pub(crate) fn try_acquire_concurrency(
         // This module never close()s a semaphore, so Closed is theoretically unreachable;
         // terminate as an internal error as a fallback.
         Err(e) => Err(NormalizedError {
-            code: app_contract::error::code::INTERNAL,
+            code: gateway_core::error::code::INTERNAL,
             status: 500,
             retryable: false,
             channel_scoped: false,

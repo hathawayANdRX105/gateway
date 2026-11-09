@@ -11,9 +11,9 @@
 //! this file therefore verify "both hops really happen and the product is in the
 //! inbound format".
 
-use app_contract::error::NormalizedError;
-use app_contract::records::RouteUnitRecord;
 use bytes::Bytes;
+use gateway_core::error::NormalizedError;
+use gateway_core::records::RouteUnitRecord;
 use gateway_forward::ForwardTask;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::pipeline::forward_once;
@@ -59,7 +59,7 @@ fn mk_task(stream: bool, inbound: ProtocolKind, provider_type: &str) -> ForwardT
     ForwardTask {
         candidate: gateway_dispatch::candidate::Candidate {
             unit: RouteUnitRecord {
-                meta: app_contract::records::SyncMeta {
+                meta: gateway_core::records::SyncMeta {
                     key: "u1".into(),
                     schema_version: 1,
                     logical_version: 1,

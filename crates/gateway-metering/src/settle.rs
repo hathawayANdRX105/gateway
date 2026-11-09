@@ -1,12 +1,12 @@
-//! Settlement — scan result + pricing → UsageEvent (written to the flat usage_logs table).
+//! Settlement — scan result + pricing → UsageEvent (handed to the consumer's settle sink).
 //!
 //! Callers: the settlement points of gateway_forward — `stream::finish` on the streaming
-//! path and the stage telemetry hooks on the non-streaming success / failure exits. Settled
-//! events land in usage_logs and observe aggregates them straight from the table, without
-//! blocking forwarding.
+//! path and the stage telemetry hooks on the non-streaming success / failure exits. The
+//! sink persists the event (and assigns record identity: sync key / version / origin /
+//! time); observe aggregates it straight from the storage table, without blocking
+//! forwarding.
 
-use app_contract::SCHEMA_VERSION;
-use app_contract::records::{SyncMeta, UsageEventRecord};
+use gateway_core::records::UsageEvent;
 use serde_json::Value as JsonValue;
 
 use crate::ledger::Hold;
@@ -19,18 +19,19 @@ use crate::scanner::{
 ///
 /// `is_stream` is the request's streaming intent (the streaming scan chain passes `true`;
 /// the non-streaming commit point and failure-observation events pass the request body's
-/// `stream` field); it lands verbatim in [`UsageEventRecord::is_stream`].
+/// `stream` field); it lands verbatim in [`UsageEvent::is_stream`].
 /// `finish_reason` is the upstream stop reason (the non-streaming commit point extracts it
 /// from the response body through [`extract_finish_reason`], the streaming scan chain passes
 /// the value captured from the last frame, and the failure-observation path passes `None`
 /// because it is structurally absent); it lands verbatim in
-/// [`UsageEventRecord::finish_reason`].
+/// [`UsageEvent::finish_reason`].
 /// `group` goes into [`PriceTable::lookup`] together with model (implementations may price
 /// per group); `group_ratio` is the request group multiplier (GroupRecord.rate_multiplier)
 /// multiplied into [`price_of`]; library-level callers that cannot obtain the real group
 /// multiplier pass 1.0.
-/// Uniqueness: meta.key = a random UUIDv4 generated at the edge; de-duplication is left to the
-/// event consumer.
+/// Record identity (dedupe key / schema version / origin / timestamp) is NOT assigned
+/// here: the sink implementation assigns it when it persists, so uniqueness and
+/// de-duplication belong to the event consumer.
 // ponytail: the many parameters are independent fields of one usage event; wrapping them
 // in a struct would only move the parameters elsewhere.
 #[allow(clippy::too_many_arguments)]
@@ -50,7 +51,7 @@ pub fn settle_event(
     status_code: u16,
     error: Option<&str>,
     finish_reason: Option<&str>,
-) -> UsageEventRecord {
+) -> UsageEvent {
     // The group multiplier comes entirely from the caller-supplied group_ratio.
     let price = price_table
         .lookup(public_model, group)
@@ -63,14 +64,7 @@ pub fn settle_event(
 
     let cost = price_of(counts, &price, group_ratio);
 
-    UsageEventRecord {
-        meta: SyncMeta {
-            key: uuid::Uuid::new_v4().to_string(),
-            schema_version: SCHEMA_VERSION,
-            logical_version: 1,
-            origin: "edge".into(),
-            updated_at: chrono::Utc::now(),
-        },
+    UsageEvent {
         token_key: hold.token_key.clone(),
         user_key: hold.user_key.clone(),
         channel_key: channel_key.to_string(),

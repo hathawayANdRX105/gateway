@@ -69,7 +69,7 @@ mod cooldown;
 mod outcome;
 
 pub use cooldown::throttle_cooldown_duration_ms;
-pub use gateway_contract::health::{
+pub use gateway_core::health::{
     ChannelOutcome, DEFAULT_SCORE, HealthSetting, HealthState, TPS_ALPHA_ESTIMATED,
     TPS_ALPHA_MEASURED, TpsSample,
 };
@@ -80,7 +80,7 @@ pub use outcome::{THROTTLE_RAMP_STEPS, THROTTLED_OBSERVATION, UNAUTHORIZED_ESCAL
 /// (RouteUnitRecord::meta.key).
 ///
 /// Engine-side trait: the hot path (record / selection gating) stays here. The
-/// admin plane uses the narrower `gateway_contract::health::HealthHandle` port instead.
+/// admin plane uses the narrower `gateway_core::health::HealthHandle` port instead.
 pub trait HealthTable: Send + Sync {
     /// Read the current health state; no record → Default (full health).
     fn get(&self, unit_key: &str) -> HealthState;
@@ -384,7 +384,7 @@ impl HealthTable for MemoryHealthTable {
 /// Admin-plane port: the panel lists entries, the live-reload bus reads and replaces
 /// the config. Both delegate to the inherent methods, so `set_config` keeps its
 /// validate-then-swap contract.
-impl gateway_contract::health::HealthHandle for MemoryHealthTable {
+impl gateway_core::health::HealthHandle for MemoryHealthTable {
     fn entries(&self) -> Vec<(String, HealthState)> {
         MemoryHealthTable::entries(self)
     }

@@ -21,10 +21,10 @@ use crate::stage_sticky::{StickyBind, sticky_key};
 use crate::stage_telemetry::normalized_to_stage_error;
 use crate::stream;
 use crate::stream_resilience::StreamResilience;
-use app_contract::error::NormalizedError;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
+use gateway_core::error::NormalizedError;
 use gateway_dispatch::sticky::StickyTable;
 use gateway_dispatch::{Dispatch, RetryPolicy};
 use gateway_gate::concurrency::ConcurrencyState;
@@ -208,7 +208,7 @@ impl ForwardStage {
     }
 
     /// Mounts the library-side settlement channel: `pt` prices, `sink` lands
-    /// [`app_contract::records::UsageEventRecord`].
+    /// [`gateway_core::records::UsageEvent`].
     ///
     /// The two fields are injected as a pair (consumed by the same
     /// `commit_forwarded` settlement point); with `Some`, streaming and

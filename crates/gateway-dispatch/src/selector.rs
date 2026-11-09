@@ -73,7 +73,7 @@ use crate::candidate::STATUS_ENABLED;
 use crate::health::{HealthSetting, HealthState, HealthTable};
 use crate::latency_digest::LatencyDigestTable;
 use crate::token_budget::TokenBudgetState;
-use app_contract::records::RouteUnitRecord;
+use gateway_core::records::RouteUnitRecord;
 use gateway_gate::concurrency::ConcurrencyState;
 use rand::Rng;
 use std::sync::Arc;

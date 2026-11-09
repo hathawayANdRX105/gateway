@@ -1192,10 +1192,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "gateway-core"
+version = "0.1.0"
+dependencies = [
+ "arc-swap",
+ "base64 0.22.1",
+ "chrono",
+ "dashmap",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "gateway-dispatch"
 version = "0.1.0"
 dependencies = [
- "app-contract",
  "arc-swap",
  "async-trait",
  "bytes",
@@ -1204,7 +1219,7 @@ dependencies = [
  "dashmap",
  "futures-util",
  "gateway-cache",
- "gateway-contract",
+ "gateway-core",
  "gateway-forward",
  "gateway-gate",
  "gateway-pipeline",
@@ -1222,14 +1237,13 @@ dependencies = [
 name = "gateway-facade"
 version = "0.1.0"
 dependencies = [
- "app-contract",
  "arc-swap",
  "async-trait",
  "axum",
  "bytes",
  "chrono",
  "gateway-cache",
- "gateway-contract",
+ "gateway-core",
  "gateway-dispatch",
  "gateway-forward",
  "gateway-gate",
@@ -1250,7 +1264,6 @@ name = "gateway-forward"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "app-contract",
  "arc-swap",
  "async-trait",
  "axum",
@@ -1258,7 +1271,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "gateway-cache",
- "gateway-contract",
+ "gateway-core",
  "gateway-dispatch",
  "gateway-gate",
  "gateway-metering",
@@ -1289,14 +1302,13 @@ name = "gateway-gate"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "app-contract",
  "arc-swap",
  "async-trait",
  "axum",
  "bytes",
  "chrono",
  "dashmap",
- "gateway-contract",
+ "gateway-core",
  "gateway-metering",
  "gateway-pipeline",
  "http",
@@ -1314,14 +1326,12 @@ dependencies = [
 name = "gateway-metering"
 version = "0.1.0"
 dependencies = [
- "app-contract",
  "bytes",
  "chrono",
- "gateway-contract",
+ "gateway-core",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
- "uuid",
 ]
 
 [[package]]
@@ -1329,12 +1339,11 @@ name = "gateway-pipeline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "app-contract",
  "async-trait",
  "axum",
  "bytes",
  "chrono",
- "gateway-contract",
+ "gateway-core",
  "http",
  "serde_json",
  "thiserror 2.0.21",
@@ -1348,11 +1357,11 @@ name = "gateway-protocol-bridge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "app-contract",
  "async-trait",
  "axum",
  "bytes",
  "chrono",
+ "gateway-core",
  "gateway-pipeline",
  "http",
  "serde",
@@ -1369,7 +1378,7 @@ dependencies = [
  "base64 0.22.1",
  "futures-util",
  "gateway-cache",
- "gateway-contract",
+ "gateway-core",
  "meow-common",
  "meow-config",
  "rand 0.8.8",

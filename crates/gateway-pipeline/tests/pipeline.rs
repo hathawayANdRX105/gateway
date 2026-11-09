@@ -159,8 +159,8 @@ impl Stage for AttributionStreamStage {
     }
     async fn handle(&self, ctx: &mut RequestCtx) -> Result<StageOutcome, StageError> {
         ctx.route = Some(gateway_pipeline::SelectedRoute {
-            unit: app_contract::records::RouteUnitRecord {
-                meta: app_contract::records::SyncMeta {
+            unit: gateway_core::records::RouteUnitRecord {
+                meta: gateway_core::records::SyncMeta {
                     key: "u1".into(),
                     schema_version: 1,
                     logical_version: 1,

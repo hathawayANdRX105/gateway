@@ -24,7 +24,7 @@ use meow_common::{ConnType, DnsMode, Metadata, Network, ProxyAdapter};
 use serde_yaml::Value as Yaml;
 use smol_str::SmolStr;
 
-use gateway_contract::proxy::node::{BasicAuth, NodeOpts, ProxyNode, ProxyScheme};
+use gateway_core::proxy::node::{BasicAuth, NodeOpts, ProxyNode, ProxyScheme};
 
 /// Build the TCP egress [`Metadata`] pointing at `host:port`.
 ///

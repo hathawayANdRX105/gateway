@@ -8,16 +8,16 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
 use futures_util::{Stream, StreamExt, TryStreamExt};
+use gateway_core::error::NormalizedError;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::redirect::Policy as RedirectPolicy;
 use tokio::time::timeout;
 
 /// Timeout configuration (ms) — owned by the injection surface, re-exported here
 /// so existing `gateway_forward::egress::Timeouts` paths keep resolving.
-pub use gateway_contract::egress::Timeouts;
+pub use gateway_core::egress::Timeouts;
 
 /// Forwarded response byte-stream shape (SSE and plain bodies share it).
 pub(crate) type ByteStream = Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>>;
@@ -34,7 +34,7 @@ pub(crate) fn upstream_error(
     message: impl Into<String>,
 ) -> NormalizedError {
     NormalizedError {
-        code: app_contract::error::code::UPSTREAM_ERROR,
+        code: gateway_core::error::code::UPSTREAM_ERROR,
         status,
         retryable,
         channel_scoped: false,
@@ -79,7 +79,7 @@ pub trait Egress: Send + Sync {
         timeouts: &'a Timeouts,
     ) -> Pin<
         Box<
-            dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
                 + Send
                 + 'a,
         >,
@@ -236,8 +236,8 @@ pub(crate) fn classify_status(
     status: u16,
     body_preview: String,
     retry_after_ms: Option<u64>,
-) -> app_contract::error::NormalizedError {
-    use app_contract::error::code;
+) -> gateway_core::error::NormalizedError {
+    use gateway_core::error::code;
     let (code, http_status, retryable) = match status {
         401 | 403 => (code::INVALID_API_KEY, status, false),
         429 => (code::RATE_LIMITED, status, true),
@@ -254,7 +254,7 @@ pub(crate) fn classify_status(
         && matches!(status, 400..=499)
         && gateway_dispatch::failure_scope::classify_channel_scope(status)
             == gateway_dispatch::failure_scope::FailureScope::Channel;
-    app_contract::error::NormalizedError {
+    gateway_core::error::NormalizedError {
         code,
         status: http_status,
         retryable,
@@ -314,7 +314,7 @@ pub fn parse_retry_after_ms(raw: Option<&str>, now_ms: i64) -> Option<u64> {
 
 pub(crate) fn build_header_map(
     headers: &[(String, String)],
-) -> Result<HeaderMap, app_contract::error::NormalizedError> {
+) -> Result<HeaderMap, gateway_core::error::NormalizedError> {
     let mut map = HeaderMap::new();
     for (k, v) in headers {
         let name = HeaderName::try_from(k.as_str())
@@ -453,7 +453,7 @@ impl Egress for ReqwestEgress {
         timeouts: &'a Timeouts,
     ) -> Pin<
         Box<
-            dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
                 + Send
                 + 'a,
         >,

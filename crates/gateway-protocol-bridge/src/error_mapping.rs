@@ -1,6 +1,6 @@
 //! `error_mapping` — NormalizedError → per-protocol error shapes
 //!
-//! The single internal error representation (`app_contract::error::NormalizedError`); this
+//! The single internal error representation (`gateway_core::error::NormalizedError`); this
 //! module maps it into the error response body each of OpenAI Chat / OpenAI Responses /
 //! Anthropic / Gemini specifies.
 //!
@@ -8,7 +8,7 @@
 //!
 //! Every client-visible `type` renders from [`ErrorClass`], decided by **exact** code lookups
 //! over the two live code vocabularies: the bridge-local codes rendered by [`StageFailure`]
-//! and the `app_contract::error::code` contract constants. The old
+//! and the `gateway_core::error::code` contract constants. The old
 //! `code.contains("auth")`-style probes misfired in both directions: a contract code without
 //! the probe substring (an upstream 401 carrying `invalid_api_key`) fell through to
 //! `api_error`, while an unrelated code merely *containing* a probe substring was
@@ -18,9 +18,9 @@
 //! once by [`StageFailure`] — the old shape kept three parallel `match`es that could drift
 //! when a variant was added.
 
-use app_contract::error::{ErrorCode, NormalizedError, code as contract_code};
 use axum::body::Body;
 use bytes::Bytes;
+use gateway_core::error::{ErrorCode, NormalizedError, code as contract_code};
 use gateway_pipeline::{ProtocolKind, StageError};
 use http::Response;
 

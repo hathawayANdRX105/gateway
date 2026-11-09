@@ -14,7 +14,7 @@ pub use candidate::{Candidate, STATUS_ENABLED, resolve_candidate};
 pub use failure_scope::{FailureScope, classify_channel_scope};
 /// Channel / route-unit catalog snapshot — defined on the injection surface so the
 /// admin plane can build and read it without depending on this engine.
-pub use gateway_contract::dispatch::Snapshot;
+pub use gateway_core::dispatch::Snapshot;
 pub use health::{
     AttemptReport, FailureClass, HealthState, HealthTable, MemoryHealthTable, TpsSample,
 };
@@ -29,8 +29,8 @@ pub use stage::DispatchStage;
 pub use sticky::{StickyEntry, StickyKey, StickyTable};
 pub use token_budget::{COMPLETION_EMA_INIT, TokenBudgetState, TokenHandle};
 
-use app_contract::records::RouteUnitRecord;
 use arc_swap::ArcSwap;
+use gateway_core::records::RouteUnitRecord;
 use gateway_gate::concurrency::ConcurrencyState;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -150,7 +150,7 @@ fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<Route
                 && c.settings.get("fallback").and_then(|v| v.as_bool()) == Some(true)
         })
         .map(|c| RouteUnitRecord {
-            meta: app_contract::records::SyncMeta {
+            meta: gateway_core::records::SyncMeta {
                 key: format!("{}#fallback", c.meta.key),
                 schema_version: c.meta.schema_version,
                 logical_version: c.meta.logical_version,
@@ -553,7 +553,7 @@ impl Dispatch for Dispatcher {
 /// Admin-plane port over the running dispatcher: read the current catalog snapshot
 /// and install a freshly loaded one. Selection stays on the engine's [`Dispatch`]
 /// trait, so the admin plane cannot reach into the request path.
-impl gateway_contract::dispatch::DispatcherHandle for Dispatcher {
+impl gateway_core::dispatch::DispatcherHandle for Dispatcher {
     fn snapshot(&self) -> Option<Arc<Snapshot>> {
         Dispatcher::snapshot(self)
     }

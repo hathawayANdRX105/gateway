@@ -7,9 +7,9 @@
 //! them). `common` is compiled separately into every test binary, so items not used by all
 //! binaries are marked `#[allow(dead_code)]`.
 
-use app_contract::error::NormalizedError;
-use app_contract::records::{RouteUnitRecord, SyncMeta, UsageEventRecord};
 use bytes::Bytes;
+use gateway_core::error::NormalizedError;
+use gateway_core::records::{RouteUnitRecord, SyncMeta, UsageEvent};
 use gateway_dispatch::health::{AttemptReport, FailureClass};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, TpsSample};
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
@@ -146,7 +146,7 @@ impl Egress for ScriptedEgress {
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,
@@ -173,7 +173,7 @@ impl Egress for ScriptedEgress {
             Plan::Fail { status, retryable } => {
                 let (status, retryable) = (*status, *retryable);
                 let err = NormalizedError {
-                    code: app_contract::error::code::UPSTREAM_ERROR,
+                    code: gateway_core::error::code::UPSTREAM_ERROR,
                     status,
                     retryable,
                     channel_scoped: matches!(status, 401 | 403 | 404) && !retryable,
@@ -315,17 +315,17 @@ impl Dispatch for MockDispatch {
 /// observation events for assertions.
 #[allow(dead_code)] // the retry_wiring binary does not use this mock
 #[derive(Default)]
-pub struct VecSink(Mutex<Vec<UsageEventRecord>>);
+pub struct VecSink(Mutex<Vec<UsageEvent>>);
 
 impl SettleSink for VecSink {
-    fn submit(&self, event: UsageEventRecord) {
+    fn submit(&self, event: UsageEvent) {
         self.0.lock().unwrap().push(event);
     }
 }
 
 #[allow(dead_code)] // same as above: the events accessor is not used by every binary
 impl VecSink {
-    pub fn events(&self) -> Vec<UsageEventRecord> {
+    pub fn events(&self) -> Vec<UsageEvent> {
         self.0.lock().unwrap().clone()
     }
 }

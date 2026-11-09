@@ -49,7 +49,7 @@ const CH_C1: &str = "ch-c1";
 /// saving the fully-qualified path everywhere).
 type ExecFuture<'a> = Pin<
     Box<
-        dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+        dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
             + Send
             + 'a,
     >,

@@ -7,8 +7,8 @@
 //! A mock egress returns a fake upstream response; no real network request is made
 //! (injection through the Egress trait).
 
-use app_contract::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use bytes::Bytes;
+use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::stage::DispatchStage;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::stage::ForwardStage;
@@ -32,7 +32,7 @@ impl Egress for MockEgress {
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,

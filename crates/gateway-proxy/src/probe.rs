@@ -16,7 +16,7 @@
 
 use std::time::{Duration, Instant};
 
-use gateway_contract::proxy::node::ProxyNode;
+use gateway_core::proxy::node::ProxyNode;
 
 /// Result of probing a single node.
 #[derive(Debug, Clone)]

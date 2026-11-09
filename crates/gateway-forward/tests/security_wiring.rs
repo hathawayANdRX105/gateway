@@ -15,9 +15,9 @@
 
 mod common;
 
-use app_contract::error::NormalizedError;
 use bytes::Bytes;
 use common::*;
+use gateway_core::error::NormalizedError;
 use gateway_forward::ForwardStage;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_pipeline::{Stage, StageOutcome};

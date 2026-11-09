@@ -15,11 +15,11 @@ use gateway_gate::snapshot::TokenView;
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use app_contract::records::{SyncMeta, TokenRecord, UserRecord};
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use bytes::Bytes;
 use chrono::Utc;
+use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
 use gateway_metering::ledger::{BalanceLedger, MemoryLedger};
 use gateway_pipeline::{BodySource, ProtocolKind, RequestCtx, RequestMeta, Stage, StageOutcome};
 use http::HeaderMap;

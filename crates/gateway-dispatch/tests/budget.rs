@@ -12,7 +12,7 @@
 //! Assertions land only on **deterministic end states** (error variant / attempt count /
 //! cooled_ms), never on jitter-prone quantities.
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::DispatchError;
 use gateway_dispatch::candidate::Candidate;
 use gateway_dispatch::health::FailureClass;

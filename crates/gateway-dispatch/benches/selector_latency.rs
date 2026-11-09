@@ -16,8 +16,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use app_contract::records::{RouteUnitRecord, SyncMeta};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::STATUS_ENABLED;
 use gateway_dispatch::health::{AttemptReport, HealthTable, MemoryHealthTable};
 use gateway_dispatch::latency_digest::LatencyDigestTable;

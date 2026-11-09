@@ -3,10 +3,10 @@
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use app_contract::records::{SyncMeta, TokenRecord, UserRecord};
 use arc_swap::ArcSwap;
 use bytes::Bytes;
 use chrono::Utc;
+use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
 use gateway_pipeline::{
     BodySource, ProtocolKind, RequestCtx, RequestMeta, SelectedRoute, Stage, StageError,
     StageOutcome,
@@ -472,7 +472,7 @@ async fn graylist_blocks_after_streak_threshold() {
 fn ctx_with_channel(channel_key: &str) -> RequestCtx {
     let mut ctx = RequestCtx::new(make_meta(HeaderMap::new(), b"{}".to_vec()));
     ctx.route = Some(SelectedRoute {
-        unit: app_contract::records::RouteUnitRecord {
+        unit: gateway_core::records::RouteUnitRecord {
             meta: meta(channel_key),
             group: "default".into(),
             public_model: "gpt-4o".into(),

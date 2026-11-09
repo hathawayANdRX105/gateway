@@ -33,7 +33,7 @@ pub use ctx::{
 };
 // Inbound protocol vocabulary lives in the shared surface (gateway-contract); this facade
 // keeps the historical `gateway_pipeline::ProtocolKind` path working.
-pub use gateway_contract::ProtocolKind;
+pub use gateway_core::ProtocolKind;
 pub use pipeline::Pipeline;
 pub use router::{build_router, error_to_response};
 pub use stage::{Stage, StageError, StageOutcome, UpstreamError};

@@ -16,14 +16,14 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 
-use app_contract::records::{SyncMeta, TokenRecord, UserRecord};
-use gateway_contract::dispatch::Snapshot;
-use gateway_contract::egress::Timeouts;
-use gateway_contract::gate::{
+use gateway_core::dispatch::Snapshot;
+use gateway_core::egress::Timeouts;
+use gateway_core::gate::{
     GroupSnapshot, SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot, TokenEntry,
     TokenSnapshot, UserSnapshot,
 };
-use gateway_contract::health::HealthSetting;
+use gateway_core::health::HealthSetting;
+use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
 use gateway_facade::{Context, GatewayBuilder, GatewayConfig, ResponseCacheTuning, State};
 use gateway_forward::egress::{Egress, ForwardedResponse};
 use gateway_gate::auth::sha256;
@@ -46,7 +46,7 @@ impl Egress for UnreachableEgress {
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
-                    Output = Result<ForwardedResponse, app_contract::error::NormalizedError>,
+                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
                 > + Send
                 + 'a,
         >,
@@ -84,6 +84,10 @@ const USER_KEY: &str = "user-facade-test";
 
 /// Consumer-loaded values for a minimal relay: one enabled token (hash-keyed) and
 /// its user, empty group / dispatch catalogs.
+/// Fixture envelope version: record identity is assigned by the consumer, so gateway
+/// tests only need a stable placeholder.
+const FIXTURE_SCHEMA_VERSION: u32 = 1;
+
 fn facade_context() -> Context {
     let token_snapshot: SharedTokenSnapshot =
         Arc::new(ArcSwap::from(Arc::new(TokenSnapshot::default())));
@@ -93,7 +97,7 @@ fn facade_context() -> Context {
             TokenRecord {
                 meta: SyncMeta {
                     key: "tok-facade-test".into(),
-                    schema_version: app_contract::SCHEMA_VERSION,
+                    schema_version: FIXTURE_SCHEMA_VERSION,
                     logical_version: 1,
                     origin: "test".into(),
                     updated_at: chrono::Utc::now(),
@@ -117,7 +121,7 @@ fn facade_context() -> Context {
     user_snapshot.load().upsert(UserRecord {
         meta: SyncMeta {
             key: USER_KEY.into(),
-            schema_version: app_contract::SCHEMA_VERSION,
+            schema_version: FIXTURE_SCHEMA_VERSION,
             logical_version: 1,
             origin: "test".into(),
             updated_at: chrono::Utc::now(),
@@ -150,7 +154,7 @@ fn facade_context() -> Context {
         },
         tuning: GatewayConfig {
             health: HealthSetting::default(),
-            retry_policy: gateway_contract::dispatch::RetryPolicy::default(),
+            retry_policy: gateway_core::dispatch::RetryPolicy::default(),
             timeouts: Timeouts::default(),
             digest_enabled: false,
             sticky_enabled: false,

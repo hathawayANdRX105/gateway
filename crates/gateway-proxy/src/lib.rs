@@ -41,8 +41,8 @@ pub use ssrf::validate_url;
 pub mod adapter;
 
 pub use adapter::{adapter_for, tcp_metadata};
-pub use gateway_contract::proxy::node::{BasicAuth, NodeOpts, ParseError, ProxyNode, ProxyScheme};
-pub use gateway_contract::proxy::sharelink::{
+pub use gateway_core::proxy::node::{BasicAuth, NodeOpts, ParseError, ProxyNode, ProxyScheme};
+pub use gateway_core::proxy::sharelink::{
     ShareLinkBatch, VmessShareLink, mask_link, parse_share_link, parse_share_links,
 };
 pub use meow_common::ProxyAdapter;

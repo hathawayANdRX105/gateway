@@ -77,7 +77,7 @@ pub fn finish(
 ) -> (
     gateway_protocol_bridge::sse::SseEnd,
     gateway_metering::scanner::TokenCounts,
-    Option<app_contract::records::UsageEventRecord>,
+    Option<gateway_core::records::UsageEvent>,
 ) {
     let end = ctx.scanner.finish();
     // Finish reason captured from stream frames (the last frame's value when present;

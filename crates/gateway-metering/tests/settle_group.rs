@@ -10,7 +10,7 @@
 //! 3. [`SettleSink`] can be implemented by an in-memory mock on the apps side and receives
 //!    events.
 
-use app_contract::records::UsageEventRecord;
+use gateway_core::records::UsageEvent;
 use gateway_metering::ledger::Hold;
 use gateway_metering::pricing::{ModelPrice, PriceTable};
 use gateway_metering::scanner::TokenCounts;
@@ -172,10 +172,10 @@ fn settle_event_unknown_model_free_and_error_fields_carried() {
 /// In-memory sink mock (same shape as the apps-side implementation): settled products can be
 /// collected.
 #[derive(Default)]
-struct VecSink(Mutex<Vec<UsageEventRecord>>);
+struct VecSink(Mutex<Vec<UsageEvent>>);
 
 impl SettleSink for VecSink {
-    fn submit(&self, event: UsageEventRecord) {
+    fn submit(&self, event: UsageEvent) {
         self.0.lock().unwrap().push(event);
     }
 }

@@ -22,11 +22,11 @@
 
 mod common;
 
-use app_contract::error::NormalizedError;
-use app_contract::error::code::UPSTREAM_ERROR;
 use bytes::Bytes;
 use common::{NON_STREAM_BODY, candidate, ctx_with_body};
 use futures_util::stream;
+use gateway_core::error::NormalizedError;
+use gateway_core::error::code::UPSTREAM_ERROR;
 use gateway_dispatch::RetryPolicy;
 use gateway_dispatch::health::{AttemptReport, FailureClass, TpsSample};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError};

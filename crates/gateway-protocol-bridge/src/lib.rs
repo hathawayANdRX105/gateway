@@ -27,7 +27,7 @@
 //! - [`adaptor`] — shared vocabulary: [`Protocol`] format identifier and [`AdaptorError`]
 //! - [`sse`] — SSE frame scanning (byte-exact passthrough + event boundaries + complete
 //!   frames for conversion consumers)
-//! - [`error_mapping`] — `app_contract::error::NormalizedError` → per-protocol error shape
+//! - [`error_mapping`] — `gateway_core::error::NormalizedError` → per-protocol error shape
 //! - [`stage`] — pipeline Stage 4: error mapping plus packaging the response prepared by
 //!   forward into an HTTP response
 //!
@@ -37,7 +37,7 @@
 //! |-------|------|
 //! | `gateway-forward` | IO orchestration + bidirectional conversion loop (request and response directions must share the same codec) |
 //! | `gateway-protocol-bridge` | the conversion rules themselves (pure functions, no IO) |
-//! | `app_contract::error::NormalizedError` | single cross-crate error protocol |
+//! | `gateway_core::error::NormalizedError` | single cross-crate error protocol |
 
 pub mod adaptor;
 pub mod claude;

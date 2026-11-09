@@ -13,8 +13,8 @@
 //! re-exported here so existing `gateway_proxy::pool::*` paths keep resolving.
 
 use arc_swap::ArcSwap;
-pub use gateway_contract::proxy::node::ProxyNode;
-pub use gateway_contract::proxy::pool::ProxySnapshot;
+pub use gateway_core::proxy::node::ProxyNode;
+pub use gateway_core::proxy::pool::ProxySnapshot;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

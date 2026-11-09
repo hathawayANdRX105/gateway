@@ -19,8 +19,8 @@
 //!    trigger degradation accounting, and unit health and the node ledger do not pollute each
 //!    other (reverse pin: unaffected when no fallback exists).
 
-use app_contract::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use bytes::Bytes;
+use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{AttemptReport, HealthTable, MemoryHealthTable, TpsSample};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, Dispatcher, RetryPolicy, Snapshot};
 use gateway_forward::ForwardStage;
@@ -99,7 +99,7 @@ impl Egress for NeverEgress {
         _timeouts: &'a Timeouts,
     ) -> std::pin::Pin<
         Box<
-            dyn Future<Output = Result<ForwardedResponse, app_contract::error::NormalizedError>>
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
                 + Send
                 + 'a,
         >,

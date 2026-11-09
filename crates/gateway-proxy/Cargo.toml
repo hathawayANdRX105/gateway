@@ -12,7 +12,7 @@ publish = false
 [dependencies]
 # Proxy vocabulary (node types, URL/share-link parsers, snapshot, admin port) lives on the
 # injection surface; this crate re-exports it and implements the port.
-gateway-contract    = { path = "../gateway-contract" }
+gateway-core = { path = "../gateway-core" }
 gateway-cache  = { path = "../gateway-cache" }
 reqwest        = { workspace = true }
 serde          = { workspace = true }
