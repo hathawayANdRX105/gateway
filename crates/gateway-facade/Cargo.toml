@@ -20,6 +20,7 @@ gateway-protocol-bridge  = { path = "../gateway-protocol-bridge" }
 gateway-proxy            = { path = "../gateway-proxy" }
 gateway-security         = { path = "../gateway-security" }
 gateway-cache            = { path = "../gateway-cache" }
+gateway-metering         = { path = "../gateway-metering" }
 axum                     = { workspace = true }
 arc-swap                 = { workspace = true }
 thiserror                 = { workspace = true }
@@ -27,12 +28,9 @@ tracing                  = { workspace = true }
 
 [dev-dependencies]
 # Tests build a minimally authenticated chain: token / user snapshots with one
-# enabled pair, empty catalog so the forwarding stage fails before egress.
-gateway-forward  = { path = "../gateway-forward" }
-gateway-gate     = { path = "../gateway-gate" }
-gateway-pipeline = { path = "../gateway-pipeline" }
-gateway-proxy    = { path = "../gateway-proxy" }
-gateway-security = { path = "../gateway-security" }
+# enabled pair, empty catalog so the forwarding stage fails before egress. No
+# engine dev-dependency on purpose: the facade tests go through the facade's
+# own surface only, which is the single-entry discipline under test.
 arc-swap         = { workspace = true }
 async-trait      = { workspace = true }
 axum             = { workspace = true }

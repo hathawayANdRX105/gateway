@@ -50,7 +50,7 @@ impl Egress for UnreachableEgress {
 fn token_snapshot() -> SharedTokenSnapshot {
     let snapshot: SharedTokenSnapshot = Arc::new(ArcSwap::from(Arc::new(TokenSnapshot::default())));
     snapshot.load().upsert(
-        gateway_gate::auth::sha256(TOKEN_KEY),
+        sha256(TOKEN_KEY),
         TokenEntry::new(
             TokenRecord {
                 meta: SyncMeta {
@@ -111,7 +111,7 @@ fn context() -> Context {
             ..Config::default()
         },
         components: Components {
-            egress: Some(Arc::new(UnreachableEgress)),
+            egress: Arc::new(UnreachableEgress),
             wire_proxy_pool: false,
             proxies: Arc::new(ProxyManager::new()),
             proxy_snapshot: ProxySnapshot::default(),
@@ -160,7 +160,7 @@ fn disabled_user_context() -> Context {
             ..Config::default()
         },
         components: Components {
-            egress: Some(Arc::new(UnreachableEgress)),
+            egress: Arc::new(UnreachableEgress),
             wire_proxy_pool: false,
             proxies: Arc::new(ProxyManager::new()),
             proxy_snapshot: ProxySnapshot::default(),
@@ -312,12 +312,12 @@ async fn without_gate_removes_a_preset_gate() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
-/// Purpose: the stage slots keep their documented positions — a
-/// `with_stage_before_forward` stage short-circuits before dispatch (404 would
-/// otherwise answer), and a `with_stage_after_chain` stage never runs when an
-/// earlier stage short-circuited.
-/// Acceptance: teapot from the pre-forward slot; the chain length shows the
-/// after-chain slot exists but produced nothing on this path.
+/// Purpose: the `with_stage_before_forward` slot runs after the gate chain and
+/// before forwarding — its short circuit answers before dispatch could (404 no
+/// route would otherwise be the answer).
+/// Acceptance: teapot from the pre-forward slot. (The after-chain slot's
+/// "never runs on a short-circuited path" half is covered by
+/// `tests/custom_stage.rs`, which drives both slots in one chain.)
 #[tokio::test]
 async fn stage_slots_keep_their_positions() {
     let gateway: Gateway = GatewayBuilder::relay(context())
@@ -378,4 +378,89 @@ fn runtime_knobs_apply_drafts_and_track_epoch() {
         .expect_err("invalid health setting must be refused");
     assert!(err.to_string().contains("alpha"), "{err}");
     assert_eq!(knobs.epoch(), 1, "a refused draft changes nothing");
+}
+
+/// Purpose: the quota gate is inserted **after the group gate and before rate
+/// limiting** in the relay chain — the exact position the historical default
+/// chain had, and the reason `Shape::NoBilling` drops it.
+/// Scenario: a consumer injects quota (empty pricing snapshot ⇒ zero estimated
+/// cost) and a ledger whose prehold fails.
+/// Accepts: relay installs it, so the request is rejected at admission with 402
+/// and the ledger recorded the attempt; the same context under
+/// `no_billing` never reaches the gate and answers 404 no route instead.
+#[tokio::test]
+async fn relay_installs_the_quota_gate_where_no_billing_drops_it() {
+    fn quota_context() -> Context {
+        let mut components = context().components;
+        components.quota_gate = Some(QuotaGate::new(
+            Arc::new(ArcSwap::from_pointee(QuotaSnapshot::default())),
+            Arc::new(ArcSwap::from_pointee(PricingSnapshot::default())),
+            Arc::new(RefusingLedger),
+        ));
+        Context {
+            config: Config {
+                sticky_enabled: false,
+                ..Config::default()
+            },
+            components,
+        }
+    }
+
+    // Relay: the gate runs → admission fails at prehold.
+    let gateway: Gateway = GatewayBuilder::relay(quota_context()).build();
+    let resp = gateway
+        .router()
+        .oneshot(request())
+        .await
+        .expect("router serves the request");
+    assert_eq!(resp.status(), StatusCode::PAYMENT_REQUIRED);
+
+    // NoBilling: the injected quota gate is dropped → dispatch answers.
+    let gateway: Gateway = GatewayBuilder::no_billing(quota_context()).build();
+    let resp = gateway
+        .router()
+        .oneshot(request())
+        .await
+        .expect("router serves the request");
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+/// Purpose: `with_gates` hands the builder a fully composed admission chain, and
+/// the builder still mounts the prehold ledger the chain's gates need.
+/// Scenario: a chain carrying only the model gate, assembled by hand and handed
+/// over; the request (no key) is admitted to dispatch.
+/// Accepts: 404 no route — the custom chain ran, and the facade's own gates did
+/// not override the consumer's composition.
+#[tokio::test]
+async fn with_gates_takes_over_the_admission_chain() {
+    let chain = GateChain::new().push(ModelParseGate);
+    let gateway: Gateway = GatewayBuilder::relay(context()).with_gates(chain).build();
+    let mut req = request();
+    req.headers_mut().remove("authorization");
+    let resp = gateway
+        .router()
+        .oneshot(req)
+        .await
+        .expect("router serves the request");
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+/// A ledger that refuses every prehold, so the quota gate's admission path is
+/// observable without a balance fixture.
+struct RefusingLedger;
+
+impl Ledger for RefusingLedger {
+    fn prehold(
+        &self,
+        _user_key: &str,
+        _token_key: &str,
+        _estimated: i64,
+    ) -> Result<Hold, Insufficient> {
+        Err(Insufficient { need: 1, have: 0 })
+    }
+    fn settle(&self, _hold: &Hold, _actual: i64) -> i64 {
+        0
+    }
+    fn release(&self, _hold: &Hold) {}
+    fn reseed(&self, _quotas: &QuotaSnapshot) {}
 }

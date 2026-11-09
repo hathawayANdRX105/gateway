@@ -1221,6 +1221,7 @@ dependencies = [
  "gateway-dispatch",
  "gateway-forward",
  "gateway-gate",
+ "gateway-metering",
  "gateway-pipeline",
  "gateway-protocol-bridge",
  "gateway-proxy",

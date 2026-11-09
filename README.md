@@ -8,7 +8,7 @@ process entry, no database, no admin plane. A product assembles these parts.
 
 | crate                            | responsibility                                                                                                                                                                                                                                                                                                                   |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `crates/gateway-facade`          | **The one crate a consumer depends on.** Assembly surface in three parts: `config` (boot values + runtime knobs), `builder` (presets, gate/stage composition), `preset` (named chains). Re-exports the whole vocabulary so a consumer names no other crate.                                                                      |
+| `crates/gateway-facade`          | **The one crate a consumer depends on.** Assembly surface in four modules: `config` (boot values + runtime knobs), `preset` (named chains), `builder` (composition + wiring), `gateway` (the assembled plane and its exits). Re-exports the vocabulary and the engine types a consumer may name, so no other crate appears in a consumer's `Cargo.toml`.                                                                      |
 | `crates/gateway-core`            | Vocabulary + ports shared by the two planes: records (channel / routing / identity / usage), snapshots, retry policy, timeouts, health, metering and proxy vocabulary, the error-code table, and the admin-plane ports (`Ledger`, `SettleSink`, `PriceTable`, `DispatcherHandle`, `HealthHandle`). Internal dependency: nothing. |
 | `crates/gateway-pipeline`        | Orchestration core: `Stage` trait, `RequestCtx`, the chained `Pipeline` runner, axum router integration.                                                                                                                                                                                                                         |
 | `crates/gateway-gate`            | Admission gates: token auth, user state, model allow-lists, quota (with prehold), rate limits, gray list, plus the gate primitives a consumer composes with.                                                                                                                                                                     |
@@ -96,9 +96,12 @@ gateway-facade ──> all engines ──> gateway-core ──> (nothing)
 
 - Engines depend only on `gateway-core` plus other engines, never the reverse;
   the vocabulary surface must not grow back into implementations.
-- `gateway-core` is pure vocabulary + minimal ports (serde / chrono / arc-swap /
-  dashmap / thiserror / base64 / url / percent-encoding). tokio / axum /
-  reqwest / any engine crate are forbidden — that is what keeps it wasm-safe.
+- `gateway-core` is pure vocabulary + minimal ports (serde / serde_json / chrono /
+  arc-swap / dashmap / tracing / thiserror / base64 / url / percent-encoding).
+  tokio / axum / reqwest / any engine crate are forbidden — that is the rule
+  that keeps the vocabulary wasm-*compatible in principle*; the wasm32 target
+  itself is not yet green (the inherited `dashmap` / `url` dependency chains do
+  not build there — tracked as a follow-up, not a claim).
 - The consumer (your product) depends on `gateway-facade`; it names no other
   crate.
 

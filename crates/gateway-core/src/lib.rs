@@ -50,6 +50,10 @@ pub use error::{ErrorCode, NormalizedError};
 pub use health::HealthHandle;
 pub use metering::{Hold, Insufficient, Ledger, ModelPrice, PriceTable, SettleSink};
 pub use protocol::{ProtocolKind, RequestPath};
+pub use proxy::pool::NodeStats;
+pub use proxy::sharelink::{
+    ShareLinkBatch, VmessShareLink, mask_link, parse_share_link, parse_share_links,
+};
 pub use proxy::{ProxyNode, ProxyPoolHandle, ProxyScheme, ProxySnapshot};
 pub use records::{
     ChannelKey, ChannelRecord, GroupRecord, RouteUnitRecord, SyncMeta, TokenRecord, UsageEvent,

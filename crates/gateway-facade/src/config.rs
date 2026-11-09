@@ -90,9 +90,11 @@ pub struct Config {
     pub sticky_enabled: bool,
     /// Sticky routing boost. **Boot-fixed**: the selector takes it at construction.
     pub sticky_boost: f64,
-    /// Global default of the per-channel token budget (TPM); hot-mutable —
-    /// per-channel overrides come from the snapshot and are not carried here.
-    pub token_tpm_default: u32,
+    /// Global default of the per-channel token budget (TPM); hot-mutable via the
+    /// knobs. It applies to channels **without** a `tpm_limit` override and is
+    /// re-read on catalog reload; channels with an explicit override never
+    /// follow it.
+    pub token_tpm_default: u64,
     /// Per-token rate limit: maximum requests per window; hot-mutable.
     pub ratelimit_max_requests: u32,
     /// Per-token rate limit: window length in seconds; hot-mutable.
@@ -129,7 +131,9 @@ impl Default for Config {
 /// plane is assembled from one `Config` plus one `Components`.
 pub struct Components {
     /// Upstream egress. Production = `ReqwestEgress`; tests inject a mock.
-    pub egress: Option<Arc<dyn Egress>>,
+    /// Required: a data plane that cannot dial upstream cannot be assembled, so
+    /// this is a compile-time obligation, not a runtime panic.
+    pub egress: Arc<dyn Egress>,
     /// Whether model requests borrow an egress Client (direct / proxied) from
     /// the [`ProxyManager`]. Tests pass false — the injected egress is called.
     pub wire_proxy_pool: bool,
@@ -154,8 +158,10 @@ pub struct Context {
     pub components: Components,
 }
 
-/// The boot-fixed subset, exposed read-only so an operator can see what a
-/// change would need a rebuild for.
+/// The boot-fixed **value** subset, exposed read-only so an operator can see
+/// what a change would need a rebuild for. Injected implementations in
+/// `Components` (egress, proxy pool, ledger, settle, …) are boot-fixed too, but
+/// they are objects, not values, so they do not appear here.
 #[derive(Debug, Clone)]
 pub struct BootConfig {
     pub timeouts: Timeouts,
@@ -169,6 +175,11 @@ pub struct BootConfig {
 
 /// Effective configuration of a running data plane: the immutable boot view
 /// plus every live knob value.
+///
+/// The reported rate-limit pair is only enforced when the assembled admission
+/// chain actually contains the rate-limit gate (`Shape::Open` and hand-built
+/// chains may not); the list of gates the chain runs is visible through the
+/// chain, not through this view.
 #[derive(Debug, Clone)]
 pub struct EffectiveConfig {
     pub boot: BootConfig,
@@ -191,34 +202,52 @@ pub struct ConfigDraft {
     pub token_tpm_default: Option<u64>,
 }
 
-/// Why a draft was refused. Nothing is applied on failure.
-#[derive(Debug)]
-pub enum ConfigError {
-    /// The health setting is structurally invalid; nothing was applied.
-    Health(&'static str),
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Health(reason) => write!(f, "invalid health setting: {reason}"),
-        }
+impl ConfigDraft {
+    /// Whether this draft changes anything at all.
+    pub fn is_empty(&self) -> bool {
+        self.retry_policy.is_none()
+            && self.health.is_none()
+            && self.ratelimit_max_requests.is_none()
+            && self.ratelimit_window_seconds.is_none()
+            && self.token_tpm_default.is_none()
     }
 }
 
-impl std::error::Error for ConfigError {}
+/// Why a draft was refused. Nothing is applied on failure.
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    /// The health setting is structurally invalid; nothing was applied.
+    #[error("invalid health setting: {0}")]
+    Health(&'static str),
+
+    /// A retry budget that can never run an attempt (max_attempts == 0) would
+    /// answer every request with 503; refused.
+    #[error("invalid retry policy: {0}")]
+    Retry(&'static str),
+
+    /// A rate limit of 0 (or a 0-second window) denies every request outright
+    /// instead of limiting them; refused.
+    #[error("invalid rate limit: {0}")]
+    RateLimit(&'static str),
+}
 
 /// Runtime-mutable knobs of an assembled data plane.
 ///
-/// Held by the consumer (see [`crate::Gateway::knobs`]); every mutation is
-/// atomic and takes effect on the **next request** — a request in flight keeps
-/// the value it read when it started. `epoch` counts accepted changes so a
-/// control plane can tell "which generation am I looking at".
+/// Held by the consumer (see [`crate::Gateway::knobs`]). Every mutation is
+/// published as one atomic store per field and takes effect on the **next
+/// request** — a request in flight keeps the value it read when it started.
+/// `epoch` counts accepted changes so a control plane can tell "which
+/// generation am I looking at".
 ///
-/// Boot-fixed knobs (timeouts, digest / sticky mounts, response cache, word
-/// filter, global concurrency) are **not** here: they are structural, and the
-/// migration path is an `ArcSwap<Option<Arc<..>>>` slot per knob once the read
-/// side moves to load-per-request.
+/// Scope is exactly this set: `retry_policy`, `health`, the rate-limit pair,
+/// and `token_tpm_default`. Boot-fixed *values* (timeouts, global concurrency,
+/// digest / sticky / response-cache / word-filter mounts) are not knobs — they
+/// are structural, and the migration path is an `ArcSwap<Option<Arc<..>>>`
+/// slot per knob once the read side moves to load-per-request. Injected
+/// *implementations* (`Components`: egress, proxies, ledger, settle, …) are
+/// likewise assembly-time. Gray-list state and the state-gate IP policy are
+/// consumer-tunable through [`crate::Gateway::graylist`] /
+/// [`crate::Gateway::ip_policy`], not through this surface.
 pub struct RuntimeKnobs {
     epoch: AtomicU64,
     retry: Arc<ArcSwap<RetryPolicy>>,
@@ -246,7 +275,8 @@ impl RuntimeKnobs {
         }
     }
 
-    /// Number of accepted changes since assembly.
+    /// Number of accepted changes since assembly. An unchanged (all-`None`)
+    /// draft is not a change and does not move the counter.
     pub fn epoch(&self) -> u64 {
         self.epoch.load(Ordering::Relaxed)
     }
@@ -264,11 +294,44 @@ impl RuntimeKnobs {
         }
     }
 
-    /// Apply a draft. Validation happens first: an invalid health setting is
-    /// rejected whole, never partially applied. Returns the new effective view.
+    /// Apply a draft.
+    ///
+    /// Validation happens **first** and covers every mutable field: a draft that
+    /// would deny all traffic (a zero retry attempt budget, a zero rate limit) is
+    /// refused whole — nothing is applied, `epoch` does not move. After
+    /// validation each field is published with a single atomic store (the rate
+    /// limit pair as one value), so no request observes a torn configuration;
+    /// a multi-field draft applies its fields in sequence, so a concurrent
+    /// request may briefly see a mixture of the two drafts around it — per-field
+    /// atomicity is the guarantee, not cross-field snapshots.
+    ///
+    /// `token_tpm_default` is the one knob whose effect is not per-request: it is
+    /// the default for channels **without** a `tpm_limit` override, and it is
+    /// re-read when the catalog snapshot reloads. Channels with an explicit
+    /// override never follow this knob.
     pub fn update(&self, draft: ConfigDraft) -> Result<EffectiveConfig, ConfigError> {
+        if let Some(retry) = draft.retry_policy
+            && retry.max_attempts == 0
+        {
+            return Err(ConfigError::Retry("max_attempts must be >= 1"));
+        }
+        if let Some(max) = draft.ratelimit_max_requests
+            && max == 0
+        {
+            return Err(ConfigError::RateLimit("max_requests must be >= 1"));
+        }
+        if let Some(window) = draft.ratelimit_window_seconds
+            && window == 0
+        {
+            return Err(ConfigError::RateLimit(
+                "window_seconds must be >= 1 (0 collapses the window)",
+            ));
+        }
         if let Some(health) = draft.health {
             health.validate().map_err(ConfigError::Health)?;
+        }
+        if draft.is_empty() {
+            return Ok(self.snapshot());
         }
         if let Some(retry) = draft.retry_policy {
             self.retry.store(Arc::new(retry));
@@ -276,17 +339,14 @@ impl RuntimeKnobs {
         if let Some(health) = draft.health {
             self.health.set_config(health);
         }
-        if let (Some(max_requests), window) =
-            (draft.ratelimit_max_requests, draft.ratelimit_window_seconds)
-        {
-            self.rate_limit
-                .set_limits(max_requests, window.unwrap_or(self.rate_limit.limits().1));
-        } else if let Some(window) = draft.ratelimit_window_seconds {
-            self.rate_limit
-                .set_limits(self.rate_limit.limits().0, window);
-        } else if let Some(max_requests) = draft.ratelimit_max_requests {
-            self.rate_limit
-                .set_limits(max_requests, self.rate_limit.limits().1);
+        // The pair is read once and re-published as one value: two concurrent
+        // updates cannot drop each other's field, and no reader sees a torn pair.
+        if draft.ratelimit_max_requests.is_some() || draft.ratelimit_window_seconds.is_some() {
+            let (max, window) = self.rate_limit.limits();
+            self.rate_limit.set_limits(
+                draft.ratelimit_max_requests.unwrap_or(max),
+                draft.ratelimit_window_seconds.unwrap_or(window),
+            );
         }
         if let Some(tpm) = draft.token_tpm_default {
             self.token_budget.set_global_default(tpm);

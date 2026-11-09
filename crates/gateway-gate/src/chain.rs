@@ -118,6 +118,11 @@ impl GateChain {
         self.gates.len() != before
     }
 
+    /// Whether a gate with this name is currently mounted.
+    pub fn contains(&self, name: &str) -> bool {
+        self.gates.iter().any(|gate| gate.name() == name)
+    }
+
     /// Append a boxed gate — the facade builder stores appended gates as trait
     /// objects and pushes them here.
     pub fn push_gate_shared(&mut self, gate: Arc<dyn Gate>) {

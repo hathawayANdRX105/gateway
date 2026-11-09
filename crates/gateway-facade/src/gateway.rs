@@ -5,11 +5,12 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 
 use axum::Router;
-use axum::response::IntoResponse;
 use gateway_core::dispatch::{DispatcherHandle, RetryPolicy};
 use gateway_core::health::HealthHandle;
 use gateway_dispatch::Dispatcher;
 use gateway_dispatch::MemoryHealthTable;
+use gateway_gate::graylist::GrayListState;
+use gateway_gate::snapshot::IpPolicy;
 use gateway_pipeline::Pipeline;
 
 use crate::config::RuntimeKnobs;
@@ -17,9 +18,15 @@ use crate::config::RuntimeKnobs;
 /// Assembled data plane: shared handles reusable by the consumer + the pipeline
 /// Router.
 ///
-/// Four exits, one rule: **the consumer never reaches past this object into an
-/// engine**. Handles stay for the pieces whose admin port has not been folded
-/// into the knobs / admin surface yet.
+/// Exits, and nothing else — the consumer never reaches past this object into
+/// an engine:
+/// - [`Self::router`] / [`Self::pipeline`] — serve or drive it;
+/// - [`Self::knobs`] — the runtime-mutable config surface;
+/// - [`Self::graylist`] / [`Self::ip_policy`] — the two consumer-tunable state
+///   slots the knobs do not cover (the admin side owns their content);
+/// - [`Self::dispatcher`] / [`Self::health`] / [`Self::retry_handle`] — the
+///   handles a reload / observability path needs until the admin surface folds
+///   them in.
 pub struct Gateway {
     pub(crate) dispatcher: Arc<Dispatcher>,
     pub(crate) health: Arc<MemoryHealthTable>,
@@ -27,6 +34,8 @@ pub struct Gateway {
     pub(crate) knobs: Arc<RuntimeKnobs>,
     pub(crate) pipeline: Arc<Pipeline>,
     pub(crate) router: Router,
+    pub(crate) graylist: Arc<ArcSwap<GrayListState>>,
+    pub(crate) ip_policy: Arc<ArcSwap<IpPolicy>>,
 }
 
 impl Gateway {
@@ -48,9 +57,22 @@ impl Gateway {
         self.retry_handle.clone()
     }
 
-    /// Runtime knobs: the single surface for every runtime-mutable value.
+    /// Runtime knobs: the single surface for every runtime-mutable config value.
     pub fn knobs(&self) -> Arc<RuntimeKnobs> {
         self.knobs.clone()
+    }
+
+    /// Gray-list state slot: the consumer records successes / failures and reads
+    /// the current bans. Exposed so the running state is never hidden (and never
+    /// tuned through the config knobs).
+    pub fn graylist(&self) -> Arc<ArcSwap<GrayListState>> {
+        self.graylist.clone()
+    }
+
+    /// State-gate IP policy slot: the consumer stores the effective allow/deny
+    /// list; the gate reads it per request.
+    pub fn ip_policy(&self) -> Arc<ArcSwap<IpPolicy>> {
+        self.ip_policy.clone()
     }
 
     /// Assembled pipeline (gates → consumer stages → forwarding stage →
@@ -60,28 +82,8 @@ impl Gateway {
     }
 
     /// Data-plane router: pipeline as fallback + path guard (only /healthz and
-    /// /v1* are served, see [`gateway_path_guard`]).
+    /// /v1* are served, see [`gateway_pipeline::data_plane_guard`]).
     pub fn router(&self) -> Router {
         self.router.clone()
     }
-}
-
-/// Path guard: the pipeline provides the fallback in the merged Router; without
-/// the guard any unmatched path (e.g. a mistyped /api/*) would fall into the
-/// pipeline and be judged 401 by the AuthGate, misreporting "path does not
-/// exist" as "unauthenticated". The guard returns a plain-text 404 (matching the
-/// e2e contract `not found`).
-pub async fn gateway_path_guard(
-    req: axum::extract::Request,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
-    let path = req.uri().path();
-    let scoped = path == "/healthz"
-        || path == "/v1"
-        || path.starts_with("/v1/")
-        || path.starts_with("/v1beta");
-    if !scoped {
-        return (axum::http::StatusCode::NOT_FOUND, "not found").into_response();
-    }
-    next.run(req).await
 }

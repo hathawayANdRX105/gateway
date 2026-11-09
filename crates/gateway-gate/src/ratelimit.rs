@@ -7,7 +7,6 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
@@ -25,40 +24,36 @@ pub enum LimitScope {
     PerGroup,   // by user group
 }
 
+use arc_swap::ArcSwap;
+
 /// Rate limiter (sliding window by second buckets).
 ///
 /// Maintains one [`SecondWindow`] per `(scope, key)` internally. The limit pair is
-/// interior-mutable so an operator can retune it at runtime (see [`Self::set_limits`]);
-/// windows in flight keep their history and the new pair applies from the next acquire.
+/// interior-mutable (see [`Self::set_limits`]) and published as **one** value, so a
+/// concurrent reader can never observe a pair that existed in no configuration.
 pub struct RateLimiter {
     inner: Mutex<HashMap<(LimitScope, String), SecondWindow>>,
-    /// Default limit: N requests per window_secs seconds. For simplicity all scopes currently
-    /// share this pair of values.
-    max_requests: AtomicU32,
-    window_secs: AtomicU32,
+    /// Limit pair published atomically as a unit: N requests per window_secs.
+    limits: ArcSwap<(u32, u32)>,
 }
 
 impl RateLimiter {
     pub fn new(max_requests: u32, window_secs: u32) -> Self {
         Self {
             inner: Mutex::new(HashMap::new()),
-            max_requests: AtomicU32::new(max_requests),
-            window_secs: AtomicU32::new(window_secs),
+            limits: ArcSwap::from_pointee((max_requests, window_secs)),
         }
     }
 
     /// Limit pair currently in effect.
     pub fn limits(&self) -> (u32, u32) {
-        (
-            self.max_requests.load(Ordering::Relaxed),
-            self.window_secs.load(Ordering::Relaxed),
-        )
+        **self.limits.load()
     }
 
-    /// Replace the limit pair at runtime; existing per-key windows keep their history.
+    /// Replace the limit pair at runtime; existing per-key windows keep their
+    /// history. Published as one value — no reader sees a torn pair.
     pub fn set_limits(&self, max_requests: u32, window_secs: u32) {
-        self.max_requests.store(max_requests, Ordering::Relaxed);
-        self.window_secs.store(window_secs, Ordering::Relaxed);
+        self.limits.store(Arc::new((max_requests, window_secs)));
     }
 
     /// Try to acquire one permit. true = allowed, false = over limit.

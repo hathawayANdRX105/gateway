@@ -45,6 +45,25 @@ pub fn build_router(pipeline: Arc<Pipeline>) -> axum::Router {
         .with_state(pipeline)
 }
 
+/// Data-plane path guard: the pipeline only serves data-plane paths, and every
+/// other unmatched path gets a plain 404 instead of falling into the pipeline
+/// and being judged 401 by the `AuthGate` (which would misreport "path does not
+/// exist" as "unauthenticated").
+///
+/// It lives here, next to the router integration, because the served path set is
+/// a transport concern; the facade only stacks the layer.
+pub async fn data_plane_guard(req: Request<Body>, next: axum::middleware::Next) -> Response {
+    let path = req.uri().path();
+    let scoped = path == "/healthz"
+        || path == "/v1"
+        || path.starts_with("/v1/")
+        || path.starts_with("/v1beta");
+    if !scoped {
+        return (StatusCode::NOT_FOUND, "not found").into_response();
+    }
+    next.run(req).await
+}
+
 /// The 504/503 split for `Unavailable`: cooling (`retry_after_ms > 0`) = can wait →
 /// 504 + Retry-After (the client waits out the shortest recovery and resends); no
 /// cooling (== 0, e.g. all disabled / rate limited / genuinely no model) = unavailable

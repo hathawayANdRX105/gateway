@@ -16,19 +16,9 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 
-use gateway_core::dispatch::Snapshot;
-use gateway_core::egress::Timeouts;
-use gateway_core::gate::{
-    GroupSnapshot, SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot, TokenEntry,
-    TokenSnapshot, UserSnapshot,
-};
-use gateway_core::health::HealthSetting;
-use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
-use gateway_facade::{Components, Config, Context, GatewayBuilder, ResponseCacheTuning, State};
-use gateway_forward::egress::{Egress, ForwardedResponse};
-use gateway_gate::auth::sha256;
-use gateway_pipeline::{RequestCtx, Stage, StageError, StageOutcome};
-use gateway_proxy::{ProxyManager, ProxySnapshot};
+// Single-entry discipline: this test names `gateway_facade` and nothing else —
+// the vocabulary and the engine types it touches arrive through the re-exports.
+use gateway_facade::*;
 
 /// The only egress in this test: never called — selection fails on the empty
 /// catalog before the forwarding stage would reach the upstream.
@@ -44,9 +34,8 @@ impl Egress for UnreachableEgress {
         _timeouts: &'a Timeouts,
     ) -> std::pin::Pin<
         Box<
-            dyn std::future::Future<
-                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
-                > + Send
+            dyn std::future::Future<Output = Result<ForwardedResponse, NormalizedError>>
+                + Send
                 + 'a,
         >,
     > {
@@ -142,7 +131,7 @@ fn facade_context() -> Context {
     Context {
         config: Config {
             health: HealthSetting::default(),
-            retry_policy: gateway_core::dispatch::RetryPolicy::default(),
+            retry_policy: RetryPolicy::default(),
             timeouts: Timeouts::default(),
             digest_enabled: false,
             sticky_enabled: false,
@@ -159,7 +148,7 @@ fn facade_context() -> Context {
             ..Config::default()
         },
         components: Components {
-            egress: Some(Arc::new(UnreachableEgress)),
+            egress: Arc::new(UnreachableEgress),
             wire_proxy_pool: false,
             proxies: Arc::new(ProxyManager::new()),
             proxy_snapshot: ProxySnapshot::default(),
