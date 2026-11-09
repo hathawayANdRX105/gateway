@@ -34,8 +34,17 @@ test:
 test-fast base="origin/main":
     bash scripts/test-fast.sh "{{base}}"
 
-# Full check suite: fmt + clippy + check + affected tests.
-verify: fmt-check clippy check test-fast
+# Normative checks (rust-specs dylint, pre-built library loading). Usage:
+#   just spec-check          # run the lint gate (skips with a notice when nightly/dylint/libs are missing)
+#   just spec-check build    # (re)build the pre-built lint libraries from rust-specs
+spec-check *args:
+    bash scripts/spec-check.sh {{args}}
+
+# Normative gate: dylint syntax rules (rust-specs).
+gate: spec-check
+
+# Full check suite: fmt + clippy + check + normative gate.
+verify: fmt-check clippy check gate
 
 # One-time setup after cloning: hooks path + testless index.
 setup:

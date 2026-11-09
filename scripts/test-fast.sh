@@ -23,6 +23,15 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 
 base="${1:-origin/main}"
 
+# nextest 的 cargo profile：本地默认空（dev = Cranelift，快）；CI 设 TEST_FAST_PROFILE=ci
+#（LLVM，与合并门同一后端）。nextest 用 --cargo-profile 透传给 cargo。
+nextest_profile="${TEST_FAST_PROFILE:-}"
+if [ -n "$nextest_profile" ]; then
+  profile_arg=(--cargo-profile "$nextest_profile")
+else
+  profile_arg=()
+fi
+
 # ── 判定基准：merge-base ─────────────────────────────────────────────────────
 base_rev="$(git merge-base "$base" HEAD 2>/dev/null || true)"
 if [ -z "$base_rev" ]; then
@@ -34,8 +43,16 @@ fi
 # 并行 test binary，且 filterset 与收窄跑同一口径。
 full_run() {
   echo "↩︎ 降级全量：$1"
-  echo ">>> cargo nextest run --workspace"
-  cargo nextest run --workspace
+  echo ">>> cargo nextest run --workspace ${profile_arg[*]}"
+  out="$(cargo nextest run --workspace "${profile_arg[@]}" 2>&1)" && rc=0 || rc=$?
+  printf '%s\n' "$out"
+  # 空 workspace：nextest 报 "no tests to run" 是合法空态，不是失败。
+  # 只转这个明确信号（带提示），真实测试失败仍传播——不制造假绿。
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'no tests to run'; then
+    echo "✓ workspace 无测试 —— 无可跑用例"
+    exit 0
+  fi
+  exit "$rc"
 }
 
 # 解析 nextest Summary 的通过数。**先去 ANSI 色**再匹配：CI 设
@@ -125,7 +142,7 @@ done
 echo "testless 选出 $(printf '%s' "$names" | wc -w) 条用例（vs ${base_rev}）"
 # --no-tests=pass：命中 0 条时 nextest 默认非零退出；这里要靠解析出的 passed
 # 数自行判「零命中可疑」（③），由本脚本决定是否降级。
-out="$(cargo nextest run --no-tests=pass -E "$expr" 2>&1)" && rc=0 || rc=$?
+out="$(cargo nextest run --no-tests=pass -E "$expr" "${profile_arg[@]}" 2>&1)" && rc=0 || rc=$?
 printf '%s\n' "$out"
 if [ "$rc" -ne 0 ]; then
   echo "✗ 收窄跑失败（filterset 精确匹配用例红）"

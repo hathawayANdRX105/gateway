@@ -65,7 +65,7 @@ pub fn fixture_group() -> GroupRecord {
     GroupRecord {
         meta: meta("group/default"),
         id: "default".into(),
-        display_name: "默认分组".into(),
+        display_name: "Default group".into(),
         rate_multiplier: 1.0,
         allowed_models: vec![],
     }
@@ -76,7 +76,7 @@ pub fn fixture_user() -> UserRecord {
     UserRecord {
         meta: meta("user/fixture-1"),
         username: "hathaway".into(),
-        display_name: "海瑟薇".into(),
+        display_name: "Hathaway".into(),
         email: "hathaway@wildtoken.com".into(),
         quota: 50_000_000,
         used_quota: 12_400_000,

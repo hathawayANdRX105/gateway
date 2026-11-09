@@ -16,25 +16,29 @@ Read order: §1–§2 before writing a test, §3 when wiring a new dependency fo
 
 ## 2. What to run locally
 
-| Scenario | Command | Notes |
-|---|---|---|
+| Scenario                          | Command                                              | Notes                                                                                                                                     |
+| --------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Affected tests only (daily entry) | `just test-fast [base]` (default base `origin/main`) | `testless` selects affected cases, `nextest` runs them. Every fallback is loud — a degrade always runs the full workspace, never nothing. |
-| Verify compilation | `cargo check -p <crate>` | Wrap in `.githooks/heavy` on multi-session machines. |
-| Debug a single failing case | `cargo test -p <crate> -- <test name>` | Debug only, not acceptance; must finish in ~3 seconds. |
-| Full check suite | `just verify` | fmt + clippy + check + affected tests. The local "everything" entry. |
-| Full test run | `just test` | `cargo nextest run --workspace`. The suite is small enough to run locally; CI runs it under `--cargo-profile ci` regardless. |
+| Verify compilation                | `cargo check -p <crate>`                             | Wrap in `.githooks/heavy` on multi-session machines.                                                                                      |
+| Debug a single failing case       | `cargo test -p <crate> -- <test name>`               | Debug only, not acceptance; must finish in ~3 seconds.                                                                                    |
+| Full check suite                  | `just verify`                                        | fmt + clippy + check + affected tests. The local "everything" entry.                                                                      |
+| Full test run                     | `just test`                                          | `cargo nextest run --workspace`. The suite is small enough to run locally; CI runs it under `--cargo-profile ci` regardless.              |
 
 The local dev loop compiles with **Cranelift** (dev profile) for speed; CI and the shipped-quality gate compile with **LLVM** (`--profile ci`). A Cranelift-only pass locally is normal — CI is the LLVM verdict.
 
 ## 3. Normative gates (rust-specs)
 
-- The idiom forms this repo cares about are already **workspace lints** (`[workspace.lints.clippy]` in the root `Cargo.toml`) and enforced by `just clippy` under `-D warnings` — that is the normative gate today.
-- The rust-specs dylint / `checks` rule library (https://github.com/hathawayANdRX105/rust-specs) is **not yet wired** for this repo: the rule library hardcodes the checked repo's parameters (currently ferrite's layout), so there is no gateway rule set to run — same status as harn, whose `.githooks/pre-push` header carries the matching TODO. When a gateway rule set lands upstream, wire it into `.githooks/pre-push` and add a `just spec-check`.
-- Running dylint locally needs a nightly + `cargo-dylint`; the pinned nightly already ships `rustc-dev` + `rust-src` for it.
+- The idiom forms this repo cares about are already **workspace lints** (`[workspace.lints.clippy]` in the root `Cargo.toml`) and enforced by `just clippy` under `-D warnings`.
+- The rust-specs **dylint syntax gate** is wired via `just spec-check` (`scripts/spec-check.sh`): it loads the **pre-built lint libraries** from the rust-specs checkout and runs each against the workspace. First time on a machine: `just spec-check build` (builds the libs from rust-specs; needs `RUST_SPECS_DIR` or the default `$HOME/projects/rust-specs`). It is wired into `.githooks/pre-push` and the CI `spec-check` job.
+- The dylint lints are **generic Rust syntax rules** (ban-unwrap, test-placement, nesting depth, let-if-else, …) — they run on any Rust repo, so gateway adopts them directly. (The rust-specs `checks` _structure_ rules — dep-edge / path-forbidden — are still ferrite-layout-specific and are **not** wired here; the dependency-direction red line is enforced by README + AGENTS.md + PR review.)
+- Running dylint locally needs the pinned nightly + `cargo-dylint`; the pinned nightly already ships `rustc-dev` + `rust-src` for it. On machines without the tooling the gate **skips with a notice** — run it on desktop or CI before treating a change as clean.
 
 ## 4. CI
 
-- CI is the repo's own `.github/workflows/ci.yml`: `lint` job (`fmt --check` + clippy `-D warnings` + check, all `--profile ci`) and `test` job (`cargo nextest run --workspace --cargo-profile ci`). The toolchain comes from `rust-toolchain.toml` (pinned nightly); the codegen backend in CI is always LLVM.
+- CI is the repo's own `.github/workflows/ci.yml`, three jobs on the pinned nightly (LLVM `--profile ci` throughout):
+  - `lint`: `fmt --check` + clippy `-D warnings` + check.
+  - `spec-check`: the rust-specs dylint syntax gate (builds the pre-compiled lint libs from rust-specs, then loads each).
+  - `test`: **PR lane runs `test-fast`** (testless narrows to affected tests); **the main-push (merge) lane runs the full workspace** (`cargo nextest run --workspace --cargo-profile ci`). The codegen backend in CI is always LLVM.
 - A PR merges only when CI is green. When CI fails, pull the logs (`gh run view <id> --log-failed`) and fix on the same PR.
 - `gh run view --log-failed` returns empty while the run is not `completed` — check run state before concluding there are no logs.
 

@@ -64,5 +64,5 @@ pub struct LogoutRequest {
 
 /// Test helper: builds a login response from records (for console unit tests).
 pub fn login_response_from(_user: &UserRecord, _tokens: &[TokenRecord]) -> LoginResponse {
-    todo!("TODO(#205): console 实现时提供真实构造")
+    todo!("TODO(#205): provide real construction when console lands")
 }

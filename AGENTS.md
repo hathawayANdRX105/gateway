@@ -10,21 +10,22 @@ This file carries hard constraints and the order of operations; expanded
 procedures live under `.agent/rules/` — look them up when needed instead of
 reading them end to end.
 
-| Scenario | Read |
-|---|---|
-| Rust public API / code style / investigation and review | `.agent/rules/rust-code.md` |
-| Writing / running tests, CI policy | `.agent/rules/testing-ci.md` |
-| Local dev environment, build optimizations, worktrees | `.agent/rules/dev-env.md` |
+| Scenario                                                | Read                         |
+| ------------------------------------------------------- | ---------------------------- |
+| Rust public API / code style / investigation and review | `.agent/rules/rust-code.md`  |
+| Writing / running tests, CI policy                      | `.agent/rules/testing-ci.md` |
+| Local dev environment, build optimizations, worktrees   | `.agent/rules/dev-env.md`    |
 
 ## Common entry points
 
-| Purpose | Command | Notes |
-|---|---|---|
-| One-time setup after clone (hooks path + testless index) | `just setup` | |
-| Affected tests (testless → nextest) | `just test-fast [base]` | default base `origin/main`; loud fallbacks, never a silent skip |
-| Full check suite (fmt + clippy + check + affected tests) | `just verify` | run before committing |
-| Full workspace tests | `just test` | `cargo nextest run --workspace`; the suite is small, CI also runs it |
-| Format / lint / compile | `just fmt` / `just clippy` / `just check` | clippy/check use `--profile ci` (LLVM), same backend as CI |
+| Purpose                                                  | Command                                   | Notes                                                                                         |
+| -------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| One-time setup after clone (hooks path + testless index) | `just setup`                              |                                                                                               |
+| Affected tests (testless → nextest)                      | `just test-fast [base]`                   | default base `origin/main`; loud fallbacks, never a silent skip                               |
+| Rust syntax lint (rust-specs dylint)                     | `just spec-check`                         | first time: `just spec-check build`; skips with a notice when nightly/dylint/libs are missing |
+| Full check suite (fmt + clippy + check + spec-check)     | `just verify`                             | run before committing                                                                         |
+| Full workspace tests                                     | `just test`                               | `cargo nextest run --workspace`; the suite is small, CI also runs it                          |
+| Format / lint / compile                                  | `just fmt` / `just clippy` / `just check` | clippy/check use `--profile ci` (LLVM), same backend as CI                                    |
 
 ## 1. Understand the project first
 
@@ -121,16 +122,20 @@ Follow `.agent/rules/testing-ci.md`. Highlights:
 - Every test carries an English comment stating purpose, scenarios and the
   acceptance criterion.
 - **GitHub PR CI is the primary test path — never "finish locally".** CI
-  runs the committed tree (the repo's `.github/workflows/ci.yml`: lint +
-  nextest, `--profile ci`); a PR merges only when it is green. Fix failures on
-  the same PR (pull logs with `gh run view <id> --log-failed`). Local
-  loops exist for fast feedback on small scopes only — they never stand in
-  for CI and never authorize a push.
+  runs the committed tree (the repo's `.github/workflows/ci.yml`: `lint` +
+  `spec-check` (rust-specs dylint) + `test`; PR lane runs `test-fast`, the
+  main-push lane runs the full workspace, all `--profile ci`); a PR merges
+  only when it is green. Fix failures on the same PR (pull logs with
+  `gh run view <id> --log-failed`). Local loops exist for fast feedback on
+  small scopes only — they never stand in for CI and never authorize a push.
 - **When you do run locally, use `just test-fast`, not bare `cargo test`.**
   testless (or the changed-packages fallback) keeps the run to what the diff
   can actually break; `cargo test` re-runs whole crates. Every fallback is
   loud — a declared degrade to a full-workspace `just test`, never a silent
   skip and never "0 hits" reported as clean.
+- **Run `just spec-check` (rust-specs dylint) before pushing** — it is wired
+  into `.githooks/pre-push` and the CI `spec-check` job. First time on a
+  machine: `just spec-check build`.
 
 ## 5. Wrap up
 

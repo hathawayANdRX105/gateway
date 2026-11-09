@@ -1,6 +1,66 @@
 /target
+**/target
+**/target-isolated/
+/data/
+**/*.rs.bk
+*.pdb
+# 只忽略仓库根的 specs/（历史遗留目录）；不加前导斜杠会连 e2e/specs/ 下的
+# Playwright 用例一起忽略，浏览器回归套件因此进不了版本库。
+/specs/
+crates/app-db/dev/seed.sql
+/logs
 
-# tooling caches / local scratch (never committed)
-/.testless/
-/.tmp/
-/.codegraph/
+.codegraph/
+.semsearch/
+archify/
+.code-review-graph/
+node_modules
+.wt
+# 配置文件通道已废：引导只走 env，运行时配置在库内 `config` 表（模板文件已删除）。
+# 这条只兜本地 / 旧 worktree 里遗留的 config.toml——它可能含本机凭据，留着忽略
+# 规则可防 `git add -A` 把残留凭据收进版本库。
+config/config.toml
+.env
+.env.*
+!deploy/.env.example
+*.pem
+*.key
+
+# 字体与模型产物：真身只在 ui/theme/assets/fonts/（字体）和
+# combo/relay-web/assets/models/（模型，art.rs 所在的 composition face）。
+# 各 app 的 assets/fonts/ 由 scripts/copy-fonts.mjs 在 `bun run css` 时生成；
+# apps/server/web 与 dev/web 的 assets/models/ 由 scripts/copy-models.mjs 生成
+# （manganis 的 asset!() 只能解析 app 自己的 assets/，故不入库，避免同一批
+# 资产在仓库里存两份。新克隆后跑一次 `bun run css` 即可生成。）
+/apps/*/web/assets/fonts/
+/dev/web/assets/fonts/
+/apps/server/web/assets/models/
+/dev/web/assets/models/
+.pytest_cache/
+.zcode/
+.workbuddy/
+
+# smoke 脚手架（本地验证用，不进 PR）
+scripts/smoke/
+
+# Playwright E2E（e2e/）
+/e2e/node_modules/
+/e2e/test-results/
+/e2e/playwright-report/
+/e2e/bun.lock
+.testless/
+
+# Tailwind 输入由 scripts/gen-tailwind-input.mjs 生成（kit 路径是绝对路径，随机器/依赖形态变）
+.tailwind.gen-input.css
+
+*.tgz
+.DS_Store
+
+todo/
+
+# local merge-audit ledger and panel (never committed)
+.tmp/
+
+# Python bytecode from scripts/*.py run via import (scripts/cratebook.py)
+__pycache__/
+*.pyc

@@ -35,11 +35,38 @@ jobs:
       - name: Check
         run: cargo check --workspace --all-targets --profile ci
 
-  # Job 2: full tests with nextest. Shares the lint's cache key space.
+  # Job 2: rust-specs dylint syntax gate (pre-built lint libraries). Runs on the
+  # same nightly as the toolchain pin. Builds the lint libs from the rust-specs
+  # checkout once, then loads each against the workspace.
+  spec-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-08-20
+          components: rustfmt, clippy, rustc-dev, rust-src
+      - name: Install cargo-dylint
+        run: cargo +nightly-2026-08-20 install cargo-dylint --locked
+      - name: Clone rust-specs (lint rule library)
+        run: git clone --depth 1 https://github.com/hathawayANdRX105/rust-specs.git "$HOME/rust-specs"
+      - name: Build pre-compiled lint libraries
+        run: |
+          RUST_SPECS_DIR="$HOME/rust-specs" bash scripts/spec-check.sh build
+      - name: Run dylint gate
+        run: |
+          RUST_SPECS_DIR="$HOME/rust-specs" bash scripts/spec-check.sh
+
+  # Job 3: tests. PR lane narrows to affected tests via testless (test-fast);
+  # the main-push (merge) lane runs the full workspace. Both on the LLVM ci
+  # profile — the backend that ships.
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # full history so test-fast can compute merge-base against origin/main
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly-2026-08-20
@@ -49,5 +76,13 @@ jobs:
           key: cargo-shared
       - name: Install nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
-      - name: Test (workspace, cargo-profile ci)
+      # PR lane: affected tests only (testless impact analysis).
+      - name: Test (PR: affected via testless)
+        if: github.event_name == 'pull_request'
+        run: |
+          cargo +nightly-2026-08-20 install testless --locked
+          TEST_FAST_PROFILE=ci bash scripts/test-fast.sh origin/main
+      # Merge lane: full workspace (the shipped-quality gate).
+      - name: Test (main: full workspace)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: cargo nextest run --workspace --cargo-profile ci
