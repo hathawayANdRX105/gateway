@@ -299,6 +299,8 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
         }
 
         let mut keys = Vec::with_capacity(channel.keys.len());
+        let mut seen_indexes = HashSet::new();
+        let mut seen_secrets = HashSet::new();
         for (position, key) in channel.keys.iter().enumerate() {
             let index = match key.index {
                 Some(index) => index,
@@ -306,6 +308,12 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
                     anyhow::anyhow!("channel {}: more keys than the index space", channel.key)
                 })?,
             };
+            if !seen_indexes.insert(index) {
+                anyhow::bail!("channel {}: duplicate key index {index}", channel.key);
+            }
+            if !seen_secrets.insert(key.secret.as_str()) {
+                anyhow::bail!("channel {}: duplicate key secret", channel.key);
+            }
             keys.push(ChannelKey {
                 index,
                 secret: key.secret.clone(),

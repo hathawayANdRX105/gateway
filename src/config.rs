@@ -17,8 +17,10 @@ pub const DEFAULT_MAX_REQUEST_BYTES: usize = 32 * 1024 * 1024;
 
 /// Listener and process settings.
 ///
-/// `catalog` is resolved relative to the config file's directory, so a deployment can
-/// move both files together.
+/// `catalog` is required — a process with no catalog has no routes and no keys — and is
+/// resolved relative to the config file's directory. There is intentionally no
+/// `Default`: the per-field serde defaults below carry the documented values, and
+/// `catalog` has none.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DaemonConfig {
@@ -45,20 +47,6 @@ pub struct DaemonConfig {
     /// Graceful-shutdown drain budget in seconds.
     #[serde(default = "default_shutdown_timeout_secs")]
     pub shutdown_timeout_secs: u64,
-}
-
-impl Default for DaemonConfig {
-    fn default() -> Self {
-        Self {
-            listen: "127.0.0.1:8080".to_string(),
-            uds_path: None,
-            catalog: PathBuf::from("gateway.toml"),
-            max_request_bytes: DEFAULT_MAX_REQUEST_BYTES,
-            trusted_proxies: Vec::new(),
-            workers: 0,
-            shutdown_timeout_secs: default_shutdown_timeout_secs(),
-        }
-    }
 }
 
 fn default_listen() -> String {

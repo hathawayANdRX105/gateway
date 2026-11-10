@@ -383,18 +383,25 @@ pub fn to_actix_response(response: http::Response<axum::body::Body>) -> HttpResp
     builder.streaming(stream)
 }
 
+/// Headers actix must reframe itself: carrying the upstream's framing headers would
+/// describe bytes that no longer match the chunked body it emits.
+const HOP_BY_HOP: [&str; 9] = [
+    "content-length",
+    "transfer-encoding",
+    "connection",
+    "keep-alive",
+    "upgrade",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+];
+
 #[must_use]
 pub fn is_hop_by_hop(name: &str) -> bool {
-    matches!(
-        name,
-        "content-length"
-            | "transfer-encoding"
-            | "connection"
-            | "keep-alive"
-            | "upgrade"
-            | "proxy-authenticate"
-            | "proxy-authorization"
-            | "te"
-            | "trailer"
-    )
+    // Header names are case-insensitive: a producer writing `Content-Length` must be
+    // dropped just the same, and the comparison must not allocate.
+    HOP_BY_HOP
+        .iter()
+        .any(|blocked| name.eq_ignore_ascii_case(blocked))
 }

@@ -122,6 +122,12 @@ fn hop_by_hop_headers_are_stripped() {
     for name in ["content-type", "cache-control", "x-request-id"] {
         assert!(!is_hop_by_hop(name), "{name} must be forwarded");
     }
+    // Header names are case-insensitive: a producer writing the framing header in
+    // mixed case must be dropped just the same.
+    assert!(
+        is_hop_by_hop("Content-Length") && is_hop_by_hop("Transfer-Encoding"),
+        "mixed-case framing headers must be dropped"
+    );
 }
 
 #[test]

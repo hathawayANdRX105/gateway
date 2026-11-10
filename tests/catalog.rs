@@ -134,3 +134,49 @@ secret = "upstream"
         "unexpected error: {error}"
     );
 }
+
+/// Duplicate key indexes would make two route units address the same credential, and a
+/// duplicated secret is almost certainly a copy-paste error; both must fail the build
+/// at load instead of silently producing an ambiguous channel.
+#[test]
+fn rejects_duplicate_channel_keys() {
+    let duplicate_index = r#"
+[[channels]]
+key = "ch-1"
+name = "primary"
+base_url = "http://127.0.0.1:9"
+groups = ["default"]
+[[channels.keys]]
+index = 0
+secret = "upstream-a"
+[[channels.keys]]
+index = 0
+secret = "upstream-b"
+[[channels.models]]
+name = "gpt-4o"
+"#;
+    let error = Catalog::from_toml(duplicate_index).expect_err("duplicate index must fail");
+    assert!(
+        error.to_string().contains("duplicate key index"),
+        "unexpected error: {error}"
+    );
+
+    let duplicate_secret = r#"
+[[channels]]
+key = "ch-1"
+name = "primary"
+base_url = "http://127.0.0.1:9"
+groups = ["default"]
+[[channels.keys]]
+secret = "upstream-a"
+[[channels.keys]]
+secret = "upstream-a"
+[[channels.models]]
+name = "gpt-4o"
+"#;
+    let error = Catalog::from_toml(duplicate_secret).expect_err("duplicate secret must fail");
+    assert!(
+        error.to_string().contains("duplicate key secret"),
+        "unexpected error: {error}"
+    );
+}

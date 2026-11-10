@@ -2,7 +2,7 @@
 <defs>
 <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
 </defs>
-<rect width="1560" height="3213" fill="#ffffff"/>
+<rect width="1560" height="3480" fill="#ffffff"/>
 <rect x="0" y="0" width="1560" height="122" fill="#0f172a"/>
 <text x="780.0" y="54" font-size="30" fill="#f8fafc" font-weight="700" text-anchor="middle">gateway 数据面心智模型 —— LLM 网关的装配、调度与转发</text>
 <text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">库 + 独立进程（12 crate）：gateway-core 承载词汇与端口，引擎 stage 负责请求路径，gateway-facade 是装配面，根 src/ 的 gatewayd 用 actix-web 承载传输</text>
