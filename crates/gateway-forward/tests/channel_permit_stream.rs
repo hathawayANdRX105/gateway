@@ -187,7 +187,7 @@ fn non_stream_ctx(candidate: gateway_dispatch::Candidate) -> gateway_pipeline::R
     ctx_with_body(NON_STREAM_BODY, candidate)
 }
 
-/// On success take the PipeStream (panic with the StageError Debug on failure).
+/// On success take the `PipeStream` (panic with the `StageError` Debug on failure).
 async fn expect_stream(
     stage: &ForwardStage,
     ctx: &mut gateway_pipeline::RequestCtx,
@@ -198,7 +198,7 @@ async fn expect_stream(
     }
 }
 
-/// Read the PipeStream as an axum data stream (consuming it = the client has received the
+/// Read the `PipeStream` as an axum data stream (consuming it = the client has received the
 /// whole body).
 fn data_stream(pipe: gateway_pipeline::PipeStream) -> impl Stream<Item = Bytes> + Send {
     // axum's into_data_stream() item is Result<Bytes, Error>; body errors should not occur
@@ -218,12 +218,12 @@ async fn streaming_permit_released_only_after_stream_fully_consumed() {
     let egress = Arc::new(GatedSseEgress::new());
     let state = Arc::new(ConcurrencyState::default());
     state.register_channel(CH_C1, 1);
-    let stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
+    let fwd_stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
         .with_retry(dispatch, RetryPolicy::default())
         .with_channel_concurrency(state.clone());
 
     let mut ctx = stream_ctx(c1);
-    let mut data = data_stream(expect_stream(&stage, &mut ctx).await);
+    let mut data = data_stream(expect_stream(&fwd_stage, &mut ctx).await);
 
     // The stream was just established and no frame consumed: the permit must still be held
     // (the response stream owns the slot), otherwise returning it at connection time makes
@@ -274,12 +274,12 @@ async fn streaming_permit_released_when_stream_dropped_mid_flight() {
     let egress = Arc::new(GatedSseEgress::new());
     let state = Arc::new(ConcurrencyState::default());
     state.register_channel(CH_C1, 1);
-    let stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
+    let fwd_stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
         .with_retry(dispatch, RetryPolicy::default())
         .with_channel_concurrency(state.clone());
 
     let mut ctx = stream_ctx(c1);
-    let mut data = data_stream(expect_stream(&stage, &mut ctx).await);
+    let mut data = data_stream(expect_stream(&fwd_stage, &mut ctx).await);
 
     // Read the first frame and stop: upstream's [DONE] is still blocked on Notify, so the
     // stream is unfinished.
@@ -318,12 +318,15 @@ async fn non_streaming_permit_released_after_commit() {
     let dispatch = Arc::new(MockDispatch::new(vec![c1.clone()]));
     let state = Arc::new(ConcurrencyState::default());
     state.register_channel(CH_C1, 1);
-    let stage = ForwardStage::new(Arc::new(JsonEgress), Arc::new(FormatRegistry::new()))
+    let fwd_stage = ForwardStage::new(Arc::new(JsonEgress), Arc::new(FormatRegistry::new()))
         .with_retry(dispatch, RetryPolicy::default())
         .with_channel_concurrency(state.clone());
 
     let mut ctx = non_stream_ctx(c1);
-    let outcome = stage.handle(&mut ctx).await.expect("handle must succeed");
+    let outcome = fwd_stage
+        .handle(&mut ctx)
+        .await
+        .expect("handle must succeed");
     assert!(
         matches!(outcome, StageOutcome::Continue),
         "non-streaming success should be Continue, got {outcome:?}"
@@ -376,12 +379,12 @@ async fn failed_attempt_releases_permit_without_forwarded() {
     // Simplification: c2 also uses ScriptedEgress's Ok plan, but the ctx uses a
     // non-streaming body — so this case asserts failed-attempt release plus winning-attempt
     // release after commit.
-    let stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
+    let fwd_stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
         .with_retry(dispatch, RetryPolicy::default())
         .with_channel_concurrency(state.clone());
 
     let mut ctx = non_stream_ctx(c1);
-    let outcome = stage
+    let outcome = fwd_stage
         .handle(&mut ctx)
         .await
         .expect("c2 fallback should succeed");
@@ -424,12 +427,12 @@ async fn permit_state_lives_in_unfold_not_in_body_buffer() {
     let egress = Arc::new(GatedSseEgress::new());
     let state = Arc::new(ConcurrencyState::default());
     state.register_channel(CH_C1, 1);
-    let stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
+    let fwd_stage = ForwardStage::new(egress.clone(), Arc::new(FormatRegistry::new()))
         .with_retry(dispatch, RetryPolicy::default())
         .with_channel_concurrency(state.clone());
 
     let mut ctx = stream_ctx(c1);
-    let mut data = data_stream(expect_stream(&stage, &mut ctx).await);
+    let mut data = data_stream(expect_stream(&fwd_stage, &mut ctx).await);
 
     // Driving the underlying unfold directly is impractical here: manual polling needs a
     // Tokio context to build a waker, so instead read to None inside a tokio task — already

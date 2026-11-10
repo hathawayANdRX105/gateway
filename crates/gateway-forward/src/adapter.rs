@@ -1,17 +1,17 @@
 //! Upstream request preparation — URL / auth header / channel policy.
 //!
 //! Covers the non-protocol part of the new-api adaptor five-method contract
-//! (relay/adaptor/interface.go): GetRequestURL + SetupRequestHeader + ConvertRequest.
+//! (relay/adaptor/interface.go): `GetRequestURL` + `SetupRequestHeader` + `ConvertRequest`.
 //! Protocol body conversion lives in the protocol crate; this module only does
 //! **addressing and authentication**.
 
 use gateway_dispatch::Candidate;
 use gateway_pipeline::ProtocolKind;
 
-/// Preparation output — the direct input to egress::execute.
+/// Preparation output — the direct input to `egress::execute`.
 #[derive(Debug, Clone)]
 pub struct PreparedRequest {
-    /// Complete upstream URL (base_url + upstream endpoint path).
+    /// Complete upstream URL (`base_url` + upstream endpoint path).
     pub url: String,
     /// Auth header (such as Authorization: Bearer sk-...).
     pub auth_header: (String, String),
@@ -123,6 +123,7 @@ fn build_url(
 ///
 /// Invalid structure → empty list. Header names are lowercased to match the
 /// case-insensitive comparison in the later sanitize step.
+#[must_use]
 pub fn extra_headers_from_settings(settings: &serde_json::Value) -> Vec<(String, String)> {
     let Some(obj) = settings.get("headers").and_then(|v| v.as_object()) else {
         return Vec::new();
@@ -135,12 +136,13 @@ pub fn extra_headers_from_settings(settings: &serde_json::Value) -> Vec<(String,
     out
 }
 
-/// Prepare a request by provider_type — the adapter factory.
+/// Prepare a request by `provider_type` — the adapter factory.
 ///
 /// `inbound` / `stream` / `upstream_model` decide the upstream endpoint (see
 /// [`build_url`]): the upstream URL must match the converted request body's format, not
 /// the path the client called. The auth header follows the provider protocol family;
 /// channel settings.headers overrides can rewrite the auth header name.
+#[must_use]
 pub fn prepare(
     candidate: &Candidate,
     path: &str,
@@ -167,7 +169,7 @@ pub fn prepare(
 }
 
 /// Header filtering — strip hop-by-hop, credential, and conflicting headers (new-api
-/// api_request.go rules).
+/// `api_request.go` rules).
 /// - Always stripped (HTTP/1.1 RFC 7230 §6.1 hop-by-hop): `connection`, `keep-alive`,
 ///   `transfer-encoding`, `upgrade`, `proxy-*`
 /// - Always stripped as credentials: `authorization`, `cookie`, `x-api-key`,
@@ -175,6 +177,7 @@ pub fn prepare(
 /// - Always stripped as conflicting: `host`, `content-length` (reqwest recomputes it)
 /// - Case-insensitive; everything else passes through (including Accept, User-Agent,
 ///   and so on).
+#[must_use]
 pub fn sanitize_client_headers(headers: &[(String, String)]) -> Vec<(String, String)> {
     const STRIPPED: &[&str] = &[
         "connection",

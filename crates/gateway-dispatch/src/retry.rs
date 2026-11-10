@@ -1,9 +1,9 @@
 //! Failover retry orchestration — the state-machine data for one request's lifetime.
 //!
 //! References: one-api controller/relay.go (retries ignore the first priority),
-//! new-api transport/handler/handle_relay.go (reset body / refund / health report before retry),
-//! sub2api backend/internal/handler/failover_loop.go (FailoverState: FailedAccountIDs
-//! exclusion set + MaxSwitches budget).
+//! new-api `transport/handler/handle_relay.go` (reset body / refund / health report before retry),
+//! sub2api `backend/internal/handler/failover_loop.go` (`FailoverState`: `FailedAccountIDs`
+//! exclusion set + `MaxSwitches` budget).
 //!
 //! Upper-layer loop shape:
 //! ```text
@@ -28,7 +28,7 @@
 //! - the request body must be **replayable** before a retry (forward's replayable body guarantee);
 //! - every attempt's health report is mandatory (cross-candidate statistics);
 //! - the exclusion set is keyed by unit key (unit.meta.key); a key is never selected twice
-//!   (sub2api FailedAccountIDs).
+//!   (sub2api `FailedAccountIDs`).
 //! - the sticky key is passed through every round and never exempts a channel from exclude
 //!   (stickiness never hard-pins a channel, design §4 invariant 1).
 
@@ -105,7 +105,7 @@ pub enum AttemptOutcome {
     /// Upstream 429 active rate limiting: the channel itself is not broken, so health is
     /// reported as `Ok(429)` (Throttled has its own cooldown ladder); `retry_after_ms` is the
     /// wait parsed from the upstream `Retry-After` header (`None` = absent/unparseable). Loop
-    /// semantics match [`Self::Retryable`]: mark_tried, then continue with another candidate
+    /// semantics match [`Self::Retryable`]: `mark_tried`, then continue with another candidate
     /// (same switching/budget accounting) — on a 429 a different candidate often has capacity
     /// immediately.
     Throttled {
@@ -122,18 +122,20 @@ impl AttemptOutcome {
     /// Failures can carry latency too: a failure slow enough to time out is **real** evidence
     /// about the channel's current state; discarding it would leave P2C blind to the slowdown
     /// until after a success.
+    #[must_use]
     pub fn latency_ms(&self) -> Option<u32> {
         match self {
-            AttemptOutcome::Done { latency_ms, .. } => Some(*latency_ms),
+            AttemptOutcome::Done { latency_ms, .. }
+            | AttemptOutcome::Throttled { latency_ms, .. } => Some(*latency_ms),
             AttemptOutcome::Retryable(_, latency)
             | AttemptOutcome::Fatal(_, latency)
             | AttemptOutcome::FatalButSwitchable(_, latency) => *latency,
-            AttemptOutcome::Throttled { latency_ms, .. } => Some(*latency_ms),
         }
     }
 
     /// Upstream `Retry-After` hint (ms) — carried only by the 429 rate-limit case; always
     /// `None` on the other variants.
+    #[must_use]
     pub fn retry_after_ms(&self) -> Option<u64> {
         match self {
             AttemptOutcome::Throttled { retry_after_ms, .. } => *retry_after_ms,
@@ -142,6 +144,12 @@ impl AttemptOutcome {
     }
 
     /// `Result<status code, failure class>` for the health table to consume.
+    ///
+    /// # Errors
+    ///
+    /// `Err(class)` for every failure outcome (`Retryable`, `Fatal`, `FatalButSwitchable`)
+    /// carrying the attempt's classified failure class; successes (`Done`, `Throttled`) return
+    /// `Ok` (the status code, or 429 for throttling).
     pub fn as_health_result(&self) -> Result<u16, FailureClass> {
         match self {
             AttemptOutcome::Done { status, .. } => Ok(*status),
@@ -164,6 +172,7 @@ pub struct ModelRetryPolicies {
 
 impl ModelRetryPolicies {
     /// Constructor.
+    #[must_use]
     pub fn new(default_policy: RetryPolicy, per_model: HashMap<String, RetryPolicy>) -> Self {
         Self {
             default_policy,
@@ -171,7 +180,8 @@ impl ModelRetryPolicies {
         }
     }
 
-    /// Exact per_model hit, otherwise default.
+    /// Exact `per_model` hit, otherwise default.
+    #[must_use]
     pub fn policy_for(&self, model: &str) -> &RetryPolicy {
         self.per_model.get(model).unwrap_or(&self.default_policy)
     }
@@ -191,7 +201,7 @@ pub trait RetryLoop: Send + Sync {
 /// Context of one attempt (the minimal information retry passes to forward).
 ///
 /// The loop returns it with the outcome on success so the caller knows **which candidate won**
-/// (streaming passthrough needs the winning candidate's channel_key / upstream_model to
+/// (streaming passthrough needs the winning candidate's `channel_key` / `upstream_model` to
 /// assemble the SSE context).
 #[derive(Debug)]
 pub struct Attempt {
@@ -200,7 +210,7 @@ pub struct Attempt {
 }
 
 /// Failover state machine — tried-exclusion set + attempt budget (the equivalent of sub2api
-/// FailoverState).
+/// `FailoverState`).
 ///
 /// This type guarantees only "do not reselect tried candidates, do not exceed the budget";
 /// same-channel backoff and other timing are controlled by the upper loop (sub2api
@@ -211,13 +221,14 @@ pub struct Failover {
     // ponytail: Vec rather than HashSet — tried length is bounded (max_attempts-1, 4 by
     // default), a linear scan and hashing are the same order at n<=4, and Vec keeps order
     // without allocation jitter (ocr #12 rejected).
-    /// Tried candidate keys (unit.meta.key), passed to Dispatch::select as exclude.
+    /// Tried candidate keys (unit.meta.key), passed to `Dispatch::select` as exclude.
     tried: Vec<String>,
     /// Completed attempt count.
     attempts: u32,
 }
 
 impl Failover {
+    #[must_use]
     pub fn new(policy: RetryPolicy) -> Self {
         Self {
             policy,
@@ -226,7 +237,8 @@ impl Failover {
         }
     }
 
-    /// Current exclusion set (lent to Dispatch::select).
+    /// Current exclusion set (lent to `Dispatch::select`).
+    #[must_use]
     pub fn exclude(&self) -> &[String] {
         &self.tried
     }
@@ -260,6 +272,7 @@ impl Failover {
 
     /// Whether the attempt budget is exhausted (the time budget is tracked separately by
     /// `RetryBudget`).
+    #[must_use]
     pub fn is_exhausted(&self) -> bool {
         self.attempts >= self.policy.max_attempts
     }
@@ -269,10 +282,10 @@ impl Failover {
 ///
 /// User requirement: the retry mechanism lives in dispatch, not scattered through forward.
 /// This function hard-codes the "select candidate → attempt → health report → exclude tried →
-/// select again" loop in gateway_dispatch::retry; forward only supplies a single-attempt
+/// select again" loop in `gateway_dispatch::retry`; forward only supplies a single-attempt
 /// closure (pure IO, no retry decisions).
 ///
-/// Loop shape (sub2api FailoverState / new-api relay retry semantics):
+/// Loop shape (sub2api `FailoverState` / new-api relay retry semantics):
 /// ```text
 /// while let Some(attempt_no) = failover.next_attempt() {
 ///   candidate = select(group, model, failover.exclude(), sticky)?   // exclude tried
@@ -290,7 +303,7 @@ impl Failover {
 /// Err(RetriesExhausted)
 /// ```
 ///
-/// Attempt-count budget (max_attempts) or time budget (total_budget_ms) exhausted without a
+/// Attempt-count budget (`max_attempts`) or time budget (`total_budget_ms`) exhausted without a
 /// success → `DispatchError::BudgetExhausted` (upper layer: 503 without cooldown / 504 +
 /// Retry-After with cooldown; the client resends later).
 ///
@@ -298,17 +311,19 @@ impl Failover {
 /// visible to this loop — when "all bound nodes cooling → direct-connection fallback fails",
 /// forward's attempt closure classifies the result as `Retryable(Retryable)` directly (degraded
 /// semantics = the existing Retryable arm: report(Err(Retryable)) drives the unit failure
-/// streak + mark_tried + continue), so the loop body needs no separate degraded branch; once
+/// streak + `mark_tried` + continue), so the loop body needs no separate degraded branch; once
 /// the streak reaches the threshold the unit is ejected by `health`/`selector` and a channel
 /// whose proxies are all down is no longer selected repeatedly.
-///
-/// Success returns `Ok((Attempt, AttemptOutcome))`: the context and result of the attempt that
-/// won (or terminated via Fatal / the last candidate's FatalButSwitchable); the caller
-/// (gateway_forward::ForwardStage) needs the candidate identity to assemble the response
-/// stream and attribute health. Failure still returns `Err(DispatchError)`.
 // ponytail: every parameter is one independent input of the loop (the three routing inputs +
 // three closures + the clock); packing them into a struct would only move the parameters
 // around (same convention as gateway_metering::settle / control-plane).
+//
+/// # Errors
+///
+/// [`DispatchError::SnapshotNotReady`], [`DispatchError::ModelUnknown`],
+/// [`DispatchError::AllUnavailable`] or [`DispatchError::RateLimited`] from
+/// [`Dispatch::select`], and [`DispatchError::BudgetExhausted`] when the attempt or time
+/// budget is exhausted without a success.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_retry_loop<Sel, Attempt, Fut>(
     group: &str,

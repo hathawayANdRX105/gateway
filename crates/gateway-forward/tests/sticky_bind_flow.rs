@@ -23,7 +23,7 @@
 //! Covered behaviour (mock egress, zero real network; TTL uses a fake clock and
 //! does not depend on the wall clock):
 //! 1. non-streaming 2xx + measured `cached_tokens > 0` ⇒ a binding appears in the
-//!    table, and the read side DispatchStage (same table) finds the same channel on
+//!    table, and the read side `DispatchStage` (same table) finds the same channel on
 //!    the original ctx — write/read round-trip cross-check (key-construction drift ⇒
 //!    lookup miss; wrong bound channel ⇒ channel key mismatch);
 //! 2. binding TTL: invalid on expiry, valid before expiry (fake clock advanced; the
@@ -42,7 +42,7 @@
 //!    (writing from a drop hook would turn this red);
 //! 8. table not mounted ⇒ forwarding behaviour matches the status quo (status code
 //!    + body pass back unchanged), the write side is skipped entirely.
-//! 9. streaming 2xx read to the end + cache hit measured within frames (OpenAI
+//! 9. streaming 2xx read to the end + cache hit measured within frames (`OpenAI`
 //!    shape) ⇒ the "read-to-end arm" commit point writes the table, and the read
 //!    side finds the same channel on the original ctx (a write/read round trip
 //!    isomorphic to non-streaming case 1);
@@ -64,7 +64,7 @@
 //!
 //! Trigger conditions of the streaming-arm commit point (pinned by cases 9-11):
 //! streaming-frame usage is merged across frames by metering
-//! (`metering/src/scanner.rs`), `cached` recognizes OpenAI `prompt_tokens_details` /
+//! (`metering/src/scanner.rs`), `cached` recognizes `OpenAI` `prompt_tokens_details` /
 //! top-level `cached_tokens` / Claude `cache_read_input_tokens`, so when a successful
 //! stream finishes the "read-to-end arm" commit point writes the table with measured
 //! values; a cold stream (no cache signal in the frames ⇒ `cached == 0`) still writes
@@ -72,8 +72,8 @@
 //! fields and do not change with this section.
 //!
 //! Production-entry read-side wiring (pinned by cases 12-14): the production
-//! pipeline only pushes ForwardStage (which drives its own retry loop); the
-//! DispatchStage read side is not in the pipeline — so the read-side table lookup
+//! pipeline only pushes `ForwardStage` (which drives its own retry loop); the
+//! `DispatchStage` read side is not in the pipeline — so the read-side table lookup
 //! happens in `handle_with_retry`: before calling `run_retry_loop` it looks up the
 //! mounted sticky table once per request (key source shared with the write-side
 //! commit point) and passes the sticky channel key through unchanged as the prior
@@ -164,7 +164,7 @@ impl Egress for JsonEgress {
     }
 }
 
-/// SSE mock usage frame (OpenAI shape: cache in `prompt_tokens_details`).
+/// SSE mock usage frame (`OpenAI` shape: cache in `prompt_tokens_details`).
 ///
 /// Case 9 uses it to prove "successful stream + measured cache hit ⇒ table write";
 /// the stream-break / drop cases (6/7) use it to prove the failure path does not
@@ -172,11 +172,11 @@ impl Egress for JsonEgress {
 const CACHED_USAGE_FRAME: &[u8] =
     b"data: {\"usage\":{\"prompt_tokens\":90,\"completion_tokens\":30,\"prompt_tokens_details\":{\"cached_tokens\":40}}}\n\n";
 
-/// SSE terminal frame (OpenAI convention). A successful stream read to the end =
+/// SSE terminal frame (`OpenAI` convention). A successful stream read to the end =
 /// the client first receives `[DONE]`, then the stream ends.
-const DONE_FRAME: &[u8] = br#"data: [DONE]
+const DONE_FRAME: &[u8] = br"data: [DONE]
 
-"#;
+";
 
 /// OpenAI-shape usage frame but **without a cache field**: a cold stream (the frame
 /// carries measured usage ⇒ prompt / completion non-zero, but `cached == 0`).
@@ -323,7 +323,7 @@ fn stream_ctx() -> RequestCtx {
     ctx_with_body(STREAM_BODY, candidate("c1"))
 }
 
-/// Runs one `handle` round in single mode; panics with the StageError Debug on
+/// Runs one `handle` round in single mode; panics with the `StageError` Debug on
 /// failure.
 async fn run_single(stage: &ForwardStage, ctx: &mut RequestCtx) -> StageOutcome {
     stage
@@ -332,7 +332,7 @@ async fn run_single(stage: &ForwardStage, ctx: &mut RequestCtx) -> StageOutcome 
         .expect("single forward should succeed")
 }
 
-/// Extracts the PipeStream after a successful handle (panics with the StageError
+/// Extracts the `PipeStream` after a successful handle (panics with the `StageError`
 /// Debug on failure).
 async fn expect_stream(stage: &ForwardStage, ctx: &mut RequestCtx) -> PipeStream {
     match stage.handle(ctx).await.expect("handle should succeed") {
@@ -341,7 +341,7 @@ async fn expect_stream(stage: &ForwardStage, ctx: &mut RequestCtx) -> PipeStream
     }
 }
 
-/// Reads the PipeStream as an axum data stream (consuming it = the client has
+/// Reads the `PipeStream` as an axum data stream (consuming it = the client has
 /// received the whole body).
 fn data_stream(pipe: PipeStream) -> impl Stream<Item = Bytes> + Send {
     pipe.into_response()
@@ -357,7 +357,7 @@ fn raw_data_stream(pipe: PipeStream) -> impl Stream<Item = Result<Bytes, axum::E
     pipe.into_response().into_body().into_data_stream()
 }
 
-/// Read-side DispatchStage (shares the same table as the write side): production
+/// Read-side `DispatchStage` (shares the same table as the write side): production
 /// mounts one `Arc` used by both the write and read sides.
 fn reader(table: &Arc<StickyTable>) -> DispatchStage {
     DispatchStage::new(Arc::new(MockDispatch::new(vec![candidate("c1")])))
@@ -617,7 +617,7 @@ async fn unmounted_table_keeps_current_behavior() {
 // ---------- case 9: successful stream + measured cache hit ⇒ table write +
 // read-side round trip ----------
 
-/// Streaming 2xx read to the end with a measured prefix-cache hit in frames (OpenAI
+/// Streaming 2xx read to the end with a measured prefix-cache hit in frames (`OpenAI`
 /// shape) ⇒ the "read-to-end arm" settlement commit point writes the table, and the
 /// read side (same table, same-source key) finds the winning channel on the original
 /// ctx — a write/read round trip isomorphic to non-streaming case 1, with the commit
@@ -835,7 +835,7 @@ impl Dispatch for StickyAwareDispatch {
 /// drives `handle_with_retry` → `run_retry_loop`.
 ///
 /// Deliberately does not go through `DispatchStage`: the production pipeline only pushes
-/// ForwardStage, and the read side is in forward's retry loop (hard ticket constraint:
+/// `ForwardStage`, and the read side is in forward's retry loop (hard ticket constraint:
 /// assertions must hit the production entry).
 fn retry_stage(
     egress: Arc<JsonEgress>,

@@ -47,7 +47,7 @@ fn test_adapter_for_vless_invalid_uuid() {
         port: 443,
         auth: Some(BasicAuth {
             user: "invalid-uuid".to_string(),
-            pass: "".to_string(),
+            pass: String::new(),
         }),
         channel_keys: vec!["test-channel".to_string()],
         opts: None,
@@ -85,7 +85,7 @@ fn test_adapter_for_direct() {
     let node = ProxyNode {
         id: 3,
         scheme: ProxyScheme::Direct,
-        host: "".to_string(),
+        host: String::new(),
         port: 0,
         auth: None,
         channel_keys: vec!["test-channel".to_string()],

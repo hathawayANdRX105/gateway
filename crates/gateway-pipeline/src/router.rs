@@ -1,6 +1,6 @@
 //! `router` — axum integration + error response conversion
 //!
-//! Wires the Pipeline into the axum `fallback` and centralizes RequestCtx construction
+//! Wires the Pipeline into the axum `fallback` and centralizes `RequestCtx` construction
 //! and error conversion.
 
 use crate::ctx::RequestCtx;
@@ -91,12 +91,18 @@ fn unavailable_parts(
     }
 }
 
-/// Error → HTTP response (OpenAI error shape)
-pub fn error_to_response(e: StageError) -> Response {
-    use StageError::*;
+/// Error → HTTP response (`OpenAI` error shape)
+/// Classify a stage error into the response parts (status, code, message,
+/// retry-after seconds), logging which branch produced it. Rendering happens in
+/// [`error_to_response`].
+fn error_parts(e: StageError) -> (StatusCode, &'static str, String, Option<u64>) {
+    use StageError::{
+        Forbidden, Internal, NoRoute, NotReady, PayloadTooLarge, QuotaExhausted, RateLimited,
+        Unauthenticated, Unavailable, Upstream,
+    };
     // 4-tuple: (status, code, message, retry_after_secs). retry_after is carried only by
     // Unavailable (504 + Retry-After header); the remaining variants use None.
-    let (status, code, message, retry_after_secs) = match e {
+    match e {
         Unauthenticated(msg) => {
             tracing::warn!(reason = %msg, "stage error -> response: unauthenticated");
             (StatusCode::UNAUTHORIZED, "unauthenticated", msg, None)
@@ -109,7 +115,7 @@ pub fn error_to_response(e: StageError) -> Response {
             (
                 StatusCode::PAYMENT_REQUIRED,
                 "quota_exhausted",
-                format!("remaining={} required={}", remaining, required),
+                format!("remaining={remaining} required={required}"),
                 None,
             )
         }
@@ -179,7 +185,13 @@ pub fn error_to_response(e: StageError) -> Response {
                 None,
             )
         }
-    };
+    }
+}
+
+/// Error → HTTP response (`OpenAI` error shape); classification lives in
+/// [`error_parts`].
+pub fn error_to_response(e: StageError) -> Response {
+    let (status, code, message, retry_after_secs) = error_parts(e);
 
     let body = json!({
         "error": {

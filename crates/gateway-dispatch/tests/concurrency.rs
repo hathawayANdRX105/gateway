@@ -1,8 +1,8 @@
 //! Concurrency behavior — Mutex-protected shared state neither panics nor exceeds its
 //! limits under multiple threads.
 //!
-//! Covers: SlidingWindow concurrent accounting (the admitted count must be ≤ the limit —
-//! Mutex atomicity), MemoryHealthTable concurrent record/get (no panic, readable state,
+//! Covers: `SlidingWindow` concurrent accounting (the admitted count must be ≤ the limit —
+//! Mutex atomicity), `MemoryHealthTable` concurrent record/get (no panic, readable state,
 //! eventually consistent).
 
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};
@@ -199,7 +199,7 @@ fn dispatcher_concurrent_select_returns_valid_candidate() {
         handles.push(std::thread::spawn(move || {
             for _ in 0..200 {
                 let c = d.select("g", "m", &[], None).unwrap();
-                assert!(!c.secret.is_empty());
+                assert_ne!(c.secret, "");
             }
         }));
     }

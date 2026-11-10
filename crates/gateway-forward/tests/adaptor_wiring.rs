@@ -1,7 +1,7 @@
 //! forward ↔ protocol-bridge wiring tests: verify that requests and responses go
 //! through format conversion.
 //!
-//! The old version verified wiring with a SpyCodec built on a directed
+//! The old version verified wiring with a `SpyCodec` built on a directed
 //! `(source, target)` `Codec`, and even kept a dedicated regression — "using the
 //! request-direction codec to convert a response → 502 Unsupported". Under the new
 //! abstraction the direction is carried by the method name (`decode_request` /
@@ -641,7 +641,7 @@ async fn stream_guard_preview_is_bounded_and_stops_reading() {
 /// preview, and the status classification is unchanged. A pending stream has no
 /// further bytes, so only the timeout can settle it — that is the actual assertion
 /// of this contract (reusing tokio's already enabled time feature, no new
-/// dependency; total_ms is 1ms rather than a real long timeout, so the assertion
+/// dependency; `total_ms` is 1ms rather than a real long timeout, so the assertion
 /// result is independent of when it fires).
 struct HangingErrorEgress {
     status: u16,

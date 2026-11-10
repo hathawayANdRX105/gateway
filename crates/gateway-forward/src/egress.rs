@@ -52,7 +52,7 @@ pub(crate) fn body_preview(bytes: &[u8]) -> String {
 ///
 /// V1 scope: a single direct pool, redirect following disabled (upstream 3xx is
 /// treated as an error, never followed silently). SOCKS/HTTP proxying and sharding
-/// by base_url are deferred to the TODO(#522) pooling phase.
+/// by `base_url` are deferred to the TODO(#522) pooling phase.
 ///
 /// Returning `Pin<Box<dyn Future>>` instead of `impl Future` keeps the trait
 /// dyn-compatible (bin/api injects it as `Arc<dyn Egress>`).
@@ -120,23 +120,26 @@ impl ForwardedResponse {
     }
 
     /// Upstream HTTP status code.
+    #[must_use]
     pub fn status(&self) -> u16 {
         self.status
     }
 
     /// Upstream Content-Type (the stream module uses it to decide whether to attach
     /// an SSE scanner).
+    #[must_use]
     pub fn content_type(&self) -> &str {
         &self.content_type
     }
 
     /// `Retry-After` hint from an upstream 429 (ms); None when not a 429, header
     /// absent, or unparsable.
+    #[must_use]
     pub fn retry_after_ms(&self) -> Option<u64> {
         self.retry_after_ms
     }
 
-    /// Consume the body stream (ownership moves; status/content_type are no longer
+    /// Consume the body stream (ownership moves; `status/content_type` are no longer
     /// accessible afterwards).
     pub fn into_body_stream(
         self,
@@ -159,7 +162,7 @@ impl std::fmt::Debug for ForwardedResponse {
 ///
 /// Direct connection; no redirect following; the connection pool buckets by host by
 /// default (built into reqwest). ponytail: pooling/sharding is left to TODO(#522);
-/// one globally reused Client is enough for ordinary load, and base_url sharding can
+/// one globally reused Client is enough for ordinary load, and `base_url` sharding can
 /// come when hot-key degradation shows up.
 #[derive(Clone)]
 pub struct ReqwestEgress {
@@ -184,11 +187,15 @@ impl Default for ReqwestEgress {
 impl ReqwestEgress {
     /// Direct client — redirects disabled, built-in connection pool, no proxy.
     /// Connect timeout defaults to 5s.
-    // reqwest client build only fails on unrecoverable environment errors;
-    // `new` is a constructor contract (`Self`, also used by `Default`), so panic
-    // at startup is the only fail-fast option.
+    ///
+    /// # Panics
+    ///
+    /// Panics if reqwest cannot build the client (unrecoverable environment
+    /// error). `new` is a constructor contract (`Self`, also used by `Default`),
+    /// so panic at startup is the only fail-fast option.
     #[allow(unknown_lints)]
     #[allow(expect_in_non_result)]
+    #[must_use]
     pub fn new() -> Self {
         let connect_timeout = Duration::from_millis(5_000);
         let client = reqwest::Client::builder()
@@ -204,6 +211,7 @@ impl ReqwestEgress {
     }
 
     /// Custom client — for tests (injecting a mock transport) or future proxy pooling.
+    #[must_use]
     pub fn with_client(client: reqwest::Client, connect_timeout: Duration) -> Self {
         Self {
             client: Arc::new(client),
@@ -212,8 +220,9 @@ impl ReqwestEgress {
     }
 
     /// Default connect timeout (the per-call `timeouts.connect_ms` is not currently
-    /// accepted by ClientBuilder, so it is fixed at builder time). Exposed for
+    /// accepted by `ClientBuilder`, so it is fixed at builder time). Exposed for
     /// diagnostics.
+    #[must_use]
     pub fn connect_timeout(&self) -> Duration {
         self.connect_timeout
     }
@@ -221,29 +230,28 @@ impl ReqwestEgress {
 
 /// Non-2xx → `NormalizedError`.
 ///
-/// Classified by status code (aligned with gateway_dispatch::health::FailureClass):
-/// - 401/403 → invalid_api_key, not retryable, but channel-scoped → demote and
+/// Classified by status code (aligned with `gateway_dispatch::health::FailureClass)`:
+/// - 401/403 → `invalid_api_key`, not retryable, but channel-scoped → demote and
 ///   switch candidates (bad credentials ≠ a bad provider)
-/// - 404 → upstream_error, not retryable, channel-scoped (this channel lacks the
+/// - 404 → `upstream_error`, not retryable, channel-scoped (this channel lacks the
 ///   model; another channel may work)
-/// - 429 → rate_limited, retryable
-/// - 408 → upstream_error, retryable (an upstream gateway timeout is transient;
+/// - 429 → `rate_limited`, retryable
+/// - 408 → `upstream_error`, retryable (an upstream gateway timeout is transient;
 ///   switching channels or retrying may both work)
-/// - 5xx → upstream_error, retryable
-/// - other 4xx → upstream_error (fatal), neither retried nor demoted (the request
+/// - 5xx → `upstream_error`, retryable
+/// - other 4xx → `upstream_error` (fatal), neither retried nor demoted (the request
 ///   itself is bad; switching channels cannot save it)
 pub(crate) fn classify_status(
     status: u16,
-    body_preview: String,
+    body_preview: &str,
     retry_after_ms: Option<u64>,
 ) -> gateway_core::error::NormalizedError {
     use gateway_core::error::code;
     let (code, http_status, retryable) = match status {
         401 | 403 => (code::INVALID_API_KEY, status, false),
         429 => (code::RATE_LIMITED, status, true),
-        500..=599 => (code::UPSTREAM_ERROR, status, true),
-        // 408 falls inside 400..=499, so it must precede the catch-all arm to match.
-        408 => (code::UPSTREAM_ERROR, status, true),
+        // 408 sits inside 400..=499, so it must precede the catch-all arm to match.
+        500..=599 | 408 => (code::UPSTREAM_ERROR, status, true),
         400..=499 => (code::UPSTREAM_ERROR, status, false),
         _ => (code::UPSTREAM_ERROR, 502, false),
     };
@@ -284,6 +292,7 @@ pub(crate) fn classify_status(
 /// `Some(ms)` is the waitable duration; `None` means absent / negative /
 /// unparsable — callers treat it as "no hint" (the local rung of the separate 429
 /// ladder).
+#[must_use]
 pub fn parse_retry_after_ms(raw: Option<&str>, now_ms: i64) -> Option<u64> {
     let raw = raw?.trim();
     if raw.is_empty() {
@@ -396,7 +405,7 @@ pub(crate) async fn finish_forwarded_response(
 ) -> Result<ForwardedResponse, NormalizedError> {
     if !(200..=299).contains(&status) {
         let preview = read_error_body(body).await;
-        return Err(classify_status(status, preview, retry_after_ms));
+        return Err(classify_status(status, &preview, retry_after_ms));
     }
     let body = first_byte_body(body, first_byte_timeout).await?;
     Ok(ForwardedResponse::from_stream(
@@ -410,7 +419,7 @@ pub(crate) async fn finish_forwarded_response(
 /// Send the POST until response headers are complete (the total timeout bounds the
 /// whole send).
 ///
-/// The connect timeout is fixed at ClientBuilder time in `ReqwestEgress::new`;
+/// The connect timeout is fixed at `ClientBuilder` time in `ReqwestEgress::new`;
 /// reqwest 0.12 has no per-request connect timeout, so `timeouts.connect_ms` is not
 /// read here (that field is consumed by assembly and diagnostics). Transport
 /// failures are classified retryable by connect/timeout/request, and timeouts map to

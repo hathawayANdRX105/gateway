@@ -9,19 +9,19 @@
 //! | Module | Responsibility |
 //! |------|------|
 //! | [`pipeline`] | full forwarding pipeline for one attempt (build request → send → stream back) |
-//! | [`stage`]    | ForwardStage: single/retry orchestration (hooks in stage_* modules) |
+//! | [`stage`]    | `ForwardStage`: single/retry orchestration (hooks in stage_* modules) |
 //! | [`adapter`]  | upstream request prep: URL/headers/auth (3 of new-api adaptor's five methods) |
-//! | [`adapter_egress`] | protocol egress: StreamDialer + AdapterDialer (meow) + TLS/proxy dial |
+//! | [`adapter_egress`] | protocol egress: `StreamDialer` + `AdapterDialer` (meow) + TLS/proxy dial |
 //! | [`egress`]   | egress client pool: proxy/timeout/HTTP2 shards |
-//! | [`stream`]   | SSE pipe: frames → SseScanner → StreamScanner → client; body_wants_stream |
+//! | [`stream`]   | SSE pipe: frames → `SseScanner` → `StreamScanner` → client; `body_wants_stream` |
 //! | [`stream_resilience`] | P2 resilience: buffer window/heartbeat/disconnect classification |
 //!
 //! ## Design points (investigation conclusions)
 //!
 //! 1. **Passthrough first**: same protocol = zero-conversion byte passthrough; only
-//!    cross-protocol goes through gateway_protocol_bridge::FormatRegistry;
+//!    cross-protocol goes through `gateway_protocol_bridge::FormatRegistry`;
 //! 2. **Streaming first**: Bytes chunk pipeline, never buffer the whole response;
-//! 3. **Retry boundary**: this layer only reports FailureClass to gateway_dispatch::retry
+//! 3. **Retry boundary**: this layer only reports `FailureClass` to `gateway_dispatch::retry`
 //!    and never swaps candidates itself;
 //! 4. **Replayable**: request body cached (Bytes pool), so retries avoid re-reading the
 //!    original body.
@@ -80,8 +80,8 @@ pub struct ForwardTask {
     pub stream: bool,
     /// Channel protocol family ("openai" / "claude" / "gemini" / "passthrough") — the
     /// adapter picks the path template and auth header by it. The candidate carries the
-    /// channel's provider_type, resolved once at routing time.
-    /// ponytail: provider_type travels with the candidate, so forward never re-queries the
+    /// channel's `provider_type`, resolved once at routing time.
+    /// ponytail: `provider_type` travels with the candidate, so forward never re-queries the
     /// catalog snapshot.
     pub provider_type: String,
     /// Channel `settings.headers` override headers (the parsed `Vec` form of
@@ -94,8 +94,8 @@ pub struct ForwardTask {
     /// decodes by it and the response direction encodes by it, so Claude/Gemini/Responses
     /// clients get responses in their own format.
     ///
-    /// Older versions lacked this field: the request direction was hard-coded OpenAI, the
-    /// response always converted to OpenAI, and the streaming path did no conversion at all
+    /// Older versions lacked this field: the request direction was hard-coded `OpenAI`, the
+    /// response always converted to `OpenAI`, and the streaming path did no conversion at all
     /// (G2). The host injects it from `RequestCtx.request.inbound_protocol`.
     pub inbound_format: gateway_pipeline::ProtocolKind,
 }

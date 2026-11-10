@@ -71,7 +71,7 @@ impl Shape {
     /// after the group gate and before rate limiting, exactly where the
     /// historical chain had it; `None` = not installed.
     pub(crate) fn gate_chain(
-        &self,
+        self,
         tokens: &SharedTokenSnapshot,
         users: &SharedUserSnapshot,
         groups: &SharedGroupSnapshot,
@@ -81,7 +81,7 @@ impl Shape {
         // Open: parse the model and nothing else. Every other stock gate reads a
         // token (allowlist / rate scope / gray-list key), so a token-less chain
         // cannot contain them; the caller's front door owns that policy.
-        if *self == Shape::Open {
+        if self == Shape::Open {
             return GateChain::new().push(ModelParseGate);
         }
         let chain = GateChain::new()

@@ -330,7 +330,7 @@ impl<'de> Deserialize<'de> for StopReason {
 /// Each codec converts to and from its vendor's shape: Claude reports cache
 /// tokens *outside* `input_tokens` and Gemini reports thinking *outside*
 /// `candidatesTokenCount`, so both are added on decode and subtracted on encode;
-/// OpenAI Chat / Responses already match the convention.
+/// `OpenAI` Chat / Responses already match the convention.
 ///
 /// Without this normalization a cross-protocol hop misreported the numbers (a
 /// Claude→OpenAI response showed `cached_tokens` exceeding `prompt_tokens`, and
@@ -340,18 +340,18 @@ pub struct Usage {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
     /// Cache-read tokens — a **subset of `prompt_tokens`** (Claude
-    /// `cache_read_input_tokens`, OpenAI `prompt_tokens_details.cached_tokens`,
+    /// `cache_read_input_tokens`, `OpenAI` `prompt_tokens_details.cached_tokens`,
     /// Gemini `cachedContentTokenCount`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cached_tokens: Option<u64>,
     /// Cache-write tokens — also a **subset of `prompt_tokens`** (Claude
-    /// `cache_creation_input_tokens`, OpenAI
+    /// `cache_creation_input_tokens`, `OpenAI`
     /// `prompt_tokens_details.cache_write_tokens`). Vendors bill cache writes
     /// separately from ordinary input, so losing this quantity under-reports usage.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cache_creation_tokens: Option<u64>,
     /// Reasoning/thinking tokens already included in `completion_tokens`
-    /// (OpenAI `completion_tokens_details.reasoning_tokens`, Gemini
+    /// (`OpenAI` `completion_tokens_details.reasoning_tokens`, Gemini
     /// `thoughtsTokenCount`). Claude reports thinking inside `output_tokens`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_tokens: Option<u64>,
@@ -450,7 +450,7 @@ pub(crate) fn wire_value(value: &impl serde::Serialize) -> Value {
 
 /// System-prompt slot (a string or a `{"text": ...}` part array) → IR text blocks.
 ///
-/// An empty string produces no block (existing OpenAI / Responses semantics); Claude's `system`
+/// An empty string produces no block (existing `OpenAI` / Responses semantics); Claude's `system`
 /// allows an empty string as a block of its own, so that path does not use this helper.
 pub(crate) fn decode_text_blocks(content: Option<&Value>) -> Vec<TextBlock> {
     match content {

@@ -36,6 +36,7 @@ publish = false
 
 [workspace.lints.clippy]
 # A two-way choice is a plain if/else; chained combinators that disguise it are denied.
+pedantic = "deny"
 obfuscated_if_else = "deny"
 manual_map = "deny"
 manual_filter = "deny"

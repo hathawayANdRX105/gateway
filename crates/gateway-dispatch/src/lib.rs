@@ -43,13 +43,23 @@ use std::sync::Arc;
 /// expression in several places. `sticky::StickyTable` has its own convention (negative →
 /// `u64::MAX`) and does not share this function.
 pub(crate) fn utc_now_ms() -> u64 {
-    chrono::Utc::now().timestamp_millis().max(0) as u64
+    // timestamp_millis() can be negative pre-1970; clamp to 0, then reinterpret as u64 — the
+    // value is provably non-negative here, so the conversion is exact.
+    chrono::Utc::now().timestamp_millis().max(0).unsigned_abs()
 }
 
 pub trait Dispatch: Send + Sync {
     /// `sticky_channel_key`: the sticky channel key for this request (`None` = not sticky).
     /// When it hits and is inside the candidate pool, only its **prior** is raised (P2C boost);
     /// it does not bypass `exclude` / cooldown vetoes.
+    ///
+    /// # Errors
+    ///
+    /// [`DispatchError::SnapshotNotReady`] — the catalog snapshot has not loaded yet;
+    /// [`DispatchError::ModelUnknown`] — no enabled route unit (nor fallback) for the model
+    /// (terminal 404); [`DispatchError::AllUnavailable`] — every candidate is cooling,
+    /// disabled or already tried; [`DispatchError::RateLimited`] — every candidate is
+    /// rate limited.
     fn select(
         &self,
         group: &str,
@@ -76,7 +86,7 @@ pub trait Dispatch: Send + Sync {
 
     /// Look up a channel display name (snapshot channels map, key = channel UUID).
     ///
-    /// After DispatchStage picks a route it uses this to fill in the channel attribution name
+    /// After `DispatchStage` picks a route it uses this to fill in the channel attribution name
     /// on ctx; returns None when the snapshot is not ready or the channel has been removed
     /// (callers degrade to carrying the key only).
     /// Default None: `Candidate`/`SelectedRoute` do not carry a channel name (see ctx.rs);
@@ -91,7 +101,7 @@ pub trait Dispatch: Send + Sync {
 pub enum DispatchError {
     /// The snapshot has no enabled route unit for this model (and no fallback) — missing
     /// configuration, terminal 404. The client should not retry (the model really is not
-    /// configured); semantics stay NOT_FOUND.
+    /// configured); semantics stay `NOT_FOUND`.
     #[error("model not configured for {group}/{model}")]
     ModelUnknown { group: String, model: String },
     /// The model has route units, but they are all cooling / disabled / already tried by this
@@ -120,6 +130,7 @@ pub enum DispatchError {
     },
 }
 
+#[must_use]
 pub fn candidates_from_snapshot<'a>(
     units: &'a [RouteUnitRecord],
     group: &str,
@@ -137,7 +148,7 @@ pub fn candidates_from_snapshot<'a>(
 ///
 /// The model name passes through unchanged (no rename) — the semantics of a fallback channel
 /// is "accept everything and dispatch it yourself".
-/// key_index is fixed at 0: which key a multi-key fallback channel uses is out of scope here
+/// `key_index` is fixed at 0: which key a multi-key fallback channel uses is out of scope here
 /// (TODO(#158)); no settings-driven key selection exists yet.
 /// Channels not marked fallback do not participate, preserving the old behaviour.
 fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<RouteUnitRecord> {
@@ -147,7 +158,10 @@ fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<Route
             c.status == STATUS_ENABLED
                 && !c.keys.is_empty()
                 && c.groups.iter().any(|g| g == group)
-                && c.settings.get("fallback").and_then(|v| v.as_bool()) == Some(true)
+                && c.settings
+                    .get("fallback")
+                    .and_then(serde_json::Value::as_bool)
+                    == Some(true)
         })
         .map(|c| RouteUnitRecord {
             meta: gateway_core::records::SyncMeta {
@@ -218,7 +232,6 @@ impl Dispatcher {
         Self::with_limits_and_clock(snapshot, health, concurrency, limits, rl, utc_now_ms)
     }
 
-    /// Construct a dispatcher with the specified clock, for deterministic tests to inject time.
     pub fn with_limits_and_clock(
         snapshot: Option<Arc<Snapshot>>,
         health: Arc<MemoryHealthTable>,
@@ -228,7 +241,7 @@ impl Dispatcher {
         now_ms: impl Fn() -> u64 + Send + Sync + 'static,
     ) -> Self {
         let dispatcher = Self {
-            snapshot: ArcSwap::new(Arc::new(snapshot.clone())),
+            snapshot: ArcSwap::new(Arc::new(snapshot)),
             health,
             selector: P2CSelector::new(concurrency.clone(), 2, DEFAULT_EXPLORE_RATE),
             concurrency,
@@ -237,8 +250,8 @@ impl Dispatcher {
             rl,
             token: None,
         };
-        if let Some(snapshot) = snapshot.as_deref() {
-            register_channel_limits(&dispatcher.concurrency, snapshot);
+        if let Some(snap) = dispatcher.snapshot.load().as_deref() {
+            register_channel_limits(&dispatcher.concurrency, snap);
         }
         dispatcher
     }
@@ -247,6 +260,7 @@ impl Dispatcher {
     /// [`TokenBudgetState`] into the P2C selector's decision layer and, when a snapshot already
     /// exists, register the token caps from it immediately. A `Dispatcher` that never calls this
     /// stays token-neutral (regression guard: behaviour byte-for-byte identical to not mounting).
+    #[must_use]
     pub fn with_token_budget(mut self, token: Arc<TokenBudgetState>) -> Self {
         let loaded = self.snapshot.load();
         if let Some(snap) = loaded.as_ref() {
@@ -263,6 +277,7 @@ impl Dispatcher {
     /// `MemoryHealthTable` (`with_digest`, mounted during app assembly); this `Dispatcher` adds
     /// no field — it only passes the table through to the selector. When not called,
     /// `latency_factor` follows the existing EWMA path byte-for-byte (regression invariant).
+    #[must_use]
     pub fn with_latency_digest(mut self, t: Arc<LatencyDigestTable>) -> Self {
         self.selector = self.selector.with_latency_digest(t);
         self
@@ -281,6 +296,7 @@ impl Dispatcher {
     /// posterior likelihood and the cooldown/exclude/rate-limit/concurrency vetoes are untouched
     /// (stickiness never hard-pins a channel, design §4 invariant 1). Without this builder the
     /// selector keeps [`DEFAULT_STICKY_BOOST`].
+    #[must_use]
     pub fn with_sticky_boost(mut self, boost: f64) -> Self {
         self.selector = self.selector.with_sticky_boost(boost);
         self
@@ -307,7 +323,7 @@ impl Dispatcher {
     ///
     /// Semantics: `None` before any snapshot has ever been loaded at boot (the
     /// [`DispatchError::SnapshotNotReady`] case); after loading, the old handle stays valid even
-    /// if a reload overwrites it (ArcSwap atomic replacement). Aimed at the admin query surface
+    /// if a reload overwrites it (`ArcSwap` atomic replacement). Aimed at the admin query surface
     /// (e.g. the channel-attribution join of `/api/gateway/health`), not used for hot-path
     /// selection (the hot path goes through [`Dispatch::select`]).
     pub fn snapshot(&self) -> Option<Arc<Snapshot>> {
@@ -315,7 +331,7 @@ impl Dispatcher {
     }
 
     /// Route units exist but none is available right now (cooling/disabled/excluded) — not
-    /// ModelUnknown. `retry_after_ms` = the shortest cooldown recovery among the model's enabled
+    /// `ModelUnknown`. `retry_after_ms` = the shortest cooldown recovery among the model's enabled
     /// channels (0 = no natural recovery, waiting is useless → the caller decides whether to
     /// wait or fail fast). Logs a warn as the "why zero available" diagnostic surface.
     fn all_unavailable(

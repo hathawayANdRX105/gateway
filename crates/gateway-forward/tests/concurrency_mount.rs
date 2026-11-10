@@ -1,10 +1,10 @@
-//! ForwardStage concurrency-gate mounting (v2) integration tests — the global Semaphore
+//! `ForwardStage` concurrency-gate mounting (v2) integration tests — the global Semaphore
 //! takes effect inside the forward path.
 //!
 //! Contracts verified (concurrency-gate mounting v2):
 //! 1. `with_concurrency(2)` + 3 concurrent requests (single-shot mode): the mock egress
 //!    delays to hold the slots and create a race window, so the third request is rejected
-//!    at try_acquire before `forward_task` → the client sees `rate_limited` (429
+//!    at `try_acquire` before `forward_task` → the client sees `rate_limited` (429
 //!    semantics) and the request **never touches egress**;
 //! 2. `with_concurrency(2)` + retry mode (production assembly shape): the rejected
 //!    request stays rejected through the retry loop → once the budget is exhausted the
@@ -67,7 +67,7 @@ fn candidate(key: &str) -> Candidate {
 /// global semaphore, so "retry another candidate" hits the same lock and exclude
 /// semantics are irrelevant here; always returning it guarantees the retry budget is
 /// truly exhausted (respecting exclude would exclude the only candidate after the first
-/// failure, making select return AllUnavailable at once and ending the loop before the
+/// failure, making select return `AllUnavailable` at once and ending the loop before the
 /// budget is spent).
 struct SingleDispatch {
     candidate: Candidate,
@@ -141,7 +141,7 @@ impl Egress for DelayedEgress {
     }
 }
 
-/// Non-streaming request ctx (same shape as retry_wiring.rs: route pre-set to the
+/// Non-streaming request ctx (same shape as `retry_wiring.rs`: route pre-set to the
 /// candidate, token attribution complete).
 fn ctx_with_route(route: Candidate) -> gateway_pipeline::RequestCtx {
     let meta = RequestMeta {
@@ -176,7 +176,7 @@ fn ctx_with_route(route: Candidate) -> gateway_pipeline::RequestCtx {
     }
 }
 
-/// Fire 3 concurrent requests (tokio::spawn + a shared Arc<ForwardStage>) and collect
+/// Fire 3 concurrent requests (`tokio::spawn` + a shared Arc<ForwardStage>) and collect
 /// `(stage result, upstream status code written to ctx)`.
 async fn run_three(
     stage: Arc<ForwardStage>,
@@ -200,7 +200,7 @@ async fn run_three(
         .collect()
 }
 
-/// Assert "exactly n_ok successes, every other request rejected with 429 semantics".
+/// Assert "exactly `n_ok` successes, every other request rejected with 429 semantics".
 fn assert_split(
     results: &[(Result<StageOutcome, StageError>, Option<u16>)],
     n_ok: usize,

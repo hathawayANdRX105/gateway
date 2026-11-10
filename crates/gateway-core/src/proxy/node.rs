@@ -42,7 +42,7 @@ pub struct BasicAuth {
 ///
 /// Query keys follow common share-link conventions:
 /// - `flow=xtls-rprx-vision` — XTLS-Vision inner stream mode (VLESS)
-/// - `sni=<domain>` — SNI for TLS / REALITY / Hysteria2 / AnyTLS
+/// - `sni=<domain>` — SNI for TLS / REALITY / Hysteria2 / `AnyTLS`
 /// - `pbk=` — REALITY server X25519 public key (64 hex or 43 base64url; presence marks a
 ///   REALITY node)
 /// - `sid=<0-16hex>` — REALITY short id (all zeros by default)
@@ -100,16 +100,22 @@ impl ProxyNode {
     ///
     /// - scheme mapping: http/https -> Http, socks5/socks5h -> Socks5, vless:// -> Vless,
     ///   vmess:// -> Vmess, ss:// -> Shadowsocks, trojan:// -> Trojan, hysteria2:// -> Hysteria2,
-    ///   anytls:// -> AnyTls, snell:// -> Snell
+    ///   anytls:// -> `AnyTls`, snell:// -> Snell
     /// - host is required; a missing host is an error
     /// - port: vless/vmess/trojan/hysteria2/anytls/snell default to 443, socks5 to 1080, http to
     ///   8080; ss has no standard default (an explicit port is required; missing port is an error)
     /// - auth: `username()`/`password()` fill `auth` when non-empty; with only a user, pass is the
     ///   empty string
-    /// - the returned id=0, channel_keys=[], priority=0 are filled in later by the caller
+    /// - the returned id=0, `channel_keys`=[], priority=0 are filled in later by the caller
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseError::Invalid`] when the URL does not parse, has no host,
+    /// or carries an unusable port; returns the scheme-specific error when the
+    /// scheme is unknown or a required field is missing.
     pub fn parse_url(url: &str) -> Result<Self, ParseError> {
         let url_obj =
-            Url::parse(url).map_err(|e| ParseError::Invalid(format!("url parse failed: {}", e)))?;
+            Url::parse(url).map_err(|e| ParseError::Invalid(format!("url parse failed: {e}")))?;
         let scheme = scheme_from_str(url_obj.scheme())?;
         let host = url_obj
             .host_str()
@@ -167,7 +173,7 @@ fn port_for(url: &Url, scheme: ProxyScheme) -> Result<u16, ParseError> {
     }
 }
 
-/// Parse query parameters: VLESS / VMess (ws transport) / Hysteria2 / AnyTLS / Snell share
+/// Parse query parameters: VLESS / `VMess` (ws transport) / Hysteria2 / `AnyTLS` / Snell share
 /// [`NodeOpts`]; all other protocols always get `None`.
 fn opts_from_query(url: &Url, scheme: ProxyScheme) -> Option<NodeOpts> {
     let needs_opts = matches!(

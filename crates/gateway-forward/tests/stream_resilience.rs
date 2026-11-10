@@ -47,7 +47,7 @@ fn window_chunks_only_buffer() {
 }
 
 /// EOF inside the window: split on the criterion — with one, drain as Emit (buf is taken);
-/// without one, WindowEofRetryable.
+/// without one, `WindowEofRetryable`.
 #[test]
 fn window_eof_splits_on_completion_evidence() {
     let mut c = ctx();

@@ -13,8 +13,8 @@
 //! scheme → auth field semantics (consistent with the `ss://` parsing convention, see PR
 //! #81):
 //! - Shadowsocks: `auth.user` = cipher method name, `auth.pass` = password
-//! - VLESS / VMess: `auth.user` = UUID; for VMess, `auth.pass` = security (the cipher)
-//! - Trojan / Hysteria2 / AnyTLS / Snell: the password lives in `auth.user`
+//! - VLESS / `VMess`: `auth.user` = UUID; for `VMess`, `auth.pass` = security (the cipher)
+//! - Trojan / Hysteria2 / `AnyTLS` / Snell: the password lives in `auth.user`
 //!   (`trojan://pass@host`)
 
 use std::collections::HashMap;
@@ -30,8 +30,9 @@ use gateway_core::proxy::node::{BasicAuth, NodeOpts, ProxyNode, ProxyScheme};
 ///
 /// `Metadata` implements `Default`, but the egress path sets every field explicitly: the
 /// destination (`host` / `dst_port`) is required, while the remaining fields are
-/// ingress-side source statistics (src_geo_ip / process / in_user, etc.) and stay empty for
+/// ingress-side source statistics (`src_geo_ip` / process / `in_user`, etc.) and stay empty for
 /// the egress direction.
+#[must_use]
 pub fn tcp_metadata(host: &str, port: u16) -> Metadata {
     Metadata {
         network: Network::Tcp,

@@ -1,7 +1,7 @@
 //! Assembly integration test for gate + dispatch + forward + protocol egress.
 //!
-//! Verifies that the shortest pipeline chain — GateChain (empty) → DispatchStage →
-//! ForwardStage → ProtocolBridgeStage, wired into a Pipeline — lets one request run
+//! Verifies that the shortest pipeline chain — `GateChain` (empty) → `DispatchStage` →
+//! `ForwardStage` → `ProtocolBridgeStage`, wired into a Pipeline — lets one request run
 //! through to completion and produce a response.
 //!
 //! A mock egress returns a fake upstream response; no real network request is made

@@ -64,3 +64,4 @@ todo/
 # Python bytecode from scripts/*.py run via import (scripts/cratebook.py)
 __pycache__/
 *.pyc
+.perch/

@@ -2,7 +2,7 @@
 //! calls the symmetric methods), and sticky-binding writes at the settlement commit point
 //! (`bind_sticky`). The table structure plus the write/lookup primitives live in the
 //! `gateway_dispatch::sticky` data plane; this side only constructs keys and decides writes
-//! at the ForwardStage settlement point.
+//! at the `ForwardStage` settlement point.
 
 use bytes::Bytes;
 use gateway_dispatch::sticky::{SESSION_HEADER, StickyKey, StickyTable};
@@ -67,6 +67,6 @@ pub(crate) fn bind_sticky(
     };
     if counts.cached == 0 {
         return;
-    };
+    }
     bind.table.bind(bind.key.clone(), &bind.channel_key);
 }

@@ -6,7 +6,7 @@
 //!
 //! ## Stateless decode / stateful encode
 //!
-//! Per-event decode (e.g. Claude SSE `input_json_delta` → OpenAI `tool_calls[].arguments`) is a
+//! Per-event decode (e.g. Claude SSE `input_json_delta` → `OpenAI` `tool_calls[].arguments`) is a
 //! 1:1 mapping and needs no cross-event state; the **encode side** is what truly needs per-stream
 //! state — Claude/Responses output must add `content_block_start` / `output_item.added` boundary
 //! frames per block index and accumulate IR `ToolCallDelta` fragments into complete JSON. Hence
@@ -43,19 +43,39 @@ pub trait FormatCodec: Send + Sync {
     fn format(&self) -> Protocol;
 
     /// This format's request body → IR.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while parsing `body`.
     fn decode_request(&self, body: Bytes) -> Result<LlmRequest, AdaptorError>;
     /// IR → this format's request body.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while rendering `req`.
     fn encode_request(&self, req: &LlmRequest) -> Result<Bytes, AdaptorError>;
 
     /// This format's non-streaming response body → IR.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while parsing `body`.
     fn decode_response(&self, body: Bytes) -> Result<LlmResponse, AdaptorError>;
     /// IR → this format's non-streaming response body.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while rendering `resp`.
     fn encode_response(&self, resp: &LlmResponse) -> Result<Bytes, AdaptorError>;
 
     /// One complete SSE frame's data payload → IR events (stateless: per-event 1:1 mapping).
     ///
     /// The input is a **single-frame** payload: the caller owns cross-chunk line reassembly (see
     /// the module docs).
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while parsing `data`.
     fn decode_event(&self, data: &str) -> Result<Vec<StreamEvent>, AdaptorError>;
 
     /// Create a stream encoder for this format (stateful: block boundary frames, tool-fragment
@@ -75,15 +95,24 @@ pub trait FormatCodec: Send + Sync {
 pub trait StreamEncoder: Send {
     /// One IR event → zero or more SSE frame byte buffers in this format (zero when the state
     /// machine buffers).
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while rendering `ev`.
     fn encode_event(&mut self, ev: &StreamEvent) -> Result<Vec<Bytes>, AdaptorError>;
+
     /// Stream end: flush buffered closing frames.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the codec-specific `AdaptorError` raised while flushing closing frames.
     fn finish(&mut self) -> Result<Vec<Bytes>, AdaptorError>;
 
-    /// The upstream already sent an explicit terminal signal (OpenAI's `[DONE]` / Claude's
+    /// The upstream already sent an explicit terminal signal (`OpenAI`'s `[DONE]` / Claude's
     /// `message_stop`).
     ///
     /// Called when the caller sees the raw terminal frame; `finish()` must not add another
-    /// afterwards, or the client receives two stream terminations (OpenAI clients have undefined
+    /// afterwards, or the client receives two stream terminations (`OpenAI` clients have undefined
     /// behavior for a duplicated `[DONE]`; in practice extra frames pollute byte-faithful
     /// assertions). Default is a no-op: formats that do not understand the terminal frame should
     /// not add one anyway.
@@ -100,6 +129,7 @@ pub struct FormatRegistry {
 
 impl FormatRegistry {
     /// Empty registry.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             codecs: HashMap::new(),
@@ -110,6 +140,7 @@ impl FormatRegistry {
     ///
     /// This is the entry point used by production wiring: any two formats can be converted through
     /// the two hops without a per-pair, per-direction converter.
+    #[must_use]
     pub fn with_defaults() -> Self {
         let mut r = Self::new();
         r.register(Arc::new(crate::openai::OpenAiCodec::new()));
@@ -126,6 +157,7 @@ impl FormatRegistry {
     }
 
     /// Look up a format's codec; `None` = that format is not registered.
+    #[must_use]
     pub fn resolve(&self, fmt: Protocol) -> Option<Arc<dyn FormatCodec>> {
         self.codecs.get(&fmt).cloned()
     }
@@ -133,13 +165,18 @@ impl FormatRegistry {
     /// Two hops: src-format request body → IR → dst-format request body. When `src == dst` or
     /// either side is [`Protocol::Passthrough`], **pass through with zero conversion** (bytes are
     /// returned untouched, not parsed).
+    ///
+    /// # Errors
+    ///
+    /// Reports `AdaptorError::NotRegistered` when no codec is registered for `src` or `dst`;
+    /// otherwise propagates the codecs' decode/encode errors.
     pub fn translate_request(
         &self,
         src: Protocol,
         dst: Protocol,
         body: Bytes,
     ) -> Result<Bytes, AdaptorError> {
-        if self.is_passthrough(src, dst) {
+        if Self::is_passthrough(src, dst) {
             return Ok(body);
         }
         let (src_codec, dst_codec) = self.resolve_pair(src, dst)?;
@@ -149,13 +186,18 @@ impl FormatRegistry {
 
     /// Two hops: src-format response body → IR → dst-format response body. Pass-through rules
     /// match [`Self::translate_request`].
+    ///
+    /// # Errors
+    ///
+    /// Reports `AdaptorError::NotRegistered` when no codec is registered for `src` or `dst`;
+    /// otherwise propagates the codecs' decode/encode errors.
     pub fn translate_response(
         &self,
         src: Protocol,
         dst: Protocol,
         body: Bytes,
     ) -> Result<Bytes, AdaptorError> {
-        if self.is_passthrough(src, dst) {
+        if Self::is_passthrough(src, dst) {
             return Ok(body);
         }
         let (src_codec, dst_codec) = self.resolve_pair(src, dst)?;
@@ -176,7 +218,7 @@ impl FormatRegistry {
 
     /// Zero-conversion pass-through condition: same format, or either side explicitly declares
     /// passthrough.
-    fn is_passthrough(&self, src: Protocol, dst: Protocol) -> bool {
+    fn is_passthrough(src: Protocol, dst: Protocol) -> bool {
         src == dst || src == Protocol::Passthrough || dst == Protocol::Passthrough
     }
 }

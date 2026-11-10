@@ -23,7 +23,7 @@ pub struct SseContext {
     pub upstream_model: String,
     /// Request group name (passed to `PriceTable::lookup`), empty string by default.
     pub group: String,
-    /// Group rate multiplier (GroupRecord.rate_multiplier); the library default is 1.0 and
+    /// Group rate multiplier (`GroupRecord.rate_multiplier`); the library default is 1.0 and
     /// the real value is injected by the apps layer.
     pub group_ratio: f64,
     /// Pricing table reference (optional; None = no billing).
@@ -31,6 +31,7 @@ pub struct SseContext {
 }
 
 impl SseContext {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             scanner: gateway_protocol_bridge::sse::SseScanner::default(),
@@ -62,7 +63,7 @@ pub fn pipe_chunk(ctx: &mut SseContext, chunk: &Bytes) -> PipedChunk {
     }
 }
 
-/// Terminates the scanners and returns SseEnd + TokenCounts; when `price_table` is `Some`
+/// Terminates the scanners and returns `SseEnd` + `TokenCounts`; when `price_table` is `Some`
 /// this **actually** settles and returns the product to the caller (`None` = no billing,
 /// matching the behavior before billing existed).
 ///
@@ -70,6 +71,7 @@ pub fn pipe_chunk(ctx: &mut SseContext, chunk: &Bytes) -> PipedChunk {
 /// when the stream finishes normally; on a mid-stream failure (upstream disconnect) pass
 /// `500, Some(summary)` and settle with the counts accumulated so far, so the bill for
 /// tokens already produced is not leaked.
+#[must_use]
 pub fn finish(
     ctx: SseContext,
     status_code: u16,
@@ -125,6 +127,7 @@ pub struct AbortGuard {
 }
 
 impl AbortGuard {
+    #[must_use]
     pub fn new() -> (Self, oneshot::Receiver<()>) {
         let (tx, rx) = oneshot::channel();
         let guard = Self {
@@ -193,7 +196,7 @@ where
 /// Whether the request body asks for a streaming response — reads the top-level `stream`
 /// boolean field.
 ///
-/// OpenAI / Claude / Gemini (OpenAI-compatible layer) all express streaming intent with this
+/// `OpenAI` / Claude / Gemini (OpenAI-compatible layer) all express streaming intent with this
 /// field. Non-JSON or a missing field → false (treated as non-streaming: collect the whole
 /// body, then reply).
 ///
@@ -205,7 +208,5 @@ pub(crate) fn body_wants_stream(body: &Bytes) -> bool {
         #[serde(default)]
         stream: bool,
     }
-    serde_json::from_slice::<StreamFlag>(body)
-        .map(|f| f.stream)
-        .unwrap_or(false)
+    serde_json::from_slice::<StreamFlag>(body).is_ok_and(|f| f.stream)
 }

@@ -1,4 +1,4 @@
-//! Behaviour tests for the pipeline orchestration core: StageOutcome three-state flow,
+//! Behaviour tests for the pipeline orchestration core: `StageOutcome` three-state flow,
 //! error short-circuiting, router integration.
 
 use axum::body::Body;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 // ---------- Test helpers ----------
 
-/// Build a minimal RequestMeta (empty body)
+/// Build a minimal `RequestMeta` (empty body)
 fn meta(path: &str) -> RequestMeta {
     RequestMeta {
         method: "POST".to_string(),
@@ -148,7 +148,7 @@ fn pipeline_stream_terminates_immediately() {
 
 // ---------- Channel attribution packaging ----------
 
-/// Mimics DispatchStage's write contract: set route + selected_channel_*, then return
+/// Mimics `DispatchStage`'s write contract: set route + `selected_channel`_*, then return
 /// Stream.
 struct AttributionStreamStage;
 
@@ -189,7 +189,7 @@ impl Stage for AttributionStreamStage {
 }
 
 /// The streaming exit must carry channel attribution back too: ctx is consumed inside run
-/// (once the body is handed to SsePipe the handler cannot get ctx back), so packaging can
+/// (once the body is handed to `SsePipe` the handler cannot get ctx back), so packaging can
 /// only happen before run returns. The usage middleware reads the persisted fields from
 /// extensions accordingly — losing attribution on streaming requests would drop half of the
 /// per-channel usage statistics.
@@ -236,7 +236,7 @@ fn short_circuit_without_route_has_no_attribution() {
 
 /// A streaming response must carry `content-type`.
 ///
-/// SSE clients (OpenAI / Anthropic SDK) use `text/event-stream` to decide to read the
+/// SSE clients (`OpenAI` / Anthropic SDK) use `text/event-stream` to decide to read the
 /// response as an event stream; without it, clients take the body in one go and streaming
 /// degrades into blocking waits. Regression: `PipeStream::into_response` once wrapped the
 /// body with `Response::new` directly and dropped the header.
@@ -326,7 +326,7 @@ fn from_axum_extracts_meta_and_protocol() {
 }
 
 /// Covers inbound protocol classification through `from_axum`: the four dialect
-/// families, the OpenAI fallback, and the tightened segment rule — a path merely
+/// families, the `OpenAI` fallback, and the tightened segment rule — a path merely
 /// containing "gemini" outside the Gemini dialect is no longer misclassified.
 #[test]
 fn from_axum_classifies_inbound_protocol() {

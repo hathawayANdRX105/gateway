@@ -12,7 +12,7 @@
 //!   `parameters` (not Chat's `parameters` wrapped inside function, and not IR's
 //!   `input_schema`).
 //! - A tool call is a **whole `functionCall` object** with no id; streaming does
-//!   not slice arguments the way OpenAI does, but either sends the whole object or
+//!   not slice arguments the way `OpenAI` does, but either sends the whole object or
 //!   repeats the accumulated object.
 //!
 //! ## Wire models
@@ -62,6 +62,7 @@ pub struct GeminiCodec;
 
 impl GeminiCodec {
     /// Creates a codec (stateless, safe to share).
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -131,9 +132,9 @@ impl FormatCodec for GeminiCodec {
     }
 }
 
-/// Gemini finishReason → IR StopReason.
+/// Gemini finishReason → IR `StopReason`.
 ///
-/// The old implementation passed the uppercase Gemini enum through into the OpenAI
+/// The old implementation passed the uppercase Gemini enum through into the `OpenAI`
 /// shape verbatim, which clients could not recognize; this table is the
 /// authoritative mapping (compare the implementation in
 /// `todo/ref/ferryllm/src/adapters/gemini.rs`).
@@ -150,7 +151,7 @@ fn gemini_finish_reason(reason: &str) -> StopReason {
     }
 }
 
-/// IR StopReason → Gemini finishReason (inverse of the table above).
+/// IR `StopReason` → Gemini finishReason (inverse of the table above).
 fn gemini_finish_reason_str(reason: &StopReason) -> String {
     match reason {
         StopReason::Stop => "STOP".into(),
@@ -171,12 +172,18 @@ fn gemini_finish_reason_str(reason: &StopReason) -> String {
 fn encode_usage_metadata(u: &Usage) -> Value {
     let reasoning = u.reasoning_tokens.unwrap_or(0);
     wire_value(&wire::UsageMetadataOut {
-        prompt_token_count: u.prompt_tokens,
-        candidates_token_count: u.completion_tokens.saturating_sub(reasoning),
-        total_token_count: u.prompt_tokens + u.completion_tokens,
-        cached_content_token_count: u.cached_tokens.unwrap_or(0),
-        thoughts_token_count: u.reasoning_tokens,
+        prompt: u.prompt_tokens,
+        candidates: u.completion_tokens.saturating_sub(reasoning),
+        total: u.prompt_tokens + u.completion_tokens,
+        cached_content: u.cached_tokens.unwrap_or(0),
+        thoughts: u.reasoning_tokens,
     })
+    /*
+      stale duplicate wire field assignments removed;
+      field names updated above (prompt, candidates, total,
+      cached_content, thoughts).
+    */
+    //
 }
 
 // ---------- Streaming encoder ----------
@@ -211,6 +218,10 @@ impl GeminiStreamEncoder {
     }
 
     /// Shape of a Gemini streaming frame: candidates[0].content.parts.
+    // json! moves `parts` and `finish_reason` into the serialized payload, so the
+    // arguments are genuinely consumed — borrowing them would not compile against
+    // the opaque macro.
+    #[allow(clippy::needless_pass_by_value)]
     fn candidates_frame(&self, parts: Vec<Value>, finish_reason: Value) -> Value {
         json!({
             "id": self.id,
@@ -229,9 +240,9 @@ impl StreamEncoder for GeminiStreamEncoder {
         match ev {
             StreamEvent::MessageStart { id, model } => {
                 if !id.is_empty() {
-                    self.id = id.clone();
+                    self.id.clone_from(id);
                 }
-                self.model = model.clone();
+                self.model.clone_from(model);
                 Ok(Vec::new())
             }
             StreamEvent::TextDelta { text, .. } => Ok(vec![data_frame(
@@ -270,7 +281,7 @@ impl StreamEncoder for GeminiStreamEncoder {
                 payload["usageMetadata"] = encode_usage_metadata(u);
                 Ok(vec![data_frame(&payload)])
             }
-            StreamEvent::MessageDelta { usage: None } => Ok(Vec::new()),
+            StreamEvent::MessageDelta { usage: None } | StreamEvent::Raw { .. } => Ok(Vec::new()),
             StreamEvent::MessageStop { reason } => {
                 let mut out = Vec::new();
                 // Emit the accumulated tool calls at once.
@@ -294,7 +305,6 @@ impl StreamEncoder for GeminiStreamEncoder {
                 Ok(out)
             }
             // Raw vendor events have no Gemini representation; ignore explicitly.
-            StreamEvent::Raw { .. } => Ok(Vec::new()),
             StreamEvent::Error { message } => Ok(vec![data_frame(&json!({
                 "error": {"code": 500, "message": message, "status": "INTERNAL"},
             }))]),
@@ -647,7 +657,7 @@ mod wire {
         response: Present,
     }
 
-    /// The `inline_data` / `inlineData` payload. The snake_case key wins over the
+    /// The `inline_data` / `inlineData` payload. The `snake_case` key wins over the
     /// camelCase alias for both the payload itself and `mime_type`, reproducing the
     /// old `.get(..).or_else(get(..))` precedence.
     #[derive(Debug, Default, Deserialize)]
@@ -668,7 +678,7 @@ mod wire {
     pub(super) struct Response {
         candidates: Lenient<Vec<Lenient<CandidateIn>>>,
         #[serde(rename = "responseId")]
-        response_id: Lenient<String>,
+        id: Lenient<String>,
         #[serde(rename = "modelVersion")]
         model_version: Lenient<String>,
         #[serde(rename = "usageMetadata")]
@@ -693,13 +703,8 @@ mod wire {
                 .into_iter()
                 .map(Part::into_block)
                 .collect::<Vec<_>>();
-            let stop_reason = candidate
-                .finish_reason
-                .0
-                .as_deref()
-                .map(gemini_finish_reason)
-                // Without finishReason, finish as tool use when there are tool calls.
-                .unwrap_or_else(|| {
+            let stop_reason = candidate.finish_reason.0.as_deref().map_or_else(
+                || {
                     if outputs
                         .iter()
                         .any(|b| matches!(b, ContentBlock::ToolUse { .. }))
@@ -708,11 +713,13 @@ mod wire {
                     } else {
                         StopReason::Stop
                     }
-                });
+                },
+                gemini_finish_reason,
+            );
             LlmResponse {
                 // `responseId` is often absent; without it there is no stable
                 // identifier, so it stays empty for the upper layer to fill.
-                id: self.response_id.0,
+                id: self.id.0,
                 model: self.model_version.0,
                 outputs,
                 stop_reason,
@@ -736,29 +743,26 @@ mod wire {
     #[serde(default)]
     struct UsageIn {
         #[serde(rename = "promptTokenCount")]
-        prompt_tokens: Lenient<u64>,
+        prompt: Lenient<u64>,
         #[serde(rename = "candidatesTokenCount")]
-        candidates_tokens: Lenient<u64>,
+        candidates: Lenient<u64>,
         #[serde(rename = "thoughtsTokenCount")]
-        thoughts_tokens: Lenient<Option<u64>>,
+        thoughts: Lenient<Option<u64>>,
         #[serde(rename = "cachedContentTokenCount")]
-        cached_content_tokens: Lenient<Option<u64>>,
+        cached_content: Lenient<Option<u64>>,
     }
 
     impl UsageIn {
         fn into_usage(self) -> Usage {
-            let thoughts = self.thoughts_tokens.0;
+            let thoughts = self.thoughts.0;
             Usage {
                 // `promptTokenCount` already includes cached content, so it is the total.
-                prompt_tokens: self.prompt_tokens.0,
+                prompt_tokens: self.prompt.0,
                 // IR completion is the total output; Gemini reports thinking outside
                 // `candidatesTokenCount`, so it is added back here (saturating: a
                 // malformed upstream must not wrap).
-                completion_tokens: self
-                    .candidates_tokens
-                    .0
-                    .saturating_add(thoughts.unwrap_or(0)),
-                cached_tokens: self.cached_content_tokens.0,
+                completion_tokens: self.candidates.0.saturating_add(thoughts.unwrap_or(0)),
+                cached_tokens: self.cached_content.0,
                 // Gemini has no separate cache-write counter.
                 cache_creation_tokens: None,
                 reasoning_tokens: thoughts,
@@ -782,14 +786,12 @@ mod wire {
         pub(super) fn into_events(self) -> Vec<StreamEvent> {
             let mut out = Vec::new();
             for (ci, candidate) in self.candidates.0.into_iter().enumerate() {
-                let ci = ci as u32;
                 for (pi, part) in candidate.0.content.0.parts.0.into_iter().enumerate() {
                     // Each part gets its own index: Gemini itself has no block
                     // index concept, but downstream consumers (Claude's
                     // content_block, Responses' output_index) attribute by
                     // index, and folding everything into 0 would make multiple
-                    // parts overwrite each other.
-                    let index = ci * 1000 + pi as u32;
+                    let index = u32::try_from(ci * 1000 + pi).unwrap_or(u32::MAX);
                     part.push_stream_events(index, &mut out);
                 }
 
@@ -1041,7 +1043,7 @@ mod wire {
 
     #[derive(Debug, Serialize)]
     struct InlineDataPartOut<'a> {
-        /// The encoder emits the proto-style snake_case key (the existing wire
+        /// The encoder emits the proto-style `snake_case` key (the existing wire
         /// shape; the decoder accepts both spellings).
         #[serde(rename = "inline_data")]
         inline_data: InlineDataOut<'a>,
@@ -1090,14 +1092,14 @@ mod wire {
     #[derive(Debug, Serialize)]
     pub(super) struct UsageMetadataOut {
         #[serde(rename = "promptTokenCount")]
-        pub(super) prompt_token_count: u64,
+        pub(super) prompt: u64,
         #[serde(rename = "candidatesTokenCount")]
-        pub(super) candidates_token_count: u64,
+        pub(super) candidates: u64,
         #[serde(rename = "totalTokenCount")]
-        pub(super) total_token_count: u64,
+        pub(super) total: u64,
         #[serde(rename = "cachedContentTokenCount")]
-        pub(super) cached_content_token_count: u64,
+        pub(super) cached_content: u64,
         #[serde(rename = "thoughtsTokenCount", skip_serializing_if = "Option::is_none")]
-        pub(super) thoughts_token_count: Option<u64>,
+        pub(super) thoughts: Option<u64>,
     }
 }

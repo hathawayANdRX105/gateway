@@ -18,13 +18,13 @@
 //! the inbound format is decided by the request path while the upstream format is
 //! decided by the channel's `provider_type` — both are only visible together in
 //! this function. The old implementation put response translation in a
-//! `protocol-bridge` stage and hardcoded "response source protocol = OpenAI"; the
+//! `protocol-bridge` stage and hardcoded "response source protocol = `OpenAI`"; the
 //! streaming path did not translate at all (`ctx.upstream` was only written in the
 //! non-streaming branch), so streaming Claude/Gemini clients always received
-//! OpenAI event shapes (G2).
+//! `OpenAI` event shapes (G2).
 //!
-//! Failures funnel through gateway_core::error::NormalizedError →
-//! gateway_dispatch::FailureClass.
+//! Failures funnel through `gateway_core::error::NormalizedError` →
+//! `gateway_dispatch::FailureClass`.
 
 use crate::ForwardTask;
 use crate::adapter::{self, PreparedRequest};
@@ -47,6 +47,7 @@ use std::time::Duration;
 /// The **first** header of a given name wins (case-insensitive): a channel using
 /// `settings.headers` to override the auth header name must not send both, and this
 /// is where adapter.rs's documented "settings can override" promise is kept.
+#[must_use]
 pub fn merge_headers(
     prepared: &PreparedRequest,
     client_headers: &[(String, String)],
@@ -146,7 +147,7 @@ fn translate_request_body(
     let body = rewrite_upstream_model(&task.body, &task.candidate.upstream_model);
     let body = formats
         .translate_request(inbound, upstream_format, body)
-        .map_err(|e| protocol_bridge_error(e, 400, false))?;
+        .map_err(|e| protocol_bridge_error(&e, 400, false))?;
     Ok(capture_prompt_body(&body))
 }
 
@@ -161,7 +162,12 @@ fn translate_request_body(
 /// - non-streaming (`stream=false`) → `read_all_body` collects it once, then
 ///   translates it whole
 ///
-/// TODO(#334): non-streaming responses also need metering to estimate prompt tokens.
+///
+/// # Errors
+///
+/// Propagates upstream `NormalizedError` for non-2xx responses, transport
+/// failures, and protocol-conversion errors. The error carries the upstream
+/// status code and a bounded body preview.
 pub async fn forward_once(
     task: &ForwardTask,
     egress: &dyn Egress,
@@ -199,7 +205,11 @@ pub async fn forward_once(
         // non-streaming path (the error-shape contract locked by #238).
         if !(200..=299).contains(&status) {
             let preview = read_error_preview(resp.into_body_stream(), timeouts.total_ms).await;
-            return Err(crate::egress::classify_status(status, preview, retry_after));
+            return Err(crate::egress::classify_status(
+                status,
+                &preview,
+                retry_after,
+            ));
         }
         // Same format = zero-conversion passthrough: no encoder is built at all
         // (when client and channel speak the same protocol the bytes must not be
@@ -232,7 +242,7 @@ pub async fn forward_once(
         .map_err(|e| upstream_error(502, true, format!("read upstream body: {e}")))?;
     let bytes = formats
         .translate_response(upstream_format, inbound, bytes)
-        .map_err(|e| protocol_bridge_error(e, 502, true))?;
+        .map_err(|e| protocol_bridge_error(&e, 502, true))?;
 
     Ok(forwarded_from_stream(
         status,
@@ -275,9 +285,9 @@ async fn read_error_preview(mut body: ByteStream, total_ms: u64) -> String {
     }
 }
 
-/// protocol-bridge error → gateway_core::error::NormalizedError, the single exit.
+/// protocol-bridge error → `gateway_core::error::NormalizedError`, the single exit.
 fn protocol_bridge_error(
-    e: gateway_protocol_bridge::adaptor::AdaptorError,
+    e: &gateway_protocol_bridge::adaptor::AdaptorError,
     status: u16,
     retryable: bool,
 ) -> NormalizedError {
@@ -435,11 +445,11 @@ fn finish_translation(
     let mut tail_frames = state.scanner.flush_pending_frame();
     if !tail_frames.is_empty() {
         let mut out = Vec::new();
-        tail_frames.drain(..).for_each(|frame| {
-            decode_events(state.decoder.as_deref(), &frame)
-                .into_iter()
-                .for_each(|ev| encode_event_lossy(&mut state.encoder, &ev, &mut out));
-        });
+        for frame in tail_frames.drain(..) {
+            for ev in decode_events(state.decoder.as_deref(), &frame) {
+                encode_event_lossy(&mut state.encoder, &ev, &mut out);
+            }
+        }
         if let Some(enc) = state.encoder.as_mut()
             && let Ok(mut bytes) = enc.finish()
         {
@@ -455,8 +465,7 @@ fn finish_translation(
     let finished = state
         .encoder
         .as_mut()
-        .map(|enc| enc.finish())
-        .unwrap_or_else(|| Ok(Vec::new()));
+        .map_or_else(|| Ok(Vec::new()), |enc| enc.finish());
     match finished {
         Ok(frames) if !frames.is_empty() => {
             // finish has emitted everything; clear it to avoid a second finish.
@@ -474,7 +483,7 @@ fn finish_translation(
 /// Pipeline execution trait — bin/api implements it with reqwest.
 pub trait Pipeline: Send + Sync {
     /// Run one forwarding attempt. No retries (retrying belongs to
-    /// gateway_dispatch::retry).
+    /// `gateway_dispatch::retry`).
     fn execute(
         &self,
         task: &ForwardTask,
@@ -524,7 +533,7 @@ impl Pipeline for ReqwestPipeline {
 ///
 /// Current V1 scope: passthrough semantics, no parsing (the metering interface is
 /// not finalized).
-/// TODO(#334): wire up gateway_metering::estimate_prompt_tokens.
+/// TODO(#334): wire up `gateway_metering::estimate_prompt_tokens`.
 pub fn capture_prompt_body(body: &bytes::Bytes) -> bytes::Bytes {
     body.clone()
 }
@@ -542,13 +551,13 @@ pub fn capture_prompt_body(body: &bytes::Bytes) -> bytes::Bytes {
 /// is skipped and [`build_url`](crate::adapter::build_url) falls back to the client
 /// path, leaving rejection to the upstream.
 pub fn resolve_upstream_model(body: &Bytes, upstream_model: &str) -> String {
-    let resolved = if !upstream_model.is_empty() {
-        upstream_model.to_string()
-    } else {
+    let resolved = if upstream_model.is_empty() {
         serde_json::from_slice::<serde_json::Value>(body)
             .ok()
             .and_then(|v| v.get("model").and_then(|m| m.as_str()).map(str::to_string))
             .unwrap_or_default()
+    } else {
+        upstream_model.to_string()
     };
     if is_safe_model_segment(&resolved) {
         resolved

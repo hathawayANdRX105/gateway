@@ -1,4 +1,4 @@
-//! Codec for the OpenAI Responses API format — IR ↔ `/v1/responses` (WP5).
+//! Codec for the `OpenAI` Responses API format — IR ↔ `/v1/responses` (WP5).
 //!
 //! The **first brand-new format** in this crate (the rest migrated from the old codecs),
 //! used to validate the two-hop abstraction's extensibility: adding a format means
@@ -6,7 +6,7 @@
 //!
 //! ## Key shape differences from Chat Completions
 //!
-//! Both APIs are called OpenAI, but their shapes differ and mixing them fails silently:
+//! Both APIs are called `OpenAI`, but their shapes differ and mixing them fails silently:
 //!
 //! - Tool definitions are **flat** `{type:"function", name, description, parameters}`,
 //!   not wrapped in a `function` sub-object as in Chat.
@@ -50,12 +50,13 @@ use crate::ir::{
 use crate::responses_items::InputItemOut;
 use crate::responses_stream::ResponsesStreamEncoder;
 
-/// Codec for the OpenAI Responses API format.
+/// Codec for the `OpenAI` Responses API format.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ResponsesCodec;
 
 impl ResponsesCodec {
     /// Create a codec (stateless, shareable).
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -131,7 +132,7 @@ impl FormatCodec for ResponsesCodec {
         let Ok(ev) = serde_json::from_str::<Value>(trimmed) else {
             return Ok(Vec::new());
         };
-        Ok(wire::event_into_events(ev))
+        Ok(wire::event_into_events(&ev))
     }
 
     fn stream_encoder(&self) -> Box<dyn StreamEncoder> {
@@ -308,24 +309,24 @@ mod wire {
     /// Whole SSE event JSON → IR events. The `type` tag picks the DTO; frames
     /// without a string tag are control noise, and unmodeled event types stay whole
     /// as `Raw` so a same-protocol hop re-emits them verbatim.
-    pub(super) fn event_into_events(ev: Value) -> Vec<StreamEvent> {
+    pub(super) fn event_into_events(ev: &Value) -> Vec<StreamEvent> {
         let Some(kind) = ev.get("type").and_then(Value::as_str) else {
             return Vec::new();
         };
         match kind {
-            "response.created" => from_event::<CreatedEvent>(&ev).into_events(),
-            "response.output_text.delta" => from_event::<DeltaEvent>(&ev).into_text_delta(),
+            "response.created" => from_event::<CreatedEvent>(ev).into_events(),
+            "response.output_text.delta" => from_event::<DeltaEvent>(ev).into_text_delta(),
             // Both reasoning deltas share the same mapping.
             "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
-                from_event::<DeltaEvent>(&ev).into_thinking_delta()
+                from_event::<DeltaEvent>(ev).into_thinking_delta()
             }
-            "response.output_item.added" => from_event::<ItemAddedEvent>(&ev).into_events(),
+            "response.output_item.added" => from_event::<ItemAddedEvent>(ev).into_events(),
             "response.function_call_arguments.delta" => {
-                from_event::<DeltaEvent>(&ev).into_arguments_delta()
+                from_event::<DeltaEvent>(ev).into_arguments_delta()
             }
-            "response.completed" => from_event::<CompletedEvent>(&ev).into_events(false),
-            "response.incomplete" => from_event::<CompletedEvent>(&ev).into_events(true),
-            "response.failed" => from_event::<FailedEvent>(&ev).into_events(),
+            "response.completed" => from_event::<CompletedEvent>(ev).into_events(false),
+            "response.incomplete" => from_event::<CompletedEvent>(ev).into_events(true),
+            "response.failed" => from_event::<FailedEvent>(ev).into_events(),
             // The remaining lifecycle events (item.done / content_part.* / the various
             // done events) have no counterpart in IR — IR expresses boundaries through
             // the index and the StreamEvent type. Unlike Claude's decoder, an unmodeled
@@ -390,7 +391,7 @@ mod wire {
         }
     }
 
-    /// `response.output_item.added`: only function_call carries the identity IR needs.
+    /// `response.output_item.added`: only `function_call` carries the identity IR needs.
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
     struct ItemAddedEvent {
@@ -566,7 +567,7 @@ mod wire {
     }
 
     /// One `output[]` item on the encode side: the message item or standalone
-    /// function_call items.
+    /// `function_call` items.
     #[derive(Debug, Serialize)]
     #[serde(untagged)]
     enum OutputItemOut<'a> {

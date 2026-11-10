@@ -96,7 +96,7 @@ fn price_of_free_model() {
 
 // ---------- group_ratio (request group multiplier) ----------
 
-/// group_ratio=2 multiplies once more on top of the table's group_multiplier: cost
+/// `group_ratio=2` multiplies once more on top of the table's `group_multiplier`: cost
 /// doubles.
 #[test]
 fn price_of_group_ratio_doubles_cost() {
@@ -119,7 +119,7 @@ fn price_of_group_ratio_doubles_cost() {
 }
 
 /// The two multiplier levels multiply: the table's gm and the request-side
-/// group_ratio stack independently.
+/// `group_ratio` stack independently.
 #[test]
 fn price_of_group_multiplier_times_group_ratio() {
     let counts = TokenCounts {
@@ -188,7 +188,7 @@ fn price_of_cache_column_with_ratio() {
 // ---------- ConfigPriceTable::lookup(model, group) ----------
 
 /// The config table matches by model and is independent of group (the real group
-/// multiplier goes through settle's group_ratio, not the table); unknown model → None
+/// multiplier goes through settle's `group_ratio`, not the table); unknown model → None
 /// (settle treats it as free).
 #[test]
 fn config_table_lookup_hits_by_model_regardless_of_group() {

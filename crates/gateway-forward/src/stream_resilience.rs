@@ -5,7 +5,7 @@
 //! Bifrost's TTFT monitoring discipline: **once bytes have been sent to the client (Live
 //! phase), no destructive restart** — only flush the buffer + finish with an `event: error`
 //! frame; if the stream breaks before the first byte (Window phase), replace the whole
-//! candidate and retry, invisibly to the client (= api-hub buffer_stream, same as flo2
+//! candidate and retry, invisibly to the client (= api-hub `buffer_stream`, same as flo2
 //! buffer-before-forward).
 //!
 //! Parameter health (todo/gateway-resilience.md P2): a 2s window instead of api-hub's 60s,
@@ -59,7 +59,7 @@ pub struct StreamResilience {
     ///
     /// TODO(#311): the switch budget is managed centrally by
     /// `gateway_dispatch::retry::RetryPolicy`; this field is not consumed yet (the retry loop's
-    /// max_attempts is already the authoritative source for the same responsibility).
+    /// `max_attempts` is already the authoritative source for the same responsibility).
     pub max_retries: u32,
 }
 
@@ -119,6 +119,7 @@ const FINISH_MARK: &[u8] = b"finish_reason";
 /// mid-line (a chunk split in the middle of a frame), and a byte-level judgement holds for a
 /// half frame as well, whereas waiting for a frame boundary would push the completeness
 /// decision past the window and lose the point of retrying.
+#[must_use]
 pub fn has_completion_evidence(buf: &[u8]) -> bool {
     buf.windows(DONE_MARK.len()).any(|w| w == DONE_MARK)
         || buf.windows(FINISH_MARK.len()).any(|w| w == FINISH_MARK)
@@ -242,7 +243,7 @@ pub async fn drain_stream_window(
             }
             // Expiry: upstream is still sending (or silent) at this instant — buffer + remaining
             // stream switch to Live passthrough.
-            _ = tokio::time::sleep_until(deadline) => {
+            () = tokio::time::sleep_until(deadline) => {
                 return WindowDrain::Live { buf };
             }
         }

@@ -1,14 +1,14 @@
-//! `gateway-gate` prehold regression tests — QuotaGate backed by the admission ledger.
+//! `gateway-gate` prehold regression tests — `QuotaGate` backed by the admission ledger.
 //!
-//! These pin the prehold wiring (QuotaGate + ledger + GateChain release on later-gate
+//! These pin the prehold wiring (`QuotaGate` + ledger + `GateChain` release on later-gate
 //! rejection):
 //!
 //! 1. `quota_concurrent_overdraft_only_one_passes` — N requests against ONE token whose
-//!    balance covers only ONE request's estimated cost: exactly one passes QuotaGate, the
+//!    balance covers only ONE request's estimated cost: exactly one passes `QuotaGate`, the
 //!    rest get `Rejection::InsufficientQuota` observing the drained ledger balance. The
 //!    checks run sequentially (the atomicity is inside the ledger's mutex, so a sequential
 //!    loop that re-reads the ledger is a faithful proxy for the concurrent case).
-//! 2. `quota_hold_released_when_later_gate_rejects` — QuotaGate followed by a gate that
+//! 2. `quota_hold_released_when_later_gate_rejects` — `QuotaGate` followed by a gate that
 //!    always rejects: after rejection the ledger balance must be fully restored
 //!    (available == original), i.e. the prehold does not stick.
 use gateway_gate::snapshot::TokenView;
@@ -146,8 +146,8 @@ fn quota_ctx(raw: &str, user_key: &str) -> GateCtx {
 // 1. concurrent-overdraft regression
 // ---------------------------------------------------------------------------
 
-/// One token whose balance covers exactly one request's estimated cost (15_360 =
-/// ceil(15_000_000 * 1024 / 1e6)). Five sequential admission checks against the shared
+/// One token whose balance covers exactly one request's estimated cost (`15_360` =
+/// `ceil(15_000_000` * 1024 / 1e6)). Five sequential admission checks against the shared
 /// ledger: exactly one passes, four are rejected with `Rejection::InsufficientQuota` whose
 /// `remaining` is the drained (0) ledger balance — the pre-wiring bug let every request
 /// observe the same snapshot `remaining` and overdraft.
@@ -245,7 +245,7 @@ impl Gate for AlwaysReject {
     }
 }
 
-/// QuotaGate preholds the estimate, then `AlwaysReject` rejects: the chain must release
+/// `QuotaGate` preholds the estimate, then `AlwaysReject` rejects: the chain must release
 /// the prehold via the shared ledger, so the balance is fully restored.
 #[tokio::test]
 async fn quota_hold_released_when_later_gate_rejects() {

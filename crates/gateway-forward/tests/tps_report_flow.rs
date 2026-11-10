@@ -15,7 +15,7 @@
 //! 3. Ultra-short burst with completion < 8 ⇒ 0 reports; when it follows a normal stream
 //!    `tps_ema` does not move (red: threshold broken → `max_tokens=1` noise pollutes the EMA).
 //! 4. Upstream stream break (mid-stream Err) ⇒ 0 reports (red: the broken-stream arm misreports →
-//!    finish_at at the break moment is too small and a low throughput is written high). Design
+//!    `finish_at` at the break moment is too small and a low throughput is written high). Design
 //!    §3.2.
 //! 5. Non-streaming request ⇒ 0 reports (red: non-streaming misreports → the factor is no longer
 //!    always neutral).
@@ -26,11 +26,11 @@
 //!    120000 tok/s bogus value becomes the first `tps_ema` sample, and then `pool_max_tps` taking
 //!    the pool maximum pins the whole pool's factor at the 0.2 floor).
 //! 8. Artificial sample above the ceiling but **not** sub-millisecond ⇒ 0 reports, and `tps_ema`
-//!    stays 0 (red: clamping instead ⇒ the fake 10_000 tok/s is written into the EMA, worse than
+//!    stays 0 (red: clamping instead ⇒ the fake `10_000` tok/s is written into the EMA, worse than
 //!    not reporting at all).
 //! 9. Normal sample above the floor and below the ceiling ⇒ exactly 1 report (red: ceiling set
 //!    too low / misjudged ⇒ normal throughput filtered out).
-//! 10. Value at the ceiling (10 token ÷ 1 ms floor = 10_000 tok/s) ⇒ still reported (red:
+//! 10. Value at the ceiling (10 token ÷ 1 ms floor = `10_000` tok/s) ⇒ still reported (red:
 //!     criterion written as `>=` ⇒ the ceiling itself is wrongly dropped).
 
 mod common;
@@ -95,7 +95,7 @@ impl Dispatch for RecordingDispatch {
     }
 
     fn report(&self, unit_key: &str, report: AttemptReport) {
-        self.inner.report(unit_key, report)
+        self.inner.report(unit_key, report);
     }
 
     fn report_tps(&self, unit_key: &str, sample: TpsSample) {
@@ -153,7 +153,7 @@ fn channel() -> ChannelRecord {
     }
 }
 
-/// Assembly: real Dispatcher (real health table) + recording wrapper + mock-egress ForwardStage.
+/// Assembly: real Dispatcher (real health table) + recording wrapper + mock-egress `ForwardStage`.
 /// Returns `(stage, recording dispatch, health)` (the test also holds health to observe table-side
 /// changes).
 fn build_stage(
@@ -312,7 +312,7 @@ fn short_script(gap_ms: u64) -> SseScript {
 // ---------- Helpers to run one request ----------
 
 /// Streaming ctx (body carries `"stream":true`). route is pre-set with a candidate (after
-/// with_retry the handle does not read it).
+/// `with_retry` the handle does not read it).
 fn stream_ctx() -> RequestCtx {
     ctx_with_body(STREAM_BODY, candidate("c1"))
 }
@@ -322,7 +322,7 @@ fn json_ctx() -> RequestCtx {
     ctx_with_body(NON_STREAM_BODY, candidate("c1"))
 }
 
-/// Read a PipeStream as an axum data stream (consuming it means the client has received the full
+/// Read a `PipeStream` as an axum data stream (consuming it means the client has received the full
 /// body).
 fn data_stream(pipe: PipeStream) -> impl Stream + Send {
     pipe.into_response().into_body().into_data_stream()
@@ -353,7 +353,7 @@ async fn run_stream(stage: &ForwardStage, ctx: &mut RequestCtx) {
 /// tok/s, and the health table's `tps_ema` really written (crossing crates into the table, not just
 /// the mock).
 ///
-/// bug: late report dropped (signal reaches Dispatch but not HealthTable) / variant judged as
+/// bug: late report dropped (signal reaches Dispatch but not `HealthTable`) / variant judged as
 /// Estimated / value miscalculated (using the first-packet instant or the whole request duration as
 /// denominator) ⇒ red.
 #[tokio::test]
@@ -414,22 +414,22 @@ async fn late_report_does_not_touch_other_health_ledger() {
     let mut ctx = stream_ctx();
     run_stream(&stage, &mut ctx).await;
 
-    let state = health.get(UNIT_KEY);
+    let health_state = health.get(UNIT_KEY);
     assert_eq!(
         recording.tps_calls().len(),
         1,
         "precondition: exactly one late report"
     );
     assert_eq!(
-        state.cooldown_streak, 0,
+        health_state.cooldown_streak, 0,
         "late tps should not record channel failure streak"
     );
     assert_eq!(
-        state.unauthorized_run, 0,
+        health_state.unauthorized_run, 0,
         "late tps should not record 401 escalation count"
     );
     assert_eq!(
-        state.cooldown_until_ms, 0,
+        health_state.cooldown_until_ms, 0,
         "late tps should not enter cooldown"
     );
 }
@@ -513,7 +513,7 @@ async fn short_burst_is_dropped_and_keeps_ema_intact() {
 // ---------- Case 4: broken stream not reported ----------
 
 /// Upstream breaks mid-stream (Err inside the stream) ⇒ `report_tps` 0 times: at the break moment
-/// finish_at would write a low throughput high, and it must never enter the EMA (design §3.2).
+/// `finish_at` would write a low throughput high, and it must never enter the EMA (design §3.2).
 ///
 /// bug: the broken-stream arm misreports ⇒ red.
 #[tokio::test]
@@ -678,10 +678,10 @@ async fn sub_millisecond_stream_reports_nothing() {
 /// 1000 token ÷ 3 frames 1ms apart ≈ 500000 tok/s; the generation segment is above the floor —
 /// what this pins is not "only sub-millisecond blows up" but that any non-physical value must be
 /// dropped; `tps_ema` staying 0 pins **drop rather than clamp**: clamping would write the fake
-/// 10_000 throughput into the EMA.
+/// `10_000` throughput into the EMA.
 ///
 /// bug: ceiling missed / ceiling written as a clamp (`value.min(TPS_SAMPLE_MAX)`) ⇒ count non-zero
-/// or `tps_ema` equals TPS_SAMPLE_MAX, red.
+/// or `tps_ema` equals `TPS_SAMPLE_MAX`, red.
 #[tokio::test]
 async fn oversized_non_submillisecond_sample_is_dropped_not_clamped() {
     let (stage, recording, health) =
@@ -699,8 +699,7 @@ async fn oversized_non_submillisecond_sample_is_dropped_not_clamped() {
     assert_eq!(
         health.get(UNIT_KEY).tps_ema,
         0.0,
-        "over-ceiling sample must be discarded: clamping to {} would write fake throughput into EMA",
-        TPS_SAMPLE_MAX
+        "over-ceiling sample must be discarded: clamping to {TPS_SAMPLE_MAX} would write fake throughput into EMA"
     );
 }
 
@@ -746,9 +745,9 @@ async fn normal_sample_between_floor_and_ceiling_reported_once() {
 /// Value in the ceiling neighborhood (≤ ceiling) ⇒ still reported (the criterion is `>` not `>=`,
 /// the boundary is not dropped).
 ///
-/// A 10-token short burst (gap_ms=0, generation segment as short as possible) ⇒ the computed value
-/// lands near 10_000 and **does not exceed** the ceiling (the denominator is held up by the 1ms
-/// floor, value = 10 ÷ ≥1ms ≤ 10_000). On the production side `report_stream_tps`'s criterion is
+/// A 10-token short burst (`gap_ms=0`, generation segment as short as possible) ⇒ the computed value
+/// lands near `10_000` and **does not exceed** the ceiling (the denominator is held up by the 1ms
+/// floor, value = 10 ÷ ≥1ms ≤ `10_000`). On the production side `report_stream_tps`'s criterion is
 /// `value > TPS_SAMPLE_MAX` — equal to the ceiling is not wrongly dropped. This pins the reporting
 /// side: `>=` or a ceiling set too low (e.g. the 10_000-1 notch) both wrongly drop
 /// boundary-neighborhood samples. Together with the drop side pinned by the oversized case, the

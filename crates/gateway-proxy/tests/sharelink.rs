@@ -21,7 +21,7 @@ fn vmess_link(extra: &str) -> String {
     format!("vmess://{}", STANDARD.encode(json))
 }
 
-/// VMess payload mapping: the UUID lands in `auth.user` and host/port are in place.
+/// `VMess` payload mapping: the UUID lands in `auth.user` and host/port are in place.
 ///
 /// The UUID slot is the easiest place to get wrong — `adapter.rs::clash_config` reads
 /// `auth.user` as the `uuid` for vmess; writing it to `auth.pass` would make the assembled

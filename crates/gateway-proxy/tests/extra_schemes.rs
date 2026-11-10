@@ -1,8 +1,8 @@
-//! extra_schemes.rs —— Hysteria2, AnyTLS, Snell parse & adapter_for tests (no network).
+//! `extra_schemes.rs` —— Hysteria2, `AnyTLS`, Snell parse & `adapter_for` tests (no network).
 //!
-//! Tests parse_url for query params, default ports, and adapter_for happy/bad paths.
+//! Tests `parse_url` for query params, default ports, and `adapter_for` happy/bad paths.
 //! Config error = warn + None (fallback direct), no panic. Matches contract.
-//! Uses env-like nodes but no real dial (adapter_for only).
+//! Uses env-like nodes but no real dial (`adapter_for` only).
 
 use gateway_proxy::adapter::adapter_for;
 use gateway_proxy::node::{NodeOpts, ProxyNode, ProxyScheme};
@@ -52,7 +52,7 @@ fn test_default_ports() {
     ];
     for (url, expected) in cases {
         let node = ProxyNode::parse_url(url).unwrap();
-        assert_eq!(node.port, expected, "default port for {}", url);
+        assert_eq!(node.port, expected, "default port for {url}");
     }
 }
 

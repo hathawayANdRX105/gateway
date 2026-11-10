@@ -67,14 +67,14 @@ fn parse_url_maps_schemes_and_defaults() {
     assert!(ProxyNode::parse_url("not-a-url").is_err());
 }
 
-/// `to_reqwest_proxy`: Direct returns None; the rest return Proxy + auth via basic_auth
+/// `to_reqwest_proxy`: Direct returns None; the rest return Proxy + auth via `basic_auth`
 #[test]
 fn to_reqwest_proxy_returns_correct_variant() {
     // Direct -> None
     let node = ProxyNode {
         id: 1,
         scheme: ProxyScheme::Direct,
-        host: "".into(),
+        host: String::new(),
         port: 0,
         auth: None,
         channel_keys: vec![],
@@ -236,11 +236,11 @@ fn pick_random_within_same_priority_layer() {
 fn check_ip_blocks_reserved_ranges() {
     // loopback
     assert!(matches!(
-        check_ip(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+        check_ip(IpAddr::V4(Ipv4Addr::LOCALHOST)),
         Err(SsrfError::Loopback)
     ));
     assert!(matches!(
-        check_ip(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1))),
+        check_ip(IpAddr::V6(Ipv6Addr::LOCALHOST)),
         Err(SsrfError::Loopback)
     ));
 
@@ -276,11 +276,11 @@ fn check_ip_blocks_reserved_ranges() {
 
     // unspecified
     assert!(matches!(
-        check_ip(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        check_ip(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
         Err(SsrfError::Unspecified)
     ));
     assert!(matches!(
-        check_ip(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0))),
+        check_ip(IpAddr::V6(Ipv6Addr::UNSPECIFIED)),
         Err(SsrfError::Unspecified)
     ));
 
@@ -317,7 +317,7 @@ fn ipv4_mapped_ipv6_loopback_is_blocked() {
 }
 
 /// `validate_url`: only IP literals are checked; domain names are not DNS-resolved and pass
-/// (the caller must call validate_resolved afterwards)
+/// (the caller must call `validate_resolved` afterwards)
 #[test]
 fn validate_url_ip_literals_checked_domains_skipped() {
     // IP literals are checked
@@ -375,7 +375,7 @@ fn test_node(
     }
 }
 
-/// With no nodes acquire falls back to direct (node_id = 0); in production this equals a
+/// With no nodes acquire falls back to direct (`node_id` = 0); in production this equals a
 /// channel with no egress configured.
 #[test]
 fn acquire_without_nodes_returns_direct() {
@@ -482,7 +482,7 @@ fn parse_url_new_schemes_mapping_and_defaults() {
 }
 
 /// `to_reqwest_proxy`: new protocol variants return an error (these protocols do not go
-/// through reqwest::Proxy; they are dialed by the meow `ProxyAdapter` in
+/// through `reqwest::Proxy`; they are dialed by the meow `ProxyAdapter` in
 /// `gateway_proxy::adapter`)
 #[test]
 fn to_reqwest_proxy_new_schemes_return_error() {
@@ -504,7 +504,7 @@ fn to_reqwest_proxy_new_schemes_return_error() {
             priority: 0,
         };
         let result = to_reqwest_proxy(&node);
-        assert!(result.is_err(), "scheme {:?} should return error", scheme);
+        assert!(result.is_err(), "scheme {scheme:?} should return error");
         let err = result.unwrap_err();
         assert!(
             err.to_string().contains("does not go through reqwest"),

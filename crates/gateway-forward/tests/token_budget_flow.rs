@@ -164,7 +164,7 @@ fn stream_ctx(candidate: gateway_dispatch::Candidate) -> gateway_pipeline::Reque
     ctx_with_body(STREAM_BODY, candidate)
 }
 
-/// Extract the PipeStream after a successful handle (panics with StageError Debug on failure).
+/// Extract the `PipeStream` after a successful handle (panics with `StageError` Debug on failure).
 async fn expect_stream(
     stage: &ForwardStage,
     ctx: &mut gateway_pipeline::RequestCtx,
@@ -175,7 +175,7 @@ async fn expect_stream(
     }
 }
 
-/// Read a PipeStream as an axum data stream (consuming it = the client received the whole
+/// Read a `PipeStream` as an axum data stream (consuming it = the client received the whole
 /// body).
 fn data_stream(pipe: gateway_pipeline::PipeStream) -> impl Stream<Item = Bytes> + Send {
     // axum's into_data_stream() yields Result<Bytes, Error>; a body error should not occur on
@@ -573,7 +573,7 @@ impl gateway_dispatch::Dispatch for RateLimitedDispatch {
     fn report_tps(&self, _unit_key: &str, _sample: TpsSample) {}
 }
 
-/// Flat price table (minimal PriceTable: the token-refund cases only need the metering
+/// Flat price table (minimal `PriceTable`: the token-refund cases only need the metering
 /// settlement gate opened; bill amounts are not asserted).
 struct FlatPriceTable;
 

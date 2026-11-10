@@ -47,6 +47,7 @@ pub struct CacheKey(pub(crate) String);
 /// The entry records the *original* channel for attribution: two requests with
 /// the same key are byte-identical, so whichever upstream served first defines
 /// what a replay bills and attributes.
+#[must_use]
 pub fn response_key(scope: &CacheScope, model: &str, protocol: &str, body: &[u8]) -> CacheKey {
     let mut hasher = Sha256::new();
     for part in [
@@ -118,6 +119,7 @@ impl ResponseCache {
     /// Mounted only when the response-cache switch is on (see app-assembly);
     /// `None` otherwise. Capacity is bounded by total body bytes, per-entry
     /// refusal by `max_entry_bytes`.
+    #[must_use]
     pub fn with_limits(ttl: Duration, max_total_bytes: u64, max_entry_bytes: usize) -> Arc<Self> {
         let entries = TtlCache::bounded_weighted_with_ttl(
             max_total_bytes,

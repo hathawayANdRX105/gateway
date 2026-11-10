@@ -1,4 +1,4 @@
-//! Pricing — TokenCounts → cost (internal units).
+//! Pricing — `TokenCounts` → cost (internal units).
 //!
 //! V1: static multiplier table (contract catalog snapshot); V2: the new-api
 //! `price_expression` engine (versioned compile / AST / frozen snapshot / request rules).
@@ -18,20 +18,25 @@ pub use gateway_core::metering::{ModelPrice, PriceTable};
 
 /// Settlement price computation.
 ///
-/// Internal unit conversion: 500_000 units = $1 (new-api semantics), i.e.
-/// cost = (in+out+cache dollars) × price.group_multiplier × group_ratio × 500_000,
+/// Internal unit conversion: `500_000` units = $1 (new-api semantics), i.e.
+/// cost = (in+out+cache dollars) × `price.group_multiplier` × `group_ratio` × `500_000`,
 /// rounded up (`.ceil()`: non-zero usage costs at least 1 unit, zero usage stays 0).
 ///
-/// `group_ratio` is the request group multiplier (GroupRecord.rate_multiplier), default
+/// `group_ratio` is the request group multiplier (`GroupRecord.rate_multiplier`), default
 /// 1.0; it multiplies the table's `group_multiplier`, the two multiplier levels keeping
 /// independent semantics.
 ///
 /// Cache accounting follows the vendor's shape ([`TokenCounts::prompt_includes_cache`]):
 /// OpenAI/Gemini report cached tokens **inside** `prompt`, so the cached portion is
 /// removed from the input charge and priced once at `price.cache`; Claude reports them
-/// outside `prompt`, so `prompt` is already the uncached input. Without this the OpenAI
+/// outside `prompt`, so `prompt` is already the uncached input. Without this the `OpenAI`
 /// and Gemini cache hits were charged twice (input price + cache price).
 /// Cache *writes* stay inside the input charge: the price table has no write column.
+#[must_use]
+// Token counts are bounded by request size (far below 2^52), so the u64 -> f64 casts
+// are exact. The f64 -> i64 cast is safe because the snapped value is non-negative
+// and bounded by the price row.
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 pub fn price_of(counts: crate::scanner::TokenCounts, price: &ModelPrice, group_ratio: f64) -> i64 {
     let billable_input = if counts.prompt_includes_cache {
         counts.prompt.saturating_sub(counts.cached)
@@ -62,6 +67,7 @@ pub struct ConfigPriceTable {
 }
 
 impl ConfigPriceTable {
+    #[must_use]
     pub fn new(prices: HashMap<String, ModelPrice>) -> Self {
         Self { prices }
     }

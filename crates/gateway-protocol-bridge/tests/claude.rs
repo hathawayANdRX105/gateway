@@ -690,8 +690,7 @@ fn claude_citations_delta_survives_as_raw() {
     let text = frames
         .iter()
         .map(|f| String::from_utf8_lossy(f).into_owned())
-        .collect::<Vec<_>>()
-        .join("");
+        .collect::<String>();
     assert!(
         text.contains("event: content_block_delta"),
         "actual: {text}"

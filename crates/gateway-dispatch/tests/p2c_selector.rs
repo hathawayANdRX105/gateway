@@ -33,6 +33,10 @@ fn unit(key: &str, weight: u32) -> RouteUnitRecord {
 const SEEDS: u64 = 12;
 const DRAWS_PER_SEED: usize = 300;
 
+// `hits ≤ DRAWS_PER_SEED * SEEDS = 3 600` and the divisor is that same fixed
+// test constant, so both `usize → f64` casts are exact (well below f64's
+// 2^53 mantissa); this computes a hit ratio, not big-integer bookkeeping.
+#[allow(clippy::cast_precision_loss)]
 fn share_of(
     selector: &P2CSelector,
     units: &[RouteUnitRecord],
@@ -52,7 +56,7 @@ fn share_of(
             }
         }
     }
-    hits as f64 / (DRAWS_PER_SEED * SEEDS as usize) as f64
+    hits as f64 / (DRAWS_PER_SEED * usize::try_from(SEEDS).expect("SEEDS = 12, fits usize")) as f64
 }
 
 fn never_picks(
@@ -384,7 +388,7 @@ fn exploration_does_not_grow_with_choices() {
 }
 
 /// A health table with the cooldown just ended and the ramp armed: the `ramping` channel
-/// returns to a selectable state via one failure + force_recall. A pinned clock (always 0)
+/// returns to a selectable state via one failure + `force_recall`. A pinned clock (always 0)
 /// guarantees no lazy settlement happens on `pick(now_ms=0)`.
 fn ramp_armed_table() -> MemoryHealthTable {
     let now = Arc::new(AtomicU64::new(0));

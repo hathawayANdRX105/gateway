@@ -17,9 +17,9 @@ use thiserror::Error;
 /// directions share this enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Protocol {
-    /// OpenAI Chat Completions (`/v1/chat/completions`).
+    /// `OpenAI` Chat Completions (`/v1/chat/completions`).
     OpenAi,
-    /// OpenAI Responses API (`/v1/responses`) — same name as Chat Completions but a different
+    /// `OpenAI` Responses API (`/v1/responses`) — same name as Chat Completions but a different
     /// shape; mirrors `gateway_pipeline::ProtocolKind::OpenAIResp`.
     OpenAIResp,
     /// Anthropic Messages (`/v1/messages`).
@@ -51,6 +51,7 @@ impl Protocol {
     /// re-exported by the pipeline facade, passed between stages), while `Protocol`
     /// only serves protocol conversion. The conversion is centralized here so every call site
     /// does not write its own match.
+    #[must_use]
     pub fn from_kind(kind: gateway_pipeline::ProtocolKind) -> Self {
         match kind {
             gateway_pipeline::ProtocolKind::OpenAI => Protocol::OpenAi,
@@ -62,6 +63,7 @@ impl Protocol {
 
     /// Channel `provider_type` → upstream format. Unknown values are treated as passthrough
     /// (zero conversion is the safest).
+    #[must_use]
     pub fn from_provider_type(provider_type: &str) -> Self {
         match provider_type {
             "claude" | "anthropic" => Protocol::Claude,

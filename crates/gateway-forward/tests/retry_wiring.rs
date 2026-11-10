@@ -4,7 +4,7 @@
 //! The core retry contract comes down to three behaviors:
 //! 1. Switch candidates after a retryable failure: the second select's exclude must contain the
 //!    tried candidate's key, the response comes from the winning candidate, and every attempt
-//!    reports health via Dispatch::report;
+//!    reports health via `Dispatch::report`;
 //! 2. Budget exhaustion: all candidates fail retryably → Unavailable, which maps to 503 without
 //!    Retry-After when no channel is cooling;
 //! 3. Fatal (retryable=false) does not switch channels: a single attempt ends the request and
@@ -12,7 +12,7 @@
 //!
 //! Dispatch uses a hand-written mock (recording select's exclude sets and the report call
 //! sequence); egress uses a scripted mock (returning fixed success bodies / classified errors per
-//! candidate base_url). The mocks and request builders are shared in `tests/common/mod.rs`
+//! candidate `base_url`). The mocks and request builders are shared in `tests/common/mod.rs`
 //! (egress is injected through the Egress trait; no real network is used).
 
 mod common;
@@ -357,11 +357,11 @@ async fn update_retry_policy_hot_swaps_max_attempts() {
 // ---------- Case 6 (b+c e2e): all channels cooling → Unavailable{ra>0} → 504 upstream ----------
 
 /// End to end: every candidate is cooling (select always returns
-/// AllUnavailable{retry_after_ms=8000}, empty candidate pool). Under the b+c split this is
+/// `AllUnavailable{retry_after_ms=8000`}, empty candidate pool). Under the b+c split this is
 /// "cooling = worth waiting for", so the forward stage must surface
 /// `StageError::Unavailable { retry_after_ms: 8000 }` (the router maps it to 504 + Retry-After:
 /// 8s), not 503 (503 is only for no cooling). Also verifies S2 termination: with the budget off
-/// (the helper's total_budget_ms=0) the gateway does not block waiting for cooling but returns
+/// (the helper's `total_budget_ms=0`) the gateway does not block waiting for cooling but returns
 /// immediately (no infinite loop), with 0 upstream calls (select fails first).
 #[tokio::test]
 async fn all_cooling_channels_surface_unavailable_with_retry_after() {
@@ -400,7 +400,7 @@ async fn all_cooling_channels_surface_unavailable_with_retry_after() {
 
 // ---------- Case 7 (b+c e2e full chain): request → forward stage → StageError → 503/504 ----------
 
-/// End to end (fills the Jev test_gap): a real `ForwardStage` (retry mode) request hits an **empty
+/// End to end (fills the Jev `test_gap)`: a real `ForwardStage` (retry mode) request hits an **empty
 /// candidate pool**; the forward stage emits `StageError::Unavailable`, then
 /// `gateway_pipeline::error_to_response` maps it to HTTP, pinning down the whole **503/504 split**
 /// chain:
@@ -408,7 +408,7 @@ async fn all_cooling_channels_surface_unavailable_with_retry_after() {
 ///   unavailable**, no Retry-After;
 /// - cooling (`retry_after_ms>0`: channels cooling) → **504 worth waiting + Retry-After:
 ///   ceil(ra/1000)**.
-/// With the budget off (total_budget_ms=0) the gateway does not block waiting for cooling (S2
+/// With the budget off (`total_budget_ms=0`) the gateway does not block waiting for cooling (S2
 /// termination), so 0ms is non-blocking.
 #[tokio::test]
 async fn unavailable_end_to_end_maps_503_and_504() {

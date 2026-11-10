@@ -31,11 +31,11 @@ pub struct UsageEvent {
     pub completion_tokens: u64,
     pub cached_tokens: u64,
     /// Prompt tokens written to the cache (Claude `cache_creation_input_tokens`,
-    /// OpenAI `prompt_tokens_details.cache_write_tokens`). Quantity only; the
+    /// `OpenAI` `prompt_tokens_details.cache_write_tokens`). Quantity only; the
     /// pricing layer does not consume it.
     #[serde(default)]
     pub cache_creation_tokens: u64,
-    /// Reasoning/thinking tokens already included in `completion_tokens` (OpenAI
+    /// Reasoning/thinking tokens already included in `completion_tokens` (`OpenAI`
     /// `completion_tokens_details.reasoning_tokens`, Gemini `thoughtsTokenCount`).
     /// Quantity only; the pricing layer does not consume it.
     #[serde(default)]

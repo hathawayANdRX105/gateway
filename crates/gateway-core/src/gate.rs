@@ -32,6 +32,7 @@ pub struct TokenEntry {
 }
 
 impl TokenEntry {
+    #[must_use]
     pub fn new(record: TokenRecord, allowed_models: Option<Vec<String>>) -> Self {
         Self {
             record,
@@ -55,10 +56,12 @@ impl TokenSnapshot {
         self.by_hash.insert(hash, entry);
     }
 
+    #[must_use]
     pub fn remove(&self, hash: &[u8; 32]) -> Option<TokenEntry> {
         self.by_hash.remove(hash).map(|(_, v)| v)
     }
 
+    #[must_use]
     pub fn lookup(&self, hash: &[u8; 32]) -> Option<TokenEntry> {
         self.by_hash.get(hash).map(|r| r.clone())
     }
@@ -80,10 +83,12 @@ impl UserSnapshot {
         self.by_key.insert(key, rec);
     }
 
+    #[must_use]
     pub fn remove(&self, user_key: &str) -> Option<UserRecord> {
         self.by_key.remove(user_key).map(|(_, v)| v)
     }
 
+    #[must_use]
     pub fn lookup(&self, user_key: &str) -> Option<UserRecord> {
         self.by_key.get(user_key).map(|r| r.clone())
     }
@@ -114,6 +119,7 @@ impl PricingSnapshot {
     /// Remove one row, returning it. Cost: O(1). An emptied model bucket is left
     /// in place (bounded by the number of models, pruned by the next snapshot
     /// rebuild) rather than paying a second lock round per removal.
+    #[must_use]
     pub fn remove(&self, model: &str, group: &str) -> Option<PriceRow> {
         self.rows
             .get(model)
@@ -123,6 +129,7 @@ impl PricingSnapshot {
 
     /// Exact `(model, group)` row, falling back to the model's `"default"` bucket.
     /// Cost: O(1), zero allocation (the lookup borrows both keys).
+    #[must_use]
     pub fn lookup(&self, model: &str, group: &str) -> Option<PriceRow> {
         self.rows.get(model).and_then(|groups| {
             groups
@@ -133,10 +140,10 @@ impl PricingSnapshot {
     }
 }
 
-/// One billing row. Unit: "internal units" per 1M tokens (new-api 500_000 = $1).
+/// One billing row. Unit: "internal units" per 1M tokens (new-api `500_000` = $1).
 ///
 /// Production fills this in `api_gateway_state::snapshot::build_pricing_snapshot` from
-/// the `model_prices` table's raw **$/M** values ×500_000, **never put dollar values
+/// the `model_prices` table's raw **$/M** values ×`500_000`, **never put dollar values
 /// here directly** — once this conversion was missed, the quota gate's cost
 /// estimation returned 0, leaving "balance < estimate → 402" spinning in production.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,8 +164,12 @@ pub struct PriceRow {
 /// 500_000` internal units/M), `max_tokens` is a token count, and dividing by 1e6
 /// yields internal units. `ceil` guarantees a nonzero consumption of at least 1 unit,
 /// matching the round-up semantics of the metering layer.
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn estimate_cost(price: &PriceRow, max_tokens: u32) -> i64 {
-    (price.output_per_m * max_tokens as f64 / 1_000_000.0).ceil() as i64
+    // `ceil` keeps the value non-negative and bounded by the price row, so the
+    // f64 -> i64 cast cannot saturate for any realistic price/token pair.
+    (price.output_per_m * f64::from(max_tokens) / 1_000_000.0).ceil() as i64
 }
 
 // ============================================================================
@@ -183,16 +194,15 @@ impl QuotaSnapshot {
         *e = e.saturating_add(delta);
     }
 
+    #[must_use]
     pub fn remove(&self, token_key: &str) -> Option<i64> {
         self.by_token.remove(token_key).map(|(_, v)| v)
     }
 
     /// Token remaining quota; missing → 0 (conservative rejection = treated as insufficient).
+    #[must_use]
     pub fn remaining(&self, token_key: &str) -> i64 {
-        self.by_token
-            .get(token_key)
-            .map(|r| *r.value())
-            .unwrap_or(0)
+        self.by_token.get(token_key).map_or(0, |r| *r.value())
     }
     /// Iterate `(token_key, remaining)` pairs: used by `MemoryLedger::reseed` to
     /// overwrite balances from a fresh snapshot while preserving in-flight holds.
@@ -236,7 +246,7 @@ impl Default for GroupEntry {
 
 /// Group snapshot (group name → [`GroupEntry`]).
 ///
-/// Unlike the other snapshots (DashMap interior mutability, incremental `&self` upsert),
+/// Unlike the other snapshots (`DashMap` interior mutability, incremental `&self` upsert),
 /// groups are low-frequency config pushed wholesale by sync, so this uses a `HashMap` with
 /// `&mut self` upsert: the reload path builds a fresh snapshot and stores it wholesale,
 /// which lets `allowed_models` return `&[String]` without copying.
@@ -265,19 +275,22 @@ impl GroupSnapshot {
     }
 
     /// Model allowlist for a group; group missing (unconfigured) → None.
+    #[must_use]
     pub fn allowed_models(&self, group: &str) -> Option<&[String]> {
         self.by_name.get(group).map(|e| e.allowed_models.as_slice())
     }
 
     /// Group multiplier; group missing → 1.0 (neutral fallback).
+    #[must_use]
     pub fn multiplier(&self, group: &str) -> f64 {
-        self.by_name.get(group).map(|e| e.multiplier).unwrap_or(1.0)
+        self.by_name.get(group).map_or(1.0, |e| e.multiplier)
     }
 
     /// Whether the group is explicitly disabled by the admin console (present in the
     /// snapshot and `enabled = false`).
     /// Unknown groups return false — "unconfigured" is not blocked, fail-open semantics
     /// are unchanged.
+    #[must_use]
     pub fn is_disabled(&self, group: &str) -> bool {
         self.by_name.get(group).is_some_and(|e| !e.enabled)
     }

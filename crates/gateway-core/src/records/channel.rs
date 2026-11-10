@@ -1,6 +1,6 @@
 //! Channel records — upstream provider access points.
 //!
-//! References: new-api internal/catalog/store_channel.go (multi-key/settings),
+//! References: new-api `internal/catalog/store_channel.go` (multi-key/settings),
 //! sub2api ent/schema/account.go (dispatch metadata), domain one of 07-database-schema.md.
 
 use super::SyncMeta;
@@ -20,7 +20,7 @@ pub struct ChannelRecord {
     /// (lowercase). Corresponds to the `gateway_protocol_bridge::Protocol` whitelist.
     pub provider_type: String,
     pub base_url: String,
-    /// One set of upstream credentials usable by this channel (key_index is the index
+    /// One set of upstream credentials usable by this channel (`key_index` is the index
     /// into this Vec; dispatch selects by index).
     pub keys: Vec<ChannelKey>,
     /// Channel-wide maximum concurrency (capacity source for the edge-local Semaphore).
@@ -28,7 +28,7 @@ pub struct ChannelRecord {
     /// 1 enabled / 2 manually disabled / 3 auto circuit-broken (driven by health
     /// observations and decided by the center's aggregation)
     pub status: u8,
-    /// Groups under which this channel is visible/usable; corresponds to GroupRecord::id.
+    /// Groups under which this channel is visible/usable; corresponds to `GroupRecord::id`.
     pub groups: Vec<String>,
     /// Channel-level overrides: timeout/header overrides/parameter overrides/system prompt.
     /// The structure is deferred (TODO(#206)); for now this keeps JSONB semantics.

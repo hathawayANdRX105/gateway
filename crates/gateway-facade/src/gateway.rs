@@ -39,25 +39,29 @@ pub struct Gateway {
 }
 
 impl Gateway {
-    /// Dispatcher port (the same instance is shared by the ForwardStage retry
+    /// Dispatcher port (the same instance is shared by the `ForwardStage` retry
     /// loop). Handed out as the injection-surface trait so the admin plane never
     /// names the engine type.
+    #[must_use]
     pub fn dispatcher(&self) -> Arc<dyn DispatcherHandle> {
         self.dispatcher.clone()
     }
 
     /// Channel health port (per-unit readout + live config replacement).
+    #[must_use]
     pub fn health(&self) -> Arc<dyn HealthHandle> {
         self.health.clone()
     }
 
-    /// Retry budget hot handle (live reload polling and the ForwardStage share
+    /// Retry budget hot handle (live reload polling and the `ForwardStage` share
     /// the same `ArcSwap`); also one of the runtime knobs.
+    #[must_use]
     pub fn retry_handle(&self) -> Arc<ArcSwap<RetryPolicy>> {
         self.retry_handle.clone()
     }
 
     /// Runtime knobs: the single surface for every runtime-mutable config value.
+    #[must_use]
     pub fn knobs(&self) -> Arc<RuntimeKnobs> {
         self.knobs.clone()
     }
@@ -65,18 +69,21 @@ impl Gateway {
     /// Gray-list state slot: the consumer records successes / failures and reads
     /// the current bans. Exposed so the running state is never hidden (and never
     /// tuned through the config knobs).
+    #[must_use]
     pub fn graylist(&self) -> Arc<ArcSwap<GrayListState>> {
         self.graylist.clone()
     }
 
     /// State-gate IP policy slot: the consumer stores the effective allow/deny
     /// list; the gate reads it per request.
+    #[must_use]
     pub fn ip_policy(&self) -> Arc<ArcSwap<IpPolicy>> {
         self.ip_policy.clone()
     }
 
     /// Assembled pipeline (gates → consumer stages → forwarding stage →
     /// protocol bridge → consumer stages), exposed for tests and inspection.
+    #[must_use]
     pub fn pipeline(&self) -> Arc<Pipeline> {
         self.pipeline.clone()
     }

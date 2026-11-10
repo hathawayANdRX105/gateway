@@ -21,9 +21,18 @@ const SHAPE_EXPONENT: f64 = 2.0;
 /// Shared shape of the power-law ladder ([`cooldown_duration_ms`] /
 /// [`throttle_cooldown_duration_ms`]): maps `streak` onto a duration in `[base, max]`,
 /// topping out at `steps` rungs.
+// All three casts here are provably bounded: callers enforce max > base, so `(max - base)`
+// cannot underflow and the clamped result always lies in [base, max] ⊆ [0, u64::MAX]; the
+// u64→f64 conversions are required for the power-law math and are exact for wall-clock ms
+// values (far below 2^53).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
 fn power_law_duration_ms(base: u64, max: u64, steps: f64, streak: u32) -> u64 {
     let steps = steps.max(1.0);
-    let n = (streak as f64).min(steps).max(0.0);
+    let n = f64::from(streak).min(steps).max(0.0);
     let ramp = (n / steps).powf(SHAPE_EXPONENT);
     (base as f64 + (max - base) as f64 * ramp).clamp(base as f64, max as f64) as u64
 }
@@ -80,6 +89,7 @@ pub(super) fn cooldown_duration_ms(cfg: &HealthSetting, streak: u32) -> u64 {
 /// transient throttling, so the ladder is short and steep; with the default 300ms → 1s the
 /// ladder is 343 → 475 → 693 → 1000ms (truncated). For `n ≥ N`, `(n/N)^p ≥ 1` is pinned,
 /// so the duration is always ≤ `throttle_max_ms`.
+#[must_use]
 pub fn throttle_cooldown_duration_ms(cfg: &HealthSetting, streak: u32) -> u64 {
     let base = cfg.cooldown_base_ms;
     let max = cfg.throttle_max_ms;
@@ -154,7 +164,7 @@ pub(super) fn finish_cooldown(st: &mut HealthState, now_ms: u64) {
 ///
 /// The annealing window reuses `cooldown_base_ms`: each full window drops both ledgers by 1
 /// (saturating at 0), and the remainder carries into the next settlement. Active traffic
-/// itself decrements both ledgers and clears the anchor through apply_outcome's Success
+/// itself decrements both ledgers and clears the anchor through `apply_outcome`'s Success
 /// branch, so annealing only handles "silent" channels; when the anchor is 0 (a success has
 /// happened) it sleeps until the next cooldown end sets a new anchor.
 ///
@@ -162,7 +172,7 @@ pub(super) fn finish_cooldown(st: &mut HealthState, now_ms: u64) {
 /// - `cfg`: provides the annealing window length;
 /// - `now_ms`: current clock.
 ///
-/// Called lazily only on the read path (is_selectable) — record itself is an active event
+/// Called lazily only on the read path (`is_selectable`) — record itself is an active event
 /// and needs no annealing.
 pub(super) fn anneal_streak(st: &mut HealthState, cfg: &HealthSetting, now_ms: u64) {
     if st.cooldown_until_ms != 0
@@ -179,8 +189,12 @@ pub(super) fn anneal_streak(st: &mut HealthState, cfg: &HealthSetting, now_ms: u
     if steps == 0 {
         return;
     }
-    st.cooldown_streak = st.cooldown_streak.saturating_sub(steps as u32);
-    st.throttle_streak = st.throttle_streak.saturating_sub(steps as u32);
+    // steps counts annealing windows; the streak ledgers are u32, so any step count that does
+    // not fit u32 already exceeds any streak and drains it to zero — saturate rather than
+    // wrapping the truncation.
+    let steps_u32 = u32::try_from(steps).unwrap_or(u32::MAX);
+    st.cooldown_streak = st.cooldown_streak.saturating_sub(steps_u32);
+    st.throttle_streak = st.throttle_streak.saturating_sub(steps_u32);
     st.anneal_since_ms += steps * window_ms;
     if st.cooldown_streak == 0 && st.throttle_streak == 0 {
         st.anneal_since_ms = 0;

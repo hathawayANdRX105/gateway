@@ -2,14 +2,14 @@
 //! todo/gateway-resilience.md P1-A).
 //!
 //! What is tested — cooldown duration is tiered by the triggering outcome, all through the
-//! public MemoryHealthTable API plus an injected clock asserting `cooldown_until_ms - now`
+//! public `MemoryHealthTable` API plus an injected clock asserting `cooldown_until_ms - now`
 //! (externally observable duration; private functions are not tested):
 //! - Fatal escalated from a 401-run → max tier, significantly longer than the first step
 //!   of the 5xx streak curve;
-//! - 429 → independent ladder 343→1000ms (throttle_streak ledger, never writes the fatal
+//! - 429 → independent ladder 343→1000ms (`throttle_streak` ledger, never writes the fatal
 //!   streak; the 5xx curve is meanwhile climbing toward max);
 //! - Neutral (400 / isolated 401) never triggers cooldown or records a streak;
-//! - unauthorized_run counting extends to 403 (mixed credential runs escalate the same
+//! - `unauthorized_run` counting extends to 403 (mixed credential runs escalate the same
 //!   way).
 
 use gateway_dispatch::health::{

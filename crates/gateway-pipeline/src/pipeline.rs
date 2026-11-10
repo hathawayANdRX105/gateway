@@ -33,6 +33,7 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             stages: vec![],
@@ -43,12 +44,14 @@ impl Pipeline {
     /// Mounts the prehold ledger so terminal pipeline outcomes can release a request's
     /// outstanding admission hold exactly once. `None` stays valid: no release is
     /// performed and no hold exists in shapes without preholds.
+    #[must_use]
     pub fn with_ledger(mut self, ledger: Option<Arc<dyn Ledger>>) -> Self {
         self.ledger = ledger;
         self
     }
 
     /// Append one stage to the chain
+    #[must_use]
     pub fn push<S: Stage + 'static>(mut self, s: S) -> Self {
         self.stages.push(Arc::new(s));
         self
@@ -56,15 +59,18 @@ impl Pipeline {
 
     /// Append a shared stage object — the facade builder's custom-stage slots
     /// store `Arc<dyn Stage>` and push them here.
+    #[must_use]
     pub fn push_shared(mut self, stage: Arc<dyn Stage>) -> Self {
         self.stages.push(stage);
         self
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.stages.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.stages.is_empty()
     }
@@ -76,6 +82,11 @@ impl Pipeline {
     /// Before returning an `Ok` response, if Dispatch has selected a route, pack the channel
     /// attribution into [`RouteAttribution`] and insert it into the response extensions (both
     /// the non-streaming and streaming exits must be covered; see `attach_attribution`).
+    ///
+    /// # Errors
+    ///
+    /// Returns the [`StageError`] of the first stage that fails; the request-level
+    /// prehold is released before returning.
     pub async fn run(&self, mut ctx: RequestCtx) -> Result<Response<Body>, StageError> {
         for (i, stage) in self.stages.iter().enumerate() {
             tracing::trace!(
@@ -96,7 +107,7 @@ impl Pipeline {
                 }
             };
             match outcome {
-                StageOutcome::Continue => continue,
+                StageOutcome::Continue => {}
                 StageOutcome::ShortCircuit(resp) => {
                     // Short circuit (e.g. a later gate rejection): release the admission
                     // hold exactly once before exiting. GateChain's own rejections already
@@ -129,7 +140,7 @@ impl Pipeline {
     ///
     /// The forward success path is untouched: `commit_forwarded`'s settle consumed
     /// `ctx.hold` (it is `None`), and streaming already moved it into the `HoldGuard`.
-    /// `take` is a no-op on `None`, so a gate that released the hold itself (GateChain)
+    /// `take` is a no-op on `None`, so a gate that released the hold itself (`GateChain`)
     /// cannot be double-released here.
     fn release_pending_hold(&self, ctx: &mut RequestCtx) {
         if let Some(hold) = ctx.hold.take()
@@ -143,7 +154,7 @@ impl Pipeline {
 /// Pack the channel attribution selected by Dispatch from ctx into the response extensions.
 ///
 /// ctx is consumed by value inside `run`: after the streaming branch hands the body to
-/// SsePipe, ctx can no longer be recovered from the handler (`Pipeline::run` returns only the
+/// `SsePipe`, ctx can no longer be recovered from the handler (`Pipeline::run` returns only the
 /// response), so packaging must finish before run returns — that is what lets streaming
 /// requests carry channel attribution too. A consumer outside the chain can read it back from
 /// `response.extensions()`.

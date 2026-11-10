@@ -82,11 +82,11 @@ use std::sync::Arc;
 /// Picks one from the candidate set. When the whole pool is unselectable
 /// (typically: everything is cooling down), it urgently recalls the channel
 /// with the shortest remaining cooldown; it returns None only when no enabled
-/// channel outside the exclude set is cooling (the caller reports NoCandidate).
+/// channel outside the exclude set is cooling (the caller reports `NoCandidate`).
 ///
 /// Returns a borrow rather than ownership (ocr #8): candidates are already held
 /// by Arc in the snapshot, so the hot path clones nothing per request; only the
-/// caller's final resolve_candidate produces an owned value.
+/// caller's final `resolve_candidate` produces an owned value.
 ///
 /// The injected `rng` makes weighted-random tests fully deterministic
 /// (statistical assertions no longer depend on a global random source).
@@ -136,6 +136,7 @@ impl P2CSelector {
     /// starve an already recovered channel forever. The concurrency state must
     /// share the same `Arc` as the `ConcurrencyGate`, or the available-slot
     /// signal is distorted.
+    #[must_use]
     pub fn new(concurrency: Arc<ConcurrencyState>, choices: usize, explore_rate: f64) -> Self {
         Self {
             concurrency,
@@ -151,7 +152,8 @@ impl P2CSelector {
     /// occupancy from it for discounting. Assembled inside
     /// `Dispatcher::with_token_budget`; when not attached (the default `None`)
     /// the decision simply omits the token factor, matching current behavior.
-    /// Exposed as `pub` so `tests/` can inject statistical cases directly.
+    /// `tests/` can inject statistical cases directly.
+    #[must_use]
     pub fn with_token(mut self, token: Arc<TokenBudgetState>) -> Self {
         self.token = Some(token);
         self
@@ -162,6 +164,7 @@ impl P2CSelector {
     /// §3.2). When not attached (the default `None`) it still uses the EWMA
     /// scalar, byte-for-byte identical to current behavior. Exposed as `pub` so
     /// `tests/` can inject statistical cases directly (same as `with_token`).
+    #[must_use]
     pub fn with_latency_digest(mut self, t: Arc<LatencyDigestTable>) -> Self {
         self.digest = Some(t);
         self
@@ -176,6 +179,7 @@ impl P2CSelector {
     /// to [`MAX_STICKY_BOOST`]: illegal input (non-finite / ≤0 / out of range)
     /// is clamped to the ceiling so `weight × ramp × boost` always stays finite
     /// and the normalized prior can never become `inf/inf = NaN`.
+    #[must_use]
     pub fn with_sticky_boost(mut self, boost: f64) -> Self {
         self.boost = clamp_sticky_boost(boost);
         self
@@ -371,6 +375,9 @@ impl P2CSelector {
             self.concurrency.available_permits(&unit.channel_key),
             signals.max_permits,
         ) {
+            // Permit counts are small integers (bounded by `max_permits`), so converting them
+            // to f64 is exact in practice; the ratio is a pure decision-layer discount.
+            #[allow(clippy::cast_precision_loss)]
             (Some(permits), Some(maximum)) => (permits as f64 + 1.0) / (maximum as f64 + 1.0),
             _ => 1.0,
         };
@@ -378,8 +385,7 @@ impl P2CSelector {
             .token
             .as_ref()
             .and_then(|t| t.load(&unit.channel_key))
-            .map(|l| 1.0 - l)
-            .unwrap_or(1.0);
+            .map_or(1.0, |l| 1.0 - l);
         // Fourth factor: generation throughput (design §3.3). tps_ema is a late
         // signal written back only when the stream finishes; like the three
         // preceding factors (observable by response-header time) it enters the
@@ -481,6 +487,11 @@ struct PoolSignals {
 /// path bypasses the clamping in `with_sticky_boost` and produces a non-finite
 /// value, this degrades to the existing uniform prior (×ramp), keeping the
 /// sampling pool alive and never panicking.
+// `count` is an eligible-pool size (a small integer; millions of candidates would exhaust
+// memory before reaching 2^53), so the f64 conversion is exact in practice. This branch only
+// fires when `total_weight` is non-finite or zero, where exactness is moot anyway — it
+// degrades to a uniform prior × ramp.
+#[allow(clippy::cast_precision_loss)]
 fn normalized_prior(boosted_weight: f64, total_weight: f64, ramp: f64, count: usize) -> f64 {
     if total_weight.is_finite() && total_weight > 0.0 {
         boosted_weight / total_weight
@@ -640,7 +651,7 @@ fn build_pool(sampled: &[usize], weights: &[f64], rng: &mut dyn rand::RngCore) -
 ///
 /// | Layer | Looks only at | Expresses |
 /// |---|---|---|
-/// | Sampling | effective prior = weight × slow_start_factor (plus sticky boost) | **long-run mix × temporary recovery discount**: expected share = w_i·f_i/Σ(w_j·f_j), at full health f=1.0 |
+/// | Sampling | effective prior = weight × `slow_start_factor` (plus sticky boost) | **long-run mix × temporary recovery discount**: expected share = `w_i·f_i/Σ(w_j·f_j)`, at full health f=1.0 |
 /// | Decision | `likelihood` (latency × health × concurrency × token × throughput) | **real-time preference**: who is faster and healthier right now |
 /// | Decision tie | sampling order | fallback: with no quality signal, the first drawn wins |
 ///

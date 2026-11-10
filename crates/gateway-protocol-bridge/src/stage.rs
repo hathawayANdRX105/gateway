@@ -1,4 +1,4 @@
-//! `stage` — ProtocolBridgeStage implementation
+//! `stage` — `ProtocolBridgeStage` implementation
 //!
 //! Pipeline Stage 4: **packages** the upstream response forward has already prepared into
 //! an HTTP response, or returns an error body shaped like the inbound protocol on the
@@ -14,9 +14,9 @@
 //! consistent, with no need to carry "which encoder was used this time" across stages.
 //!
 //! The old implementation did non-streaming conversion in this stage and **hardcoded the
-//! response source protocol to OpenAI**: the streaming path did not go through this stage
+//! response source protocol to `OpenAI`**: the streaming path did not go through this stage
 //! at all (`ctx.upstream` was only written in the non-streaming branch), so streaming
-//! Claude/Gemini clients always received OpenAI event shapes. That is G2.
+//! Claude/Gemini clients always received `OpenAI` event shapes. That is G2.
 //!
 //! So this stage now does only two things:
 //!
@@ -38,11 +38,13 @@ pub struct ProtocolBridgeStage {
 impl ProtocolBridgeStage {
     /// Construct from one format-registry instance (production assembly uses
     /// [`FormatRegistry::with_defaults`]).
+    #[must_use]
     pub fn new(formats: Arc<FormatRegistry>) -> Self {
         Self { formats }
     }
 
     /// Registry reference (forward-side conversion shares the same codec instance).
+    #[must_use]
     pub fn formats(&self) -> &Arc<FormatRegistry> {
         &self.formats
     }
@@ -60,7 +62,7 @@ impl Stage for ProtocolBridgeStage {
         // Error first: if an earlier stage has written ctx.error, convert it to the
         // inbound protocol shape.
         if let Some(e) = ctx.error.take() {
-            let resp = crate::error_mapping::map_error(e, inbound);
+            let resp = crate::error_mapping::map_error(&e, inbound);
             return Ok(StageOutcome::ShortCircuit(resp));
         }
 

@@ -12,7 +12,7 @@
 //!
 //! Streaming responses are encoded by one [`StreamEncoder`] per stream (`&mut self` holds
 //! block boundaries and accumulated tool-fragment state), while the decode side
-//! [`FormatCodec::decode_event`] stays stateless — Claude's `input_json_delta` to OpenAI's
+//! [`FormatCodec::decode_event`] stays stateless — Claude's `input_json_delta` to `OpenAI`'s
 //! `tool_calls[].arguments` is a 1:1 per-event mapping; the side that genuinely needs
 //! cross-event state is the encoder.
 //!

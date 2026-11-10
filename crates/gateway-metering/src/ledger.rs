@@ -1,7 +1,7 @@
 //! In-memory ledger — the atomic operation surface for prehold/settle/release.
 //!
-//! Reference: new-api open_billing_session.go (request-level billing session) +
-//! resolve_funding_source.go (wallet/subscription dual funding sources).
+//! Reference: new-api `open_billing_session.go` (request-level billing session) +
+//! `resolve_funding_source.go` (wallet/subscription dual funding sources).
 //! V1: single wallet balance slot; V2: subscription windows (issued by the billing domain).
 
 use std::collections::HashMap;
@@ -22,21 +22,22 @@ pub trait BalanceLedger: Ledger {
     fn available(&self, user_key: &str, token_key: &str) -> i64;
 }
 
-/// Value shape of a prehold record: (user_key, token_key, amount).
+/// Value shape of a prehold record: (`user_key`, `token_key`, amount).
 type HoldRecord = (String, String, i64);
 
 pub struct MemoryLedger {
-    /// token_key → balance (internal units). A token belongs to exactly one user, so the
+    /// `token_key` → balance (internal units). A token belongs to exactly one user, so the
     /// balance map is keyed by the token; `user_key` travels on the [`Hold`] record for
     /// attribution only.
     balances: Arc<Mutex<HashMap<String, i64>>>,
-    /// Prehold records: hold_id → (user_key, token_key, amount).
+    /// Prehold records: `hold_id` → (`user_key`, `token_key`, amount).
     holds: Arc<Mutex<HashMap<u64, HoldRecord>>>,
-    /// Global hold_id counter.
+    /// Global `hold_id` counter.
     next_id: AtomicU64,
 }
 
 impl MemoryLedger {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             balances: Arc::new(Mutex::new(HashMap::new())),

@@ -11,10 +11,10 @@
 //!    client stream ends with an `io::ErrorKind::TimedOut` item; the settle
 //!    event carries status 500 / "stream idle timeout" with produced token
 //!    counts; the channel permit and token reservation are returned
-//!    (available_permits back to 1, inflight back to 0).
+//!    (`available_permits` back to 1, inflight back to 0).
 //! 2. max arm: upstream trickles a frame every 10 ms forever,
 //!    `stream_max_ms=500ms` + `stream_idle_ms=10s` ⇒ the max arm fires first;
-//!    TimedOut end, settle 500 / "stream max duration exceeded".
+//!    `TimedOut` end, settle 500 / "stream max duration exceeded".
 //! 3. regression: five frames ~20 ms apart then clean EOF,
 //!    `stream_idle_ms=60ms` ⇒ EOF settles 200; the per-chunk idle reset means
 //!    the 60 ms idle budget (which would fire mid-stream without reset) never
@@ -229,7 +229,7 @@ async fn expect_stream(stage: &ForwardStage, ctx: &mut gateway_pipeline::Request
 // ---------- case 1: idle arm ----------
 
 /// One frame then permanent silence: `stream_idle_ms=50ms` fires while
-/// `stream_max_ms` stays dormant; the client stream ends with a TimedOut error
+/// `stream_max_ms` stays dormant; the client stream ends with a `TimedOut` error
 /// item and a 500 settle event carrying produced token counts.
 #[tokio::test]
 async fn idle_timeout_ends_stream_with_timed_out_and_settles_500() {
@@ -289,7 +289,7 @@ async fn idle_timeout_ends_stream_with_timed_out_and_settles_500() {
 // ---------- case 2: max arm ----------
 
 /// Trickle forever at 10 ms/frame: `stream_max_ms=500ms` fires before the
-/// 10 s idle budget; identical TimedOut end and 500 settle. The 500 ms budget
+/// 10 s idle budget; identical `TimedOut` end and 500 settle. The 500 ms budget
 /// keeps a 50x margin over the 10 ms frame period so even a heavily loaded CI
 /// worker delivers at least one frame before the deadline.
 #[tokio::test]

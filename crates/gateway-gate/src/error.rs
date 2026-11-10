@@ -23,7 +23,7 @@ pub enum Rejection {
     #[error("user disabled")]
     UserDisabled,
 
-    /// 401 — auth_version mismatch (old tokens are invalidated immediately)
+    /// 401 — `auth_version` mismatch (old tokens are invalidated immediately)
     #[error("auth version mismatch")]
     TokenAuthVersionMismatch,
 
@@ -74,11 +74,17 @@ pub enum Rejection {
 }
 
 /// Rejection → HTTP response
-pub fn rejection_to_response(rej: Rejection) -> Response {
-    use Rejection::*;
+#[must_use]
+pub fn rejection_to_response(rej: &Rejection) -> Response {
+    use Rejection::{
+        AuthSkipped, ConcurrencyExhausted, Graylisted, GroupDisabled, InsufficientQuota,
+        InvalidApiKey, IpNotAllowed, ModelForbidden, ModelNotAllowedForGroup, ModelNotSpecified,
+        PayloadTooLarge, RateLimited, TokenAuthVersionMismatch, TokenExpired, UserDisabled,
+        UserNotFound,
+    };
     // Status code and error code are a fixed mapping; the message always comes from
     // `Rejection`'s Display instead of repeating `rej.to_string()` in every arm.
-    let (status, code) = match &rej {
+    let (status, code) = match rej {
         InvalidApiKey => (StatusCode::UNAUTHORIZED, "invalid_api_key"),
         TokenExpired => (StatusCode::UNAUTHORIZED, "token_expired"),
         UserNotFound => (StatusCode::UNAUTHORIZED, "user_not_found"),

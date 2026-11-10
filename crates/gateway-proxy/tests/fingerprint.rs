@@ -2,7 +2,7 @@
 //!
 //! Verifies:
 //! 1. query parsing lands in `NodeOpts.fingerprint`
-//! 2. adapter_for passes the fingerprint to `TlsConfig` on the VLESS + TLS/REALITY path
+//! 2. `adapter_for` passes the fingerprint to `TlsConfig` on the VLESS + TLS/REALITY path
 //! 3. building the adapter does not fail with the feature off (meow only warns internally)
 
 use gateway_proxy::adapter::adapter_for;
@@ -17,7 +17,7 @@ fn vless_node(query: &str) -> ProxyNode {
     node
 }
 
-/// `fingerprint=chrome` parsing lands in NodeOpts
+/// `fingerprint=chrome` parsing lands in `NodeOpts`
 #[test]
 fn fingerprint_query_parsed() {
     let node = vless_node("?fingerprint=chrome&sni=cdn.example.com");

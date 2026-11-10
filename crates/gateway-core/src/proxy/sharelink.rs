@@ -5,7 +5,7 @@
 //!
 //! | Dialect | Shape | Why `parse_url` cannot handle it |
 //! |---|---|---|
-//! | VMess v2rayN | `vmess://BASE64(JSON)` | The payload is entirely base64; `Url::parse` treats it as the host |
+//! | `VMess` v2rayN | `vmess://BASE64(JSON)` | The payload is entirely base64; `Url::parse` treats it as the host |
 //! | SS legacy | `ss://BASE64(method:pass@host:port)#remark` | The **whole string** (including host:port) is inside the base64 |
 //! | SS SIP002 | `ss://BASE64(method:pass)@host:port#remark` | Only userinfo is base64; host is plaintext |
 //! | SS plaintext | `ss://method:pass@host:port` | Already supported; delegate directly |
@@ -18,17 +18,17 @@
 //! parses stored links during CRUD validation and bulk import; requiring the engine (and its
 //! TLS/protocol stack) just to parse a string is what the injection surface exists to avoid.
 //!
-//! VMess JSON field mapping to [`ProxyNode`] (consistent with the auth semantics the engine's
+//! `VMess` JSON field mapping to [`ProxyNode`] (consistent with the auth semantics the engine's
 //! adapter assembly expects; mistakes cause authentication failures after assembly):
 //!
 //! - `id` → `auth.user` (UUID)
-//! - `scy` → `auth.pass` (VMess security); `auto` / empty stays blank so the adapter uses its
+//! - `scy` → `auth.pass` (`VMess` security); `auto` / empty stays blank so the adapter uses its
 //!   default
 //! - `add` → `host`, `port` → port (accepts both numeric and string forms)
 //! - `net=ws`: `path` → [`NodeOpts::ws_path`], `host` → `ws_host`
 //! - `sni` → `NodeOpts::sni`; with `tls=true` and no `sni`, fall back to `add` (TLS requires SNI)
 //! - `fp` → `NodeOpts::fingerprint`
-//! - `aid` (alterId): obsolete after VMess AEAD; the adapter ignores this key, so it is discarded
+//! - `aid` (alterId): obsolete after `VMess` AEAD; the adapter ignores this key, so it is discarded
 //! - `net=grpc`/`h2`/`httpupgrade`: [`NodeOpts`] has no fields for these transports; **error instead
 //!   of silently degrading** — degrading to tcp would dial successfully but use the wrong
 //!   transport, making diagnosis far more expensive than failing at import time
@@ -62,7 +62,7 @@ pub struct VmessShareLink {
     /// User UUID.
     #[serde(rename = "id")]
     pub id: String,
-    /// alterId, obsolete after VMess AEAD; discarded after parsing.
+    /// alterId, obsolete after `VMess` AEAD; discarded after parsing.
     #[serde(rename = "aid", default)]
     pub aid: JsonValue,
     /// Cipher (security).
@@ -116,6 +116,11 @@ pub struct ShareLinkBatch {
 ///
 /// Scheme detection uses a string prefix rather than `Url::parse` first: the vmess base64 payload
 /// is not a valid URL and parsing it first would fail outright.
+///
+/// # Errors
+///
+/// Returns the dialect parser's [`ParseError`] when the link is not a
+/// recognised scheme, or when the matching dialect payload is malformed.
 pub fn parse_share_link(link: &str) -> Result<ProxyNode, ParseError> {
     let lower = link.trim().to_ascii_lowercase();
     if lower.starts_with("vmess://") {
@@ -132,6 +137,7 @@ pub fn parse_share_link(link: &str) -> Result<ProxyNode, ParseError> {
 ///
 /// A single-line failure goes only into `failures` and does not affect the batch — one bad link
 /// in a subscription is normal.
+#[must_use]
 pub fn parse_share_links(text: &str) -> ShareLinkBatch {
     let mut batch = ShareLinkBatch {
         nodes: Vec::new(),
@@ -160,12 +166,12 @@ pub fn parse_share_links(text: &str) -> ShareLinkBatch {
 /// Other schemes are masked as URLs: drop userinfo, path, and query (userinfo and query can hold
 /// credentials); keep the host and port for locating. Must handle **invalid** raw lines (missing
 /// host, too long, odd chars) — the fallback is only `<scheme>://***`, never the original text.
+#[must_use]
 pub fn mask_link(link: &str) -> String {
     let link = link.trim();
     let scheme = link
         .split_once("://")
-        .map(|(s, _)| s.to_ascii_lowercase())
-        .unwrap_or_else(|| "?".to_string());
+        .map_or_else(|| "?".to_string(), |(s, _)| s.to_ascii_lowercase());
     if scheme == "vmess" {
         return "vmess://***".to_string();
     }

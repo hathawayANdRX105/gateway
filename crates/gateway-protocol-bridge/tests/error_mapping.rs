@@ -245,7 +245,7 @@ fn status_codes_are_shared_across_protocols() {
                 },
                 other => panic!("test case only covers the five categories above, actual: {other}"),
             };
-            let resp = map_error(fresh, target);
+            let resp = map_error(&fresh, target);
             assert_eq!(
                 resp.status().as_u16(),
                 expected,
@@ -255,7 +255,7 @@ fn status_codes_are_shared_across_protocols() {
     }
     // Unavailable(504) must carry a Retry-After header (ceil(8000/1000)=8s).
     let resp = map_error(
-        StageError::Unavailable {
+        &StageError::Unavailable {
             group: "g".into(),
             model: "m".into(),
             retry_after_ms: 8_000,
@@ -303,7 +303,7 @@ fn gemini_status_names_follow_http_status() {
 // whether to parse the body.
 #[test]
 fn error_response_is_json_content_type() {
-    let resp = map_error(StageError::RateLimited, ProtocolKind::OpenAI);
+    let resp = map_error(&StageError::RateLimited, ProtocolKind::OpenAI);
     assert_eq!(
         resp.headers()
             .get(http::header::CONTENT_TYPE)
@@ -316,7 +316,7 @@ fn error_response_is_json_content_type() {
 #[test]
 fn unavailable_without_cooling_maps_to_503() {
     let resp = map_error(
-        StageError::Unavailable {
+        &StageError::Unavailable {
             group: "g".into(),
             model: "m".into(),
             retry_after_ms: 0,

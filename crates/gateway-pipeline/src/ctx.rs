@@ -4,7 +4,7 @@
 //! - `RequestCtx` exists only for the current request and **must not be shared across requests**.
 //! - State shared across requests (token table / route index) lives in `ArcSwap`; each stage
 //!   explicitly `.load()`s it.
-//! - `StageOutcome` is a three-state enum: Continue / ShortCircuit / Stream (defined in `stage`).
+//! - `StageOutcome` is a three-state enum: Continue / `ShortCircuit` / Stream (defined in `stage`).
 
 use std::net::IpAddr;
 
@@ -77,7 +77,7 @@ pub struct SelectedRoute {
     pub unit: gateway_core::records::RouteUnitRecord,
     /// Resolved upstream credential (`channel.keys[key_index].secret`).
     pub secret: String,
-    /// Upstream base_url (path joining rules in `gateway_forward::adapter::build_url`).
+    /// Upstream `base_url` (path joining rules in `gateway_forward::adapter::build_url`).
     pub base_url: String,
     /// Upstream real model name (`unit.upstream_model`); used for the model field sent upstream.
     pub upstream_model: String,
@@ -93,7 +93,7 @@ pub struct SelectedRoute {
 ///
 /// `Pipeline::run` packages this from `RequestCtx` before returning the response and writes it
 /// to `response.extensions()`: ctx is consumed inside run (especially on the streaming branch —
-/// once the body is taken over by SsePipe the caller cannot get ctx back), so response extensions
+/// once the body is taken over by `SsePipe` the caller cannot get ctx back), so response extensions
 /// are the only channel middleware can read.
 ///
 /// `channel_key` = `ChannelRecord.meta.key` (UUID string, → `usage_logs.channel_key`);
@@ -113,7 +113,7 @@ pub struct UpstreamResponse {
     pub body: Bytes,
 }
 
-/// Streaming accumulation (written by StreamingIntercept)
+/// Streaming accumulation (written by `StreamingIntercept`)
 #[derive(Debug, Default, Clone)]
 pub struct StreamedAccum {
     pub prompt_tokens: u32,
@@ -123,7 +123,7 @@ pub struct StreamedAccum {
 
 /// Streaming response (Forward → client handover)
 ///
-/// Wraps the axum Body and the upstream `content-type`; `gateway-forward`'s SsePipe constructs it
+/// Wraps the axum Body and the upstream `content-type`; `gateway-forward`'s `SsePipe` constructs it
 /// via [`PipeStream::with_content_type`] / [`PipeStream::new`].
 #[derive(Debug)]
 pub struct PipeStream {
@@ -135,7 +135,7 @@ impl PipeStream {
     /// Build from an upstream stream, explicitly supplying the `content-type` returned to the
     /// client.
     ///
-    /// It must be included: SSE clients (OpenAI / Anthropic SDKs) use `text/event-stream` to
+    /// It must be included: SSE clients (`OpenAI` / Anthropic SDKs) use `text/event-stream` to
     /// decide to read the response as an event stream; without it they collect the whole response
     /// as an ordinary body at once.
     pub fn with_content_type(body: axum::body::Body, content_type: impl Into<String>) -> Self {
@@ -146,6 +146,7 @@ impl PipeStream {
     }
 
     /// Build from an upstream SSE stream (called by forward); content-type is `text/event-stream`.
+    #[must_use]
     pub fn new(body: axum::body::Body) -> Self {
         Self::with_content_type(body, "text/event-stream")
     }
@@ -203,20 +204,20 @@ pub struct RequestCtx {
     /// `gateway_dispatch::StickyKey` prefers it (`"sid:" + value`); the same session hits the same
     /// key no matter how the request body grows, and it is consistent across client protocols.
     /// `None` = no session header, so stickiness falls back to a raw body-prefix fingerprint.
-    /// Prefilled during bin/api assembly, or read directly from `request.headers` by DispatchStage.
+    /// Prefilled during bin/api assembly, or read directly from `request.headers` by `DispatchStage`.
     pub session_hint: Option<String>,
 
-    /// Written by Gate::model: model name parsed from the request body (dispatch uses it for
+    /// Written by `Gate::model`: model name parsed from the request body (dispatch uses it for
     /// lookup).
     pub requested_model: Option<String>,
 
     /// Written by Forward: non-streaming response body
     pub upstream: Option<UpstreamResponse>,
 
-    /// Written by StreamingIntercept: streaming accumulation
+    /// Written by `StreamingIntercept`: streaming accumulation
     pub streamed: StreamedAccum,
 
-    /// Any stage may write: cross-stage error (do not return directly; handle via StageOutcome)
+    /// Any stage may write: cross-stage error (do not return directly; handle via `StageOutcome`)
     pub error: Option<StageError>,
     /// Written by the gate chain: the prehold taken by `QuotaGate` at admission.
     /// Settled by the forward commit point (actual cost) or released when a later gate
@@ -248,8 +249,13 @@ impl RequestCtx {
 
     /// Build from an axum Request (bin/api entry point)
     ///
-    /// Extracts method / path / headers / body / client_ip / request_id and infers the protocol
+    /// Extracts method / path / headers / body / `client_ip` / `request_id` and infers the protocol
     /// type from the path.
+    ///
+    /// # Errors
+    ///
+    /// Returns the body-collection error when the request body cannot be read into
+    /// memory (the axum limit is `usize::MAX`, so this is a transport failure).
     pub async fn from_axum(req: http::Request<axum::body::Body>) -> anyhow::Result<Self> {
         let (parts, body) = req.into_parts();
         let body_bytes = axum::body::to_bytes(body, usize::MAX).await?;
@@ -280,6 +286,10 @@ fn client_ip(headers: &HeaderMap, extensions: &Extensions) -> IpAddr {
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.split(',').next())
         .and_then(|s| s.trim().parse().ok())
-        .or_else(|| extensions.get::<std::net::SocketAddr>().map(|a| a.ip()))
+        .or_else(|| {
+            extensions
+                .get::<std::net::SocketAddr>()
+                .map(std::net::SocketAddr::ip)
+        })
         .unwrap_or(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
 }

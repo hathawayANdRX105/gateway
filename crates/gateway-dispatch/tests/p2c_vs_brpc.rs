@@ -62,6 +62,9 @@ fn unit(key: &str, weight: u32) -> RouteUnitRecord {
     }
 }
 
+// `hits ≤ n * 8 = 32 000` and the divisor `n * 8 = 32 000`, both well below
+// f64's 2^53 mantissa, so the `usize → f64` casts are exact; hit-ratio only.
+#[allow(clippy::cast_precision_loss)]
 fn share_of(
     selector: &P2CSelector,
     units: &[RouteUnitRecord],

@@ -2,13 +2,13 @@
 //! streaming/non-streaming forwarding after the scan chain.
 //!
 //! Coverage:
-//! 1. StreamScanner extracts usage from SSE data frames (the settlement data source);
-//! 2. `stream::finish` produces a UsageEvent only when price_table is attached; status/error
+//! 1. `StreamScanner` extracts usage from SSE data frames (the settlement data source);
+//! 2. `stream::finish` produces a `UsageEvent` only when `price_table` is attached; status/error
 //!    are injected by the caller (library-level evidence for a 200 success / a mid-stream
 //!    500);
 //! 3. End-to-end wiring: mock egress returns a non-streaming 200 with usage; after injecting
-//!    a fake PriceTable + SettleSink, `ForwardStage::handle` (internally going through
-//!    commit_forwarded, the single settlement point) makes the sink receive exactly one
+//!    a fake `PriceTable` + `SettleSink`, `ForwardStage::handle` (internally going through
+//!    `commit_forwarded`, the single settlement point) makes the sink receive exactly one
 //!    event with correct counts, cost, and group attribution.
 //!
 //! The mock and request constructors live in `tests/common/mod.rs` for sharing.
@@ -58,7 +58,7 @@ impl RecordingPriceTable {
     }
 }
 
-/// Minimal RequestCtx for single-shot mode (no with_retry): route preset, token carries
+/// Minimal `RequestCtx` for single-shot mode (no `with_retry)`: route preset, token carries
 /// group.
 fn ctx_single_shot() -> gateway_pipeline::RequestCtx {
     ctx_with_body(NON_STREAM_BODY, candidate("c1"))
@@ -110,8 +110,8 @@ fn priced_ctx() -> SseContext {
     ctx
 }
 
-/// With price_table attached, finish really settles and returns the event (no longer
-/// discarding the artifact). cost = (10×15 + 5×60)/1e6 × 500_000 = 225.
+/// With `price_table` attached, finish really settles and returns the event (no longer
+/// discarding the artifact). cost = (10×15 + 5×60)/1e6 × `500_000` = 225.
 #[test]
 fn finish_returns_settled_event_when_priced() {
     let (_end, counts, event) = finish(priced_ctx(), 200, None);
@@ -133,7 +133,7 @@ fn finish_returns_settled_event_when_priced() {
     );
 }
 
-/// Without price_table: no billing, event is None (same behavior as before billing was
+/// Without `price_table`: no billing, event is None (same behavior as before billing was
 /// wired).
 #[test]
 fn finish_without_price_table_is_not_billed() {
@@ -161,8 +161,8 @@ fn finish_error_path_settles_accumulated_counts_with_500() {
     );
 }
 
-/// Streaming frames capture the finish reason: the last frame's choices[0].finish_reason
-/// goes into the event record (raw material for truncation_rate fitting; absent upstream =
+/// Streaming frames capture the finish reason: the last frame's choices[0].`finish_reason`
+/// goes into the event record (raw material for `truncation_rate` fitting; absent upstream =
 /// None, never fabricated).
 #[test]
 fn finish_carries_streaming_finish_reason() {

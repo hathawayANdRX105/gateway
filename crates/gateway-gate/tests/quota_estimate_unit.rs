@@ -1,5 +1,5 @@
 //! Unit-contract regression test: `estimate_cost` must keep the same books as
-//! `gateway_metering::pricing::price_of` (1 internal unit = $1/500_000). Bug
+//! `gateway_metering::pricing::price_of` (1 internal unit = $`1/500_000`). Bug
 //! reproduction: the old code's `as i64` truncation and `* 1_000_000` scaling left the
 //! estimate at 0, so "balance < estimate → 402" never engaged in production.
 

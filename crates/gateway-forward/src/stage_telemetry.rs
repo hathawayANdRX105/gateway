@@ -1,4 +1,4 @@
-//! `stage_telemetry` — metering/settlement telemetry for ForwardStage.
+//! `stage_telemetry` — metering/settlement telemetry for `ForwardStage`.
 //!
 //! Success path: [`ForwardStage::settle_non_stream`] emits a settlement event at
 //! the non-streaming commit point (streaming settles via `stream::finish` when the
@@ -21,7 +21,7 @@ use crate::stage::ForwardStage;
 
 impl ForwardStage {
     /// Non-streaming settlement — extract usage from the full response body (falling
-    /// back to estimation when absent), price it, and hand the UsageEvent to the
+    /// back to estimation when absent), price it, and hand the `UsageEvent` to the
     /// sink.
     ///
     /// Returns immediately when the price table or sink is not mounted
@@ -97,7 +97,7 @@ impl ForwardStage {
         // have a candidate (commit_forwarded passes the winner here, and
         // submit_failed has a candidate per failed attempt), so there is no "failed
         // and never selected a unit" case and no fallback to ctx.token.group.
-        event.group_id = candidate.unit.group.clone();
+        event.group_id.clone_from(&candidate.unit.group);
         // Reconcile the prehold with the metered actual: refund the difference or
         // charge the extra on a negative delta. No hold means no ledger mounted,
         // hence nothing to settle.
@@ -177,7 +177,7 @@ impl ForwardStage {
             // reason extracts exactly as it did on the original call.
             gateway_metering::extract_finish_reason(&entry.body).as_deref(),
         );
-        event.group_id = entry.group.clone();
+        event.group_id.clone_from(&entry.group);
         // Reconcile the prehold with the metered actual, exactly like a live
         // call: the replay's recorded counts price to the same cost the original
         // call settled at.
@@ -191,7 +191,7 @@ impl ForwardStage {
 
     /// Failure observation — when upstream responded (4xx/5xx) or transport failed
     /// but a **candidate exists**, emit a **zero-cost observation event** to the
-    /// sink, so usage_logs records "this request happened and which candidate
+    /// sink, so `usage_logs` records "this request happened and which candidate
     /// rejected it".
     ///
     /// The prehold is NOT released here: the prehold is request-scoped admission
@@ -223,7 +223,6 @@ impl ForwardStage {
             // No attribution: nothing to observe, never emit an ownerless bill.
             return;
         };
-        let _group_ratio = 1.0;
         let fallback = Hold {
             id: 0,
             amount: 0,
@@ -259,12 +258,12 @@ impl ForwardStage {
         // Backfill the effective group: the failure observation row is attributed to
         // the **failed attempt's candidate** unit group (same as settle_non_stream;
         // an attempt always has a candidate, so there is no token-group fallback).
-        event.group_id = candidate.unit.group.clone();
+        event.group_id.clone_from(&candidate.unit.group);
         sink.submit(event);
     }
 }
 
-/// Settlement attribution keys (user_key / token_key / group), all from `ctx.token`.
+/// Settlement attribution keys (`user_key` / `token_key` / group), all from `ctx.token`.
 ///
 /// A missing token (in theory the gates guarantee Some) → `None`: the caller skips
 /// settlement / observation silently and never emits an ownerless bill.
@@ -312,17 +311,17 @@ pub(crate) fn millis_saturating(elapsed: Duration) -> u32 {
 /// `commit_forwarded` captures the winning candidate's group to carry back with the
 /// event.
 pub(crate) fn submit_event(
-    sink: &Option<Arc<dyn gateway_metering::SettleSink>>,
+    sink: Option<&Arc<dyn gateway_metering::SettleSink>>,
     event: Option<gateway_core::records::UsageEvent>,
     group_id: &str,
 ) {
-    if let (Some(mut event), Some(sink)) = (event, sink.as_ref()) {
+    if let (Some(mut event), Some(sink)) = (event, sink) {
         event.group_id = group_id.to_string();
         sink.submit(event);
     }
 }
 
-/// NormalizedError → StageError::Upstream (passes through the upstream status code
+/// `NormalizedError` → `StageError::Upstream` (passes through the upstream status code
 /// and message preview).
 pub(crate) fn normalized_to_stage_error(e: NormalizedError) -> StageError {
     StageError::Upstream(gateway_pipeline::UpstreamError::Status {
@@ -331,7 +330,7 @@ pub(crate) fn normalized_to_stage_error(e: NormalizedError) -> StageError {
     })
 }
 
-/// Minimum completion_tokens for a throughput sample — smaller samples are dropped
+/// Minimum `completion_tokens` for a throughput sample — smaller samples are dropped
 /// outright (design §3.2): ultra-short bursts such as `max_tokens=1` carry no
 /// throughput information, while their denominator (the time of one generation) is
 /// exactly the noisiest tier; feeding them into the EMA only skews the channel-level
@@ -404,6 +403,9 @@ pub(crate) fn report_stream_tps(
         .saturating_duration_since(first_token_at)
         .max(Duration::from_millis(1))
         .as_secs_f64();
+    // Completion token counts are bounded far below f64's 52-bit mantissa, so
+    // this conversion cannot lose meaningful precision for any realistic stream.
+    #[allow(clippy::cast_precision_loss)]
     let value = counts.completion as f64 / seconds;
     if !value.is_finite() || value <= 0.0 {
         return;

@@ -31,7 +31,7 @@ pub struct GateCtx {
     pub estimated_cost: Option<i64>,
     /// Model parsed from the request body by the model stage.
     pub requested_model: Option<String>,
-    /// max_tokens parsed from the request body by the model stage.
+    /// `max_tokens` parsed from the request body by the model stage.
     pub requested_max_tokens: Option<u32>,
     /// Prehold taken by the quota gate at admission; promoted into `RequestCtx.hold` when
     /// the whole chain passes, released by the chain when a later gate rejects.
@@ -41,6 +41,10 @@ pub struct GateCtx {
 impl GateCtx {
     /// Ensure the request body has been parsed for `model` / `max_tokens`; parsing is skipped
     /// once `requested_model` is set.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the [`Rejection`] produced by body parsing.
     pub fn ensure_model_parsed(&mut self) -> Result<(), Rejection> {
         if self.requested_model.is_none() {
             let body = self.request_meta.body.clone();
@@ -52,9 +56,12 @@ impl GateCtx {
     /// Fetch the public model and token for this request (shared by the `model` and
     /// `quota` gates).
     ///
-    /// Requires [`Self::ensure_model_parsed`] first; a token that has not passed the auth
-    /// gate yields [`Rejection::AuthSkipped`], and a missing model yields
-    /// [`Rejection::ModelNotSpecified`].
+    /// Requires [`Self::ensure_model_parsed`] first.
+    ///
+    /// # Errors
+    ///
+    /// Yields [`Rejection::AuthSkipped`] when the token has not passed the auth gate,
+    /// and [`Rejection::ModelNotSpecified`] when the request body carries no model.
     pub fn model_and_token(&self) -> Result<(&str, &TokenInfo), Rejection> {
         let token = self.token.as_ref().ok_or(Rejection::AuthSkipped)?;
         let model = self
@@ -91,6 +98,7 @@ pub struct GateChain {
 }
 
 impl GateChain {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gates: vec![],
@@ -98,12 +106,14 @@ impl GateChain {
         }
     }
 
+    #[must_use]
     pub fn push<G: Gate + 'static>(mut self, g: G) -> Self {
         self.gates.push(Arc::new(g));
         self
     }
     /// Mounts the ledger so a prehold taken by an earlier gate (quota) can be released
     /// when a later gate rejects the request.
+    #[must_use]
     pub fn with_ledger(mut self, ledger: Arc<dyn Ledger>) -> Self {
         self.ledger = Some(ledger);
         self
@@ -119,6 +129,7 @@ impl GateChain {
     }
 
     /// Whether a gate with this name is currently mounted.
+    #[must_use]
     pub fn contains(&self, name: &str) -> bool {
         self.gates.iter().any(|gate| gate.name() == name)
     }
@@ -129,9 +140,11 @@ impl GateChain {
         self.gates.push(gate);
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.gates.len()
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.gates.is_empty()
     }
@@ -174,7 +187,7 @@ impl Stage for GateChain {
                 {
                     ledger.release(&hold);
                 }
-                return Ok(StageOutcome::ShortCircuit(rejection_to_response(rej)));
+                return Ok(StageOutcome::ShortCircuit(rejection_to_response(&rej)));
             }
         }
 

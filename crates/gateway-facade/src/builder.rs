@@ -59,6 +59,7 @@ pub struct GatewayBuilder {
 
 impl GatewayBuilder {
     /// Full relay shape (auth → state → model → group → quota? → rate → gray).
+    #[must_use]
     pub fn relay(ctx: Context) -> Self {
         Self::with_shape(ctx, Shape::Relay)
     }
@@ -66,17 +67,20 @@ impl GatewayBuilder {
     /// No-billing shape: the relay chain **without** the quota gate. A quota gate
     /// still sitting in `Components` is dropped, so the shape is a decision and
     /// not a hope that the consumer remembered to leave it out.
+    #[must_use]
     pub fn no_billing(ctx: Context) -> Self {
         Self::with_shape(ctx, Shape::NoBilling)
     }
 
     /// Trusted shape: model-parse gate only — the caller fronts authentication
     /// and the allowlist itself.
+    #[must_use]
     pub fn open(ctx: Context) -> Self {
         Self::with_shape(ctx, Shape::Open)
     }
 
     /// Start from an explicit shape.
+    #[must_use]
     pub fn with_shape(ctx: Context, shape: Shape) -> Self {
         Self {
             ctx,
@@ -91,6 +95,7 @@ impl GatewayBuilder {
 
     /// Replace the knob set (defaults to the values carried by
     /// [`Context::config`]).
+    #[must_use]
     pub fn with_config(mut self, config: Config) -> Self {
         self.ctx.config = config;
         self
@@ -98,6 +103,7 @@ impl GatewayBuilder {
 
     /// Append one gate at the tail of the admission chain (after the preset's
     /// own gates).
+    #[must_use]
     pub fn with_gate<G: gateway_gate::Gate + 'static>(mut self, gate: G) -> Self {
         self.extra_gates.push(Arc::new(gate));
         self
@@ -106,6 +112,7 @@ impl GatewayBuilder {
     /// Hand the builder a fully composed gate chain, replacing the preset's.
     /// The builder still attaches the prehold ledger, so a custom chain keeps
     /// the hold lifecycle intact.
+    #[must_use]
     pub fn with_gates(mut self, chain: GateChain) -> Self {
         self.chain = Some(chain);
         self
@@ -115,6 +122,7 @@ impl GatewayBuilder {
     /// that is currently assembled. No-op when the name is absent from the
     /// assembled chain; a name outside the known list trips a debug assertion,
     /// because a typo would otherwise look like a successful removal.
+    #[must_use]
     pub fn without_gate(mut self, name: &'static str) -> Self {
         debug_assert!(
             crate::preset::GATE_NAMES.contains(&name),
@@ -126,18 +134,21 @@ impl GatewayBuilder {
     }
 
     /// Add a custom stage after the gate chain, before the forwarding stage.
+    #[must_use]
     pub fn with_stage_before_forward(mut self, stage: impl Stage + 'static) -> Self {
         self.pre_forward.push(Arc::new(stage));
         self
     }
 
     /// Add a custom stage after the whole default chain.
+    #[must_use]
     pub fn with_stage_after_chain(mut self, stage: impl Stage + 'static) -> Self {
         self.post.push(Arc::new(stage));
         self
     }
 
     /// Alias of [`Self::with_stage_after_chain`]: append at the end.
+    #[must_use]
     pub fn with_stage(self, stage: impl Stage + 'static) -> Self {
         self.with_stage_after_chain(stage)
     }
@@ -198,6 +209,11 @@ impl GatewayBuilder {
     /// [`Self::admission_chain`] assembles the gates, and
     /// [`Self::wire_forward_stage`] mounts the forwarding stage. This function
     /// only sequences them and hands the handles out.
+    // Sequencing only: every subsystem assembles in its own helper
+    // (`wire_signals` / `admission_chain` / `wire_forward_stage`); the residual
+    // length is the flat destructure of builder inputs, so a further split would
+    // just relocate that destructure into a helper that reads worse.
+    #[allow(clippy::too_many_lines)]
     pub fn build(self) -> Gateway {
         let Self {
             ctx,
@@ -540,6 +556,7 @@ struct SignalHub {
 }
 
 /// The config slice `wire_signals` consumes.
+#[derive(Debug, Clone, Copy)]
 struct Signals {
     health_setting: HealthSetting,
     retry_policy: RetryPolicy,

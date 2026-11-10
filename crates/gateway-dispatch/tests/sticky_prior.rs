@@ -58,6 +58,10 @@ fn selector() -> P2CSelector {
 /// Accumulated share over multiple seeds. With equal latency (the two candidates'
 /// likelihoods tie) traffic equals the prior exactly, so these statistics directly
 /// measure how much the boost raised the prior.
+// `hits ≤ DRAWS_PER_SEED * SEEDS = 3 600` and the divisor is that same fixed
+// test constant, so both `usize → f64` casts are exact (well below f64's
+// 2^53 mantissa); this computes a hit ratio, not big-integer bookkeeping.
+#[allow(clippy::cast_precision_loss)]
 fn share_of(
     selector: &P2CSelector,
     units: &[RouteUnitRecord],
@@ -78,7 +82,7 @@ fn share_of(
             }
         }
     }
-    hits as f64 / (DRAWS_PER_SEED * SEEDS as usize) as f64
+    hits as f64 / (DRAWS_PER_SEED * usize::try_from(SEEDS).expect("SEEDS = 12, fits usize")) as f64
 }
 
 /// Two rounds with the same prefix: after the first-round binding, the sticky channel's
@@ -311,7 +315,7 @@ fn out_of_range_boost_clamps_priors_stay_finite_and_pick_does_not_panic() {
         prior_a(4.0),
         4.0 / 5.0,
         "valid boost=4.0 must be preserved as-is"
-    )
+    );
 }
 
 /// Retry switches candidates: after the first attempt on the sticky channel fails, switch

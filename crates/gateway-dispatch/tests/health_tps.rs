@@ -20,7 +20,7 @@ use gateway_dispatch::health::{
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Pure in-memory health table with a fixed clock (`now_ms` always 1_000_000): the tps EMA
+/// Pure in-memory health table with a fixed clock (`now_ms` always `1_000_000)`: the tps EMA
 /// does not read the clock, but goes through `with_config_and_clock` to match existing tests.
 fn table() -> Arc<MemoryHealthTable> {
     let now = 1_000_000u64;

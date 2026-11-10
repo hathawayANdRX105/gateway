@@ -6,7 +6,7 @@
 //! all nodes cooling down, it falls back to the direct Client (`node_id = 0`).
 //!
 //! Protocol nodes (SS/Trojan/VLESS/VMess/Hysteria2/AnyTLS/Snell) are mapped to meow
-//! `ProxyAdapter`s by `crate::adapter::adapter_for` (cached in connector_cache); a
+//! `ProxyAdapter`s by `crate::adapter::adapter_for` (cached in `connector_cache`); a
 //! failed mapping falls back to direct.
 //! ponytail: the health table and soft affinity live only in-process; DB persistence
 //! can be added when needed.
@@ -42,13 +42,15 @@ const AFFINITY_TTL: Duration = Duration::from_secs(10);
 /// entries never expire, while a config not leased for 30 min is reclaimed and
 /// rebuilt on demand.
 const CLIENT_CACHE_CAPACITY: u64 = 1024;
-const CLIENT_CACHE_IDLE: Duration = Duration::from_secs(30 * 60);
+const CLIENT_CACHE_IDLE: Duration = Duration::from_mins(30);
 
 /// Take an in-process state lock and treat poisoning as recoverable: these locks
 /// only guard in-memory health / inflight / cache tables, a panic while holding one
 /// leaves no half-updated table, and later requests can keep reading and writing.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|e| e.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Egress form: reqwest native (direct/http/socks5) or a protocol adapter (meow).
@@ -82,6 +84,7 @@ impl Lease {
     ///
     /// The `Adapter` variant returns `None` — protocol egress goes through
     /// [`Self::adapter`].
+    #[must_use]
     pub fn reqwest_client(&self) -> Option<Arc<reqwest::Client>> {
         match self.client.as_ref() {
             ProxyClient::Reqwest(c) => Some(Arc::clone(c)),
@@ -90,6 +93,7 @@ impl Lease {
     }
 
     /// Return the protocol adapter (only for the [`ProxyClient::Adapter`] variant).
+    #[must_use]
     pub fn adapter(&self) -> Option<Arc<dyn ProxyAdapter>> {
         match self.client.as_ref() {
             ProxyClient::Adapter(a) => Some(Arc::clone(a)),
@@ -125,7 +129,7 @@ pub struct ProxyManager {
     inflight: Arc<Mutex<HashMap<i64, u32>>>,
     client_cache: TtlCache<(i64, u64), Arc<reqwest::Client>>,
     health: Mutex<HashMap<i64, NodeHealth>>,
-    /// Soft affinity: channel_key → (last selected node id, last selection time).
+    /// Soft affinity: `channel_key` → (last selected node id, last selection time).
     /// Only takes part in the decision when the least-inflight tie group has >1
     /// member; the pointer always names the node that last actually served this
     /// channel's traffic.
@@ -220,7 +224,7 @@ impl ProxyManager {
         eligible.retain(|n| inflight.get(&n.id).copied().unwrap_or(0) == min_inflight);
         drop(inflight);
 
-        let selected = self.select_candidate(channel_key, eligible, now);
+        let selected = self.select_candidate(channel_key, &eligible, now);
         let node_id = selected.id;
         let release = self.track_inflight(node_id);
         let client = self.client_for(&selected);
@@ -247,7 +251,7 @@ impl ProxyManager {
     fn select_candidate(
         &self,
         channel_key: &str,
-        eligible: Vec<Arc<ProxyNode>>,
+        eligible: &[Arc<ProxyNode>],
         now: Instant,
     ) -> Arc<ProxyNode> {
         let mut affinity = lock(&self.affinity);
@@ -415,9 +419,9 @@ impl ProxyManager {
     /// construction, so no id deduplication is needed).
     ///
     /// **Note**: when a node is bound to several channels it is probed once per
-    /// channel, and `ProxyHealth` has a single last_delay slot — later probes overwrite
+    /// channel, and `ProxyHealth` has a single `last_delay` slot — later probes overwrite
     /// earlier ones (channels are polled in name order, so the result is stable).
-    /// Per-channel delays must wait for NodeStats to key by (node, channel), which is
+    /// Per-channel delays must wait for `NodeStats` to key by (node, channel), which is
     /// M3-D; do not do it casually. Concurrency and error classification match
     /// `probe_all` (they share the chunked implementation).
     pub async fn probe_channel(
@@ -531,7 +535,7 @@ impl ProxyManager {
     /// Combined with [`Self::node_cooldowns`], decides "the channel really has nodes
     /// bound and all of them are cooling down" (as opposed to "there was no binding,
     /// so direct is the expected path"). Lock discipline: `pool.candidates` is a
-    /// lock-free ArcSwap read and touches no Mutex in this struct.
+    /// lock-free `ArcSwap` read and touches no Mutex in this struct.
     pub fn channel_node_ids(&self, channel_key: &str) -> Vec<i64> {
         self.pool
             .candidates(channel_key)

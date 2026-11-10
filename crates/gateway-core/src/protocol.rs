@@ -27,13 +27,13 @@ pub enum ProtocolKind {
 /// Each variant is one URL dialect; [`RequestPath::protocol`] is the single place
 /// that maps a shape to its [`ProtocolKind`]. Shapes outside the four protocol
 /// families (and unrecognized `/v1` operations) collapse to
-/// [`RequestPath::Unknown`] and keep the OpenAI treatment, matching the long-standing
+/// [`RequestPath::Unknown`] and keep the `OpenAI` treatment, matching the long-standing
 /// fallback behavior.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RequestPath {
-    /// `/v1/chat/completions` — OpenAI Chat Completions.
+    /// `/v1/chat/completions` — `OpenAI` Chat Completions.
     ChatCompletions,
-    /// `/v1/responses` — OpenAI Responses.
+    /// `/v1/responses` — `OpenAI` Responses.
     Responses,
     /// `/v1/messages` (and subpaths such as `count_tokens`) — Anthropic Messages.
     Messages,
@@ -59,7 +59,7 @@ pub enum RequestPath {
     /// shapes such as `/v1beta/models/a/b:generateContent`): the dialect is known,
     /// no single model resource is addressed, so no model is extracted.
     GeminiOther,
-    /// Anything else, including `/v1` itself — treated as OpenAI dialect.
+    /// Anything else, including `/v1` itself — treated as `OpenAI` dialect.
     Unknown,
 }
 
@@ -68,6 +68,7 @@ impl RequestPath {
     ///
     /// The query string and a trailing slash are normalized away first, so callers
     /// may pass the URI path as-is.
+    #[must_use]
     pub fn parse(raw_path: &str) -> Self {
         let path = raw_path.split_once('?').map_or(raw_path, |(path, _)| path);
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
@@ -89,6 +90,7 @@ impl RequestPath {
     }
 
     /// The protocol dialect this URL shape belongs to.
+    #[must_use]
     pub const fn protocol(&self) -> ProtocolKind {
         match self {
             Self::Messages => ProtocolKind::Anthropic,

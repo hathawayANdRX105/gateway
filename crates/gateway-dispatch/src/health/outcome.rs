@@ -57,6 +57,7 @@ pub struct AttemptReport {
 impl AttemptReport {
     /// Build a basic report (`tps` defaults to `None`); when a throughput sample is needed, chain
     /// the [`with_tps`](AttemptReport::with_tps) builder.
+    #[must_use]
     pub fn new(
         outcome: Result<u16, FailureClass>,
         latency_ms: Option<u32>,
@@ -71,6 +72,7 @@ impl AttemptReport {
     }
 
     /// Attach a generated throughput sample (consumes `self`, returns a new value with tps).
+    #[must_use]
     pub fn with_tps(mut self, sample: TpsSample) -> Self {
         self.tps = Some(sample);
         self
@@ -164,9 +166,9 @@ pub(super) fn apply_outcome(
     }
 }
 
-/// Classification — phase0 `classifyChannelOutcomeUnlocked` + UnauthorizedRun escalation.
+/// Classification — phase0 `classifyChannelOutcomeUnlocked` + `UnauthorizedRun` escalation.
 /// 401/403 have a separate branch (P1-A): an isolated credential error keeps Neutral semantics (the
-/// channel is not at fault and its score does not change), but counts toward unauthorized_run;
+/// channel is not at fault and its score does not change), but counts toward `unauthorized_run`;
 /// reaching the threshold consecutively → Fatal. All other branches (success/429/5xx/other 4xx/
 /// transport/client errors) reset it.
 fn classify(st: &mut HealthState, outcome: Result<u16, FailureClass>) -> ChannelOutcome {

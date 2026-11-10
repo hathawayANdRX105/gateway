@@ -1,8 +1,8 @@
-//! OpenAI Chat Completions format codec — IR ↔ `/v1/chat/completions` (WP2).
+//! `OpenAI` Chat Completions format codec — IR ↔ `/v1/chat/completions` (WP2).
 //!
 //! Single-format bidirectional codec. Chat Completions is the de-facto hub shape,
 //! so this module is also the baseline the other formats are compared against:
-//! field naming, usage placement, and tool_calls assembly all follow this file.
+//! field naming, usage placement, and `tool_calls` assembly all follow this file.
 //!
 //! ## Wire models
 //!
@@ -35,12 +35,13 @@ use crate::ir::{
 };
 use crate::sse::data_frame;
 
-/// OpenAI Chat Completions format codec.
+/// `OpenAI` Chat Completions format codec.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OpenAiCodec;
 
 impl OpenAiCodec {
     /// Creates a codec (stateless, safe to share).
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -174,6 +175,10 @@ impl OpenAiStreamEncoder {
 
     /// Assembles one chunk: id/object/created/model stay consistent for the whole
     /// stream.
+    // json! moves `delta` and `finish_reason` into the serialized payload, so the
+    // arguments are genuinely consumed — borrowing them would not compile against
+    // the opaque macro.
+    #[allow(clippy::needless_pass_by_value)]
     fn chunk(&self, delta: Value, finish_reason: Value) -> Value {
         json!({
             "id": self.id,
@@ -250,9 +255,9 @@ impl StreamEncoder for OpenAiStreamEncoder {
             // Trust the id/model from upstream; keep the self-generated id when
             // they are absent.
             if !id.is_empty() {
-                self.id = id.clone();
+                self.id.clone_from(id);
             }
-            self.model = model.clone();
+            self.model.clone_from(model);
             self.role_sent = true;
             return Ok(vec![self.role_frame()]);
         }
@@ -295,7 +300,9 @@ impl StreamEncoder for OpenAiStreamEncoder {
             StreamEvent::MessageDelta { usage: Some(u) } => {
                 out.push(self.usage_frame(u));
             }
-            StreamEvent::MessageDelta { usage: None } => {}
+            StreamEvent::MessageDelta { usage: None }
+            | StreamEvent::Raw { .. }
+            | StreamEvent::MessageStart { .. } => {}
             StreamEvent::MessageStop { reason } => {
                 out.push(data_frame(
                     &self.chunk(json!({}), json!(wire::stop_reason_str(reason))),
@@ -305,14 +312,11 @@ impl StreamEncoder for OpenAiStreamEncoder {
             }
             // Raw vendor events have no OpenAI Chat representation; ignore explicitly
             // instead of relying on a catch-all.
-            StreamEvent::Raw { .. } => {}
             StreamEvent::Error { message } => {
                 out.push(data_frame(&json!({
                     "error": {"message": message, "type": "api_error"},
                 })));
             }
-            // MessageStart was already returned early above.
-            StreamEvent::MessageStart { .. } => {}
         }
 
         Ok(out)
@@ -330,7 +334,7 @@ impl StreamEncoder for OpenAiStreamEncoder {
 
     /// Marks that upstream already sent [DONE]: called by the caller (the
     /// pipeline-layer frame scanner) when it sees [DONE], so `finish()` does not
-    /// send a second one — OpenAI clients treat two [DONE]s as two stream
+    /// send a second one — `OpenAI` clients treat two [DONE]s as two stream
     /// terminations.
     fn mark_done(&mut self) {
         self.finished = true;
@@ -368,11 +372,10 @@ mod wire {
     /// IR → wire `finish_reason`.
     pub(super) fn stop_reason_str(reason: &StopReason) -> Cow<'static, str> {
         match reason {
-            StopReason::Stop => Cow::Borrowed("stop"),
+            StopReason::Stop | StopReason::Error => Cow::Borrowed("stop"),
             StopReason::Length => Cow::Borrowed("length"),
             StopReason::ToolUse => Cow::Borrowed("tool_calls"),
             StopReason::ContentFilter => Cow::Borrowed("content_filter"),
-            StopReason::Error => Cow::Borrowed("stop"),
             StopReason::Other(s) => Cow::Owned(s.clone()),
         }
     }
@@ -490,7 +493,7 @@ mod wire {
         }
     }
 
-    /// A Chat message: content (string or part array), optional tool_calls, and the
+    /// A Chat message: content (string or part array), optional `tool_calls`, and the
     /// top-level `tool_call_id` that links a `role=tool` message to its call.
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
@@ -741,8 +744,7 @@ mod wire {
                 stop_reason: choice
                     .finish_reason
                     .0
-                    .map(|r| stop_reason(&r))
-                    .unwrap_or(StopReason::Stop),
+                    .map_or(StopReason::Stop, |r| stop_reason(&r)),
             }
         }
     }
@@ -1005,24 +1007,26 @@ mod wire {
         }
     }
 
-    /// Split IR blocks into (text, tool_calls JSON).
+    /// Split IR blocks into (text, `tool_calls` JSON).
     fn split_outputs(blocks: &[ContentBlock]) -> (String, Vec<Value>) {
         let mut text = String::new();
         let mut calls = Vec::new();
         // Two accumulators with order-sensitive updates stay a loop (the sanctioned
         // escape): one chain cannot fill both.
-        blocks.iter().for_each(|b| match b {
-            ContentBlock::Text { text: t } => text.push_str(t),
-            ContentBlock::ToolUse { id, name, input } => calls.push(json!({
-                "id": id,
-                "type": "function",
-                "function": {
-                    "name": name,
-                    "arguments": serde_json::to_string(input).unwrap_or_else(|_| "{}".into()),
-                },
-            })),
-            _ => {}
-        });
+        for b in blocks {
+            match b {
+                ContentBlock::Text { text: t } => text.push_str(t),
+                ContentBlock::ToolUse { id, name, input } => calls.push(json!({
+                    "id": id,
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "arguments": serde_json::to_string(input).unwrap_or_else(|_| "{}".into()),
+                    },
+                })),
+                _ => {}
+            }
+        }
         (text, calls)
     }
 
@@ -1101,10 +1105,10 @@ mod wire {
         }
     }
 
-    /// IR usage → OpenAI Chat `usage` object.
+    /// IR usage → `OpenAI` Chat `usage` object.
     ///
     /// `prompt_tokens_details.cached_tokens` is always emitted (0 when the upstream
-    /// reported nothing): the real OpenAI wire format always includes the details
+    /// reported nothing): the real `OpenAI` wire format always includes the details
     /// object, so an OpenAI-shaped client sees the same shape whether or not cache
     /// information was available. Only the additive `cache_write_tokens` /
     /// `completion_tokens_details.reasoning_tokens` are conditional.

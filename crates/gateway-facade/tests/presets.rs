@@ -210,7 +210,7 @@ impl Stage for MarkerStage {
 
 /// Purpose: `Shape::Relay` keeps every admission gate — a request with a valid
 /// token and an empty catalog is rejected by dispatch (no route), not by auth.
-/// Acceptance: status 404 no_route, i.e. the gate chain admitted and forwarding
+/// Acceptance: status 404 `no_route`, i.e. the gate chain admitted and forwarding
 /// found no candidate.
 #[tokio::test]
 async fn relay_shape_keeps_full_gate_chain() {
@@ -225,7 +225,7 @@ async fn relay_shape_keeps_full_gate_chain() {
 
 /// Purpose: `Shape::NoBilling` differs from `Relay` only by the quota gate, so
 /// with no quota gate installed both shapes behave identically here.
-/// Acceptance: same 404 no_route outcome as the relay shape.
+/// Acceptance: same 404 `no_route` outcome as the relay shape.
 #[tokio::test]
 async fn no_billing_shape_admits_like_relay_without_quota() {
     let gateway: Gateway = GatewayBuilder::no_billing(context()).build();

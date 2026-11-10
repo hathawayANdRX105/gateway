@@ -1,11 +1,11 @@
-//! P1-C dual health-ledger bridge integration test (proxy::manager node ledger → dispatch route
+//! P1-C dual health-ledger bridge integration test (`proxy::manager` node ledger → dispatch route
 //! unit ledger).
 //!
-//! Behavior under test: ForwardStage takes the production lease path (when proxies=Some the
-//! injected egress is replaced, so a real local HTTP mock is started with std::net and reqwest
+//! Behavior under test: `ForwardStage` takes the production lease path (when proxies=Some the
+//! injected egress is replaced, so a real local HTTP mock is started with `std::net` and reqwest
 //! goes through the real protocol stack for both direct and via-node requests). The bridge
 //! semantics are observed through the real `Dispatcher` + `MemoryHealthTable` (externally
-//! observable state = the unit's cooldown_until_ms / mock hit count; private flags are not
+//! observable state = the unit's `cooldown_until_ms` / mock hit count; private flags are not
 //! tested):
 //!
 //! 1. When all proxy nodes bound to a channel are cooling → a direct-connection fallback failure
@@ -236,7 +236,7 @@ impl Dispatch for U1FirstAttempt {
         exclude: &[String],
         sticky_channel_key: Option<&str>,
     ) -> Result<Candidate, DispatchError> {
-        let now_ms = chrono::Utc::now().timestamp_millis().max(0) as u64;
+        let now_ms = chrono::Utc::now().timestamp_millis().max(0).cast_unsigned();
         let exclude: Vec<String> = if exclude.is_empty() && self.health.is_selectable("u1", now_ms)
         {
             vec!["u2".to_string()]
@@ -349,7 +349,7 @@ async fn cooled_channel_degrades_unit_health_until_eviction() {
         1,
         "first round should hit u1 once"
     );
-    let now_ms = chrono::Utc::now().timestamp_millis().max(0) as u64;
+    let now_ms = chrono::Utc::now().timestamp_millis().max(0).cast_unsigned();
     let st = health.get("u1");
     assert!(
         st.cooldown_until_ms > now_ms,
@@ -397,7 +397,10 @@ async fn unbound_direct_channel_is_not_degraded() {
             st.cooldown_until_ms, 0,
             "round {round}: an unbound direct-connection 401 is channel-related 4xx (Neutral), must not trigger cooling",
         );
-        assert_eq!(hits401.load(Ordering::Relaxed) as u32, round);
+        assert_eq!(
+            u32::try_from(hits401.load(Ordering::Relaxed)).unwrap(),
+            round
+        );
     }
 }
 
@@ -442,7 +445,10 @@ async fn healthy_bound_node_attempt_is_not_degraded() {
             st.cooldown_until_ms, 0,
             "node selected ≠ direct-connection fallback, must not book degradation"
         );
-        assert_eq!(hits401.load(Ordering::Relaxed) as u32, round);
+        assert_eq!(
+            u32::try_from(hits401.load(Ordering::Relaxed)).unwrap(),
+            round
+        );
     }
     assert!(
         mgr.node_cooldowns().is_empty(),

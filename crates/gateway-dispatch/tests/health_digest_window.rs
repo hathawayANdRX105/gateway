@@ -152,7 +152,9 @@ fn no_digest_behavior_matches_status_quo() {
 fn old_window_spike_washed_out_by_next_rotation() {
     let now = Arc::new(AtomicU64::new(0));
     let d = clock_digest(&now);
-    let low = |i: usize| 10 + (i as u32 % 20); // 10..=29
+    // `i` is a loop counter below 2_000 in this test, so `u32::try_from` never
+    // fails here; the cast only converts the loop counter to u32.
+    let low = |i: usize| 10 + (u32::try_from(i).expect("i < 2_000") % 20); // 10..=29
 
     // window 1: half spread-out low values + half spikes (5000ms) → the spike region
     // dominates p95.

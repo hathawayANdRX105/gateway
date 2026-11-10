@@ -15,6 +15,7 @@ pub enum FailureScope {
 
 /// Classification limited to "channel-scoped 4xx". 5xx/429 do not go through this
 /// function (retryable classification already lives in `egress::classify_status`).
+#[must_use]
 pub fn classify_channel_scope(status: u16) -> FailureScope {
     match status {
         401 | 403 | 404 => FailureScope::Channel,

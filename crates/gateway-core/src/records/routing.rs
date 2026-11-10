@@ -35,7 +35,7 @@ pub struct RouteUnitRecord {
     /// Model name requested by the client (public alias), e.g. "gpt-4o".
     pub public_model: String,
     pub channel_key: String, // points to ChannelRecord::meta.key
-    /// Index into ChannelRecord::keys.
+    /// Index into `ChannelRecord::keys`.
     pub key_index: u32,
     /// Model name actually sent upstream, e.g. "gpt-4o-2024-08-06".
     pub upstream_model: String,

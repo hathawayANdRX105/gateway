@@ -28,7 +28,7 @@ const UPSTREAM_BODY: &[u8] =
     b"{\"choices\":[{\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":50}}";
 
 /// Fixed price table: gpt-4o input $15/M, output $60/M (same as the settle
-/// tests' RecordingPriceTable, without the recording).
+/// tests' `RecordingPriceTable`, without the recording).
 struct FlatPriceTable;
 
 impl PriceTable for FlatPriceTable {
@@ -50,7 +50,7 @@ fn cache_mount() -> Arc<gateway_cache::ResponseCache> {
     )
 }
 
-/// Minimal RequestCtx for single-shot mode (no with_retry): route preset, token
+/// Minimal `RequestCtx` for single-shot mode (no `with_retry)`: route preset, token
 /// carries user/group (same shape as the settle tests' helper).
 fn ctx_single_shot() -> gateway_pipeline::RequestCtx {
     ctx_with_body(NON_STREAM_BODY, candidate("c1"))

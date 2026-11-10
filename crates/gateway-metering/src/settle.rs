@@ -1,6 +1,6 @@
-//! Settlement — scan result + pricing → UsageEvent (handed to the consumer's settle sink).
+//! Settlement — scan result + pricing → `UsageEvent` (handed to the consumer's settle sink).
 //!
-//! Callers: the settlement points of gateway_forward — `stream::finish` on the streaming
+//! Callers: the settlement points of `gateway_forward` — `stream::finish` on the streaming
 //! path and the stage telemetry hooks on the non-streaming success / failure exits. The
 //! sink persists the event (and assigns record identity: sync key / version / origin /
 //! time); observe aggregates it straight from the storage table, without blocking
@@ -15,7 +15,7 @@ use crate::scanner::{
     TokenCounts, choice_finish_reason, counts_from_usage, gemini_finish_reason, top_stop_reason,
 };
 
-/// Build one UsageEvent that the caller persists through the settle sink.
+/// Build one `UsageEvent` that the caller persists through the settle sink.
 ///
 /// `is_stream` is the request's streaming intent (the streaming scan chain passes `true`;
 /// the non-streaming commit point and failure-observation events pass the request body's
@@ -26,7 +26,7 @@ use crate::scanner::{
 /// because it is structurally absent); it lands verbatim in
 /// [`UsageEvent::finish_reason`].
 /// `group` goes into [`PriceTable::lookup`] together with model (implementations may price
-/// per group); `group_ratio` is the request group multiplier (GroupRecord.rate_multiplier)
+/// per group); `group_ratio` is the request group multiplier (`GroupRecord.rate_multiplier`)
 /// multiplied into [`price_of`]; library-level callers that cannot obtain the real group
 /// multiplier pass 1.0.
 /// Record identity (dedupe key / schema version / origin / timestamp) is NOT assigned
@@ -85,16 +85,16 @@ pub fn settle_event(
         duration_ms,
         cost,
         status_code,
-        error: error.map(|s| s.to_string()),
-        finish_reason: finish_reason.map(|s| s.to_string()),
+        error: error.map(std::string::ToString::to_string),
+        finish_reason: finish_reason.map(std::string::ToString::to_string),
     }
 }
 
 /// Extract the upstream stop reason from a **non-streaming** response body (complete JSON).
 ///
-/// Two shapes are supported: OpenAI `choices[0].finish_reason` (stop/length/
-/// content_filter/tool_calls) and Claude's top-level `stop_reason` (end_turn/
-/// max_tokens/stop_sequence). Values pass through verbatim without cross-provider
+/// Two shapes are supported: `OpenAI` `choices[0].finish_reason` (stop/length/
+/// `content_filter/tool_calls`) and Claude's top-level `stop_reason` (`end_turn`/
+/// `max_tokens/stop_sequence`). Values pass through verbatim without cross-provider
 /// normalization (offline fitting buckets by value itself). Leniency matches
 /// [`extract_usage`]: a body that is not valid JSON, a missing field, a non-string value, or
 /// an empty string → `None`, leaving the caller to store NULL instead of a fabricated value.
@@ -108,11 +108,12 @@ pub fn extract_finish_reason(body: &[u8]) -> Option<String> {
 
 /// Parse usage counts from a **non-streaming** response body (complete JSON).
 ///
-/// Two shapes are supported: OpenAI (`prompt_tokens`/`completion_tokens`, with cache in
+/// Two shapes are supported: `OpenAI` (`prompt_tokens`/`completion_tokens`, with cache in
 /// `prompt_tokens_details.cached_tokens` or top-level `cached_tokens`) and Claude
 /// (`input_tokens`/`output_tokens`, with cache in `cache_read_input_tokens`). A body that is
 /// not valid JSON, lacks the `usage` field, or reports all zeros → `None`, leaving the caller
 /// to fall back to estimation.
+#[must_use]
 pub fn extract_usage(body: &[u8]) -> Option<TokenCounts> {
     let v: JsonValue = serde_json::from_slice(body).ok()?;
     // OpenAI/Claude nest usage under `usage`; Gemini uses `usageMetadata`.

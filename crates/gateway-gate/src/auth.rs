@@ -1,4 +1,4 @@
-//! `auth` — gate 1: token extraction + hash lookup + auth_version check
+//! `auth` — gate 1: token extraction + hash lookup + `auth_version` check
 
 use std::sync::Arc;
 
@@ -60,7 +60,11 @@ impl Gate for AuthGate {
 }
 
 /// Extract the key from the three standard headers: Authorization: Bearer, x-api-key,
-/// x-goog-api-key
+/// x-goog-api-key.
+///
+/// # Errors
+///
+/// Returns [`Rejection::InvalidApiKey`] when no recognized header carries a key.
 pub fn extract_key(meta: &gateway_pipeline::RequestMeta) -> Result<String, Rejection> {
     let header = |name: &str| meta.headers.get(name).and_then(|h| h.to_str().ok());
     if let Some(rest) = header("authorization").and_then(|s| s.strip_prefix("Bearer ")) {
@@ -74,6 +78,7 @@ pub fn extract_key(meta: &gateway_pipeline::RequestMeta) -> Result<String, Rejec
 
 /// SHA-256 → 32 bytes. ponytail: a single `Sha256::new()` + `update` + `finalize` round,
 /// no heap allocation.
+#[must_use]
 pub fn sha256(input: &str) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(input.as_bytes());

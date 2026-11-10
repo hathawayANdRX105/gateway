@@ -13,7 +13,7 @@
 //! straight into [`RequestCtx::drop_guards`] and drops with the ctx, returning the slot
 //! (for a streaming response the ctx drops when the stream is set up, so the slot is
 //! released there rather than at stream end — see the `DropGuards` caveat). There is no
-//! intermediate hold_id bookkeeping, so no path can leak a slot by dropping the handle.
+//! intermediate `hold_id` bookkeeping, so no path can leak a slot by dropping the handle.
 //! When the channel is full the stage returns `Err(StageError::RateLimited)` immediately
 //! (mapped to 429) and **never blocks or queues**.
 //!
@@ -32,7 +32,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 /// Concurrency-slot state shared across requests.
 #[derive(Default)]
 pub struct ConcurrencyState {
-    /// channel_key → Semaphore
+    /// `channel_key` → Semaphore
     pub semaphores: DashMap<String, Arc<Semaphore>>,
 }
 
@@ -50,6 +50,7 @@ impl ConcurrencyState {
 
     /// Current available slot count for a channel; unregistered channels return `None`,
     /// distinctly different from the `Some(0)` of a registered but full channel.
+    #[must_use]
     pub fn available_permits(&self, channel_key: &str) -> Option<usize> {
         self.semaphores
             .get(channel_key)
@@ -62,6 +63,7 @@ impl ConcurrencyState {
     /// unlimited; `Some(None)` means it is registered but full, and the caller should
     /// reject this attempt as `rate_limited`. Dropping the returned permit returns the
     /// slot.
+    #[must_use]
     pub fn try_acquire(&self, channel_key: &str) -> Option<Option<OwnedSemaphorePermit>> {
         let semaphore = self.semaphores.get(channel_key).map(|held| held.clone())?;
         Some(semaphore.try_acquire_owned().ok())
@@ -79,6 +81,7 @@ pub struct ConcurrencyGate {
 }
 
 impl ConcurrencyGate {
+    #[must_use]
     pub fn new(state: Arc<ConcurrencyState>) -> Self {
         Self {
             state,
@@ -94,6 +97,7 @@ impl ConcurrencyGate {
 
     /// Current available slots; `None` for an unregistered channel, `Some(0)` when
     /// registered but full.
+    #[must_use]
     pub fn available_permits(&self, channel_key: &str) -> Option<usize> {
         self.state.available_permits(channel_key)
     }

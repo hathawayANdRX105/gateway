@@ -548,7 +548,11 @@ fn global_pool_weight_dominates() {
             }
         }
     }
-    let share = low_picks as f64 / total as f64;
+    // `low_picks ≤ 12 × 300 = 3 600` and `total` is the same fixed test scale,
+    // so `low_picks as f64` is exact (well below f64's 2^53 mantissa); it only
+    // computes a measured share.
+    #[allow(clippy::cast_precision_loss)]
+    let share = low_picks as f64 / f64::from(total);
     assert!(
         share > 0.9,
         "High-weight candidate should get dominant share in global pool (w/Σw≈0.99), measured {share:.3}",
@@ -592,7 +596,11 @@ fn floored_candidate_keeps_explore_traffic() {
         light_picks > 0,
         "Channel whose likelihood drops to floor with positive prior must still retain exploration traffic",
     );
-    let ratio = light_picks as f64 / total as f64;
+    // `light_picks ≤ 12 × 300 = 3 600` and `total` is the same fixed test scale,
+    // so `light_picks as f64` is exact (well below f64's 2^53 mantissa); it only
+    // computes a measured share.
+    #[allow(clippy::cast_precision_loss)]
+    let ratio = light_picks as f64 / f64::from(total);
     assert!(
         ratio < 0.5,
         "Downgraded channel share should be significantly lower: {ratio:.3} ({light_picks}/{total})",
@@ -669,6 +677,10 @@ fn weighted_distribution_matches_configured_ratio() {
         }
     }
     let total = n * 8;
+    // `heavy` and `total = n * 8` are bounded by the test's fixed draw counts,
+    // far below f64's 2^53 mantissa, so both `usize → f64` casts are exact;
+    // this computes an observed heavy-channel ratio.
+    #[allow(clippy::cast_precision_loss)]
     let heavy_ratio = heavy as f64 / total as f64;
     assert!(
         heavy > light,
@@ -943,8 +955,8 @@ fn dispatcher_fails_closed_before_snapshot() {
 
 // ---------- dispatch stage channel attribution ----------
 
-/// After selecting a route, DispatchStage must write channel attribution into ctx: channel_key
-/// comes from unit, and channel_name is looked up from the Dispatcher snapshot. Usage persistence
+/// After selecting a route, `DispatchStage` must write channel attribution into ctx: `channel_key`
+/// comes from unit, and `channel_name` is looked up from the Dispatcher snapshot. Usage persistence
 /// uses these two fields for per-channel statistics — if the stage omits them, the pipeline
 /// packages empty attribution and every channel column in reports is blank (the original bug this
 /// PR fixes).
@@ -994,7 +1006,7 @@ fn dispatch_stage_fills_selected_channel_fields() {
     assert_eq!(ctx.selected_channel_name.as_deref(), Some("ch1"));
 }
 
-/// channel_name returns None for a key outside the snapshot (the basis for degrading to
+/// `channel_name` returns None for a key outside the snapshot (the basis for degrading to
 /// key-only semantics).
 #[test]
 fn dispatcher_channel_name_unknown_key_is_none() {

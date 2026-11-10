@@ -20,7 +20,7 @@
 //! correct events".
 //!
 //! Crash semantics (explicit trade-off): preholds live only in memory and are lost
-//! on a crash — acceptable, because the UsageEvent (WAL) is the authoritative
+//! on a crash — acceptable, because the `UsageEvent` (WAL) is the authoritative
 //! billing source; the balance of record is the center's converged `used_quota`.
 
 pub mod estimate;

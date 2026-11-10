@@ -23,6 +23,7 @@ pub enum ChannelOutcome {
 
 impl ChannelOutcome {
     /// Whether it affects the EWMA score (Success/Fatal/Throttled; Neutral does not participate).
+    #[must_use]
     pub fn affects_health(self) -> bool {
         !matches!(self, ChannelOutcome::Neutral)
     }
@@ -51,10 +52,10 @@ pub enum TpsSample {
     Estimated(f64),
 }
 
-/// Health record of a single RouteUnit — phase0 `ChannelHealthState`.
+/// Health record of a single `RouteUnit` — phase0 `ChannelHealthState`.
 #[derive(Debug, Clone, Copy)]
 pub struct HealthState {
-    /// EWMA continuous health score, range [MinScore, 1.0]; no history = 1.0.
+    /// EWMA continuous health score, range [`MinScore`, 1.0]; no history = 1.0.
     pub ewma_score: f64,
     /// Peak-sensitive EWMA of upstream latency (ms); 0.0 = no latency observation
     /// yet.
@@ -67,11 +68,11 @@ pub struct HealthState {
     /// observation yet (the selector treats it as the neutral factor 1.0).
     /// Scalar, so `Copy` semantics remain intact.
     pub tps_ema: f64,
-    /// Observed request count; EWMA is not updated until MinRequests is exceeded
+    /// Observed request count; EWMA is not updated until `MinRequests` is exceeded
     /// (trusting new channels).
     pub request_count: u32,
     /// Consecutive 401/403 (credential-class) count; reaching
-    /// UnauthorizedEscalationThreshold → Fatal.
+    /// `UnauthorizedEscalationThreshold` → Fatal.
     pub unauthorized_run: u32,
     /// Leave the slow-start ramp after a real failure (no more gradual recovery).
     pub ramp_exited: bool,
@@ -81,8 +82,8 @@ pub struct HealthState {
     /// duration (increasing curve, see the engine's cooldown ladder).
     pub cooldown_streak: u32,
     /// Number of consecutive 429 (Throttled) activations — a ledger fully
-    /// independent of `cooldown_streak`: 429 does not write cooldown_streak, Fatal
-    /// never touches throttle_streak. Determines the separate 429 ladder rung; a
+    /// independent of `cooldown_streak`: 429 does not write `cooldown_streak`, Fatal
+    /// never touches `throttle_streak`. Determines the separate 429 ladder rung; a
     /// successful report and idle annealing decrement it in the same way.
     pub throttle_streak: u32,
     /// Cooldown deadline (unix ms); 0 = not cooling.
@@ -126,17 +127,19 @@ impl Default for HealthState {
 impl HealthState {
     /// Whether the channel is currently inside a cooldown window (and it has not
     /// expired yet).
+    #[must_use]
     pub fn is_cooling(&self, now_ms: u64) -> bool {
         self.cooldown_until_ms > now_ms
     }
 
     /// Slow-start factor — phase0 `slowStartFactor`:
-    /// - RampExited → 1.0 (a real failure; no more gradual recovery);
-    /// - RampPending → 1/min_requests (the ramp floor for the first pick after
+    /// - `RampExited` → 1.0 (a real failure; no more gradual recovery);
+    /// - `RampPending` → `1/min_requests` (the ramp floor for the first pick after
     ///   cooldown);
-    /// - below min_requests → count/min_requests (gradual; a fresh record with
+    /// - below `min_requests` → `count/min_requests` (gradual; a fresh record with
     ///   `count == 0` stays at 1.0 because new channels are trusted);
     /// - at or above the threshold → 1.0.
+    #[must_use]
     pub fn slow_start_factor(&self, min_requests: u32) -> f64 {
         if min_requests == 0 || self.ramp_exited {
             return 1.0;
@@ -260,6 +263,12 @@ impl HealthSetting {
     /// (`with_config` / `with_config_and_clock`) **do not** call it — those entry
     /// points must support deterministic assembly and relaxed configs; validation
     /// closes only at the config ingest boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns a static message naming the first violated field: `alpha` or
+    /// `min_score` outside `[0, 1]` (or non-finite), or `cooldown_base_ms`
+    /// exceeding `cooldown_max_ms`.
     pub fn validate(&self) -> Result<(), &'static str> {
         if !self.alpha.is_finite() || !(0.0..=1.0).contains(&self.alpha) {
             return Err("alpha must be finite and in [0, 1]");
