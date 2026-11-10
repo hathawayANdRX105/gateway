@@ -20,23 +20,30 @@ pub const DEFAULT_MAX_REQUEST_BYTES: usize = 32 * 1024 * 1024;
 /// `catalog` is resolved relative to the config file's directory, so a deployment can
 /// move both files together.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(default, deny_unknown_fields)]
+#[serde(deny_unknown_fields)]
 pub struct DaemonConfig {
     /// TCP listener, e.g. `127.0.0.1:8080`.
+    #[serde(default = "default_listen")]
     pub listen: String,
     /// Optional Unix-domain listener for co-located clients.
+    #[serde(default)]
     pub uds_path: Option<PathBuf>,
-    /// Catalog file: channels, groups, users, tokens, prices.
+    /// Catalog file: channels, groups, users, tokens, prices. Required: a process with
+    /// no catalog has no route and no key, so a missing path must fail at load.
     pub catalog: PathBuf,
     /// Request body ceiling in bytes; larger requests get `413`.
+    #[serde(default = "default_max_request_bytes")]
     pub max_request_bytes: usize,
     /// Peers whose `x-forwarded-for` header is trusted. Empty = never trust the header
     /// (the socket peer address is used). Add the reverse proxy's address, not the
     /// client's.
+    #[serde(default)]
     pub trusted_proxies: Vec<IpAddr>,
     /// Actix worker count; `0` uses the actix default (available parallelism).
+    #[serde(default)]
     pub workers: usize,
     /// Graceful-shutdown drain budget in seconds.
+    #[serde(default = "default_shutdown_timeout_secs")]
     pub shutdown_timeout_secs: u64,
 }
 
@@ -49,9 +56,21 @@ impl Default for DaemonConfig {
             max_request_bytes: DEFAULT_MAX_REQUEST_BYTES,
             trusted_proxies: Vec::new(),
             workers: 0,
-            shutdown_timeout_secs: 30,
+            shutdown_timeout_secs: default_shutdown_timeout_secs(),
         }
     }
+}
+
+fn default_listen() -> String {
+    "127.0.0.1:8080".to_string()
+}
+
+const fn default_max_request_bytes() -> usize {
+    DEFAULT_MAX_REQUEST_BYTES
+}
+
+const fn default_shutdown_timeout_secs() -> u64 {
+    30
 }
 
 impl DaemonConfig {
@@ -87,8 +106,14 @@ impl DaemonConfig {
         if self.listen.trim().is_empty() {
             anyhow::bail!("config: listen must not be empty (uds_path is additional)");
         }
+        if self.catalog.as_os_str().is_empty() {
+            anyhow::bail!("config: catalog path must not be empty");
+        }
         if self.max_request_bytes == 0 {
             anyhow::bail!("config: max_request_bytes must be greater than zero");
+        }
+        if self.shutdown_timeout_secs == 0 {
+            anyhow::bail!("config: shutdown_timeout_secs must be greater than zero");
         }
         Ok(())
     }

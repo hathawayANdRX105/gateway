@@ -36,11 +36,31 @@ pub struct RunArgs {
 
 /// Shared request state. One instance per process; actix clones the `Data` handle per
 /// worker, not the state itself.
-struct AppState {
+///
+/// Public (with a constructor) so integration tests can drive the transport handlers
+/// without booting a real gateway; the fields stay private.
+pub struct AppState {
     pipeline: Arc<Pipeline>,
     max_request_bytes: usize,
     trusted_proxies: Vec<IpAddr>,
     counts: CatalogCounts,
+}
+
+impl AppState {
+    #[must_use]
+    pub fn new(
+        pipeline: Arc<Pipeline>,
+        max_request_bytes: usize,
+        trusted_proxies: Vec<IpAddr>,
+        counts: CatalogCounts,
+    ) -> Self {
+        Self {
+            pipeline,
+            max_request_bytes,
+            trusted_proxies,
+            counts,
+        }
+    }
 }
 
 /// Read the config and catalog, then serve until `SIGINT` / `SIGTERM`.
@@ -177,11 +197,11 @@ fn remove_stale_socket(path: &std::path::Path) -> anyhow::Result<()> {
     }
 }
 
-async fn healthz() -> HttpResponse {
+pub async fn healthz() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "status": "ok" }))
 }
 
-async fn readyz(state: web::Data<AppState>) -> HttpResponse {
+pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
         "status": "ready",
         "channels": state.counts.channels,
@@ -194,7 +214,7 @@ async fn readyz(state: web::Data<AppState>) -> HttpResponse {
 }
 
 /// The one request entry: path guard → body read → pipeline → actix response.
-async fn dispatch(
+pub async fn dispatch(
     req: HttpRequest,
     mut payload: web::Payload,
     state: web::Data<AppState>,
@@ -236,7 +256,16 @@ async fn dispatch(
 }
 
 /// Body ceiling check per chunk: the process never buffers more than the configured limit.
-async fn read_body(payload: &mut web::Payload, limit: usize) -> Result<bytes::Bytes, BodyError> {
+/// Read the request body under `limit`.
+///
+/// # Errors
+///
+/// [`BodyError::TooLarge`] when the accumulated bytes would exceed `limit`, and
+/// [`BodyError::Payload`] when the transport stream fails mid-body.
+pub async fn read_body(
+    payload: &mut web::Payload,
+    limit: usize,
+) -> Result<bytes::Bytes, BodyError> {
     let mut body = web::BytesMut::with_capacity(8 * 1024);
     while let Some(chunk) = payload.next().await {
         let chunk = chunk.map_err(|_| BodyError::Payload)?;
@@ -248,14 +277,16 @@ async fn read_body(payload: &mut web::Payload, limit: usize) -> Result<bytes::By
     Ok(body.freeze())
 }
 
-enum BodyError {
+#[derive(Debug, PartialEq, Eq)]
+pub enum BodyError {
     TooLarge,
     Payload,
 }
 
 /// Data-plane path scope, matching the axum router's guard: `/v1*` plus the two probe
 /// endpoints (which are registered routes and never reach this handler).
-fn is_data_plane_path(path: &str) -> bool {
+#[must_use]
+pub fn is_data_plane_path(path: &str) -> bool {
     path == "/v1" || path.starts_with("/v1/") || path.starts_with("/v1beta")
 }
 
@@ -263,7 +294,8 @@ fn is_data_plane_path(path: &str) -> bool {
 ///
 /// Header names/values that are not valid in `http` 1 are dropped rather than failing the
 /// request: a malformed optional header must not turn into a 500.
-fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::HeaderMap {
+#[must_use]
+pub fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::HeaderMap {
     let mut headers = http::HeaderMap::with_capacity(source.len());
     for (name, value) in source {
         let Ok(name) = http::HeaderName::from_bytes(name.as_str().as_bytes()) else {
@@ -285,17 +317,34 @@ fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::HeaderM
 /// left-most entry is whatever the client sent and is trivially forgeable. The default
 /// (`trusted_proxies` empty) never reads the header at all.
 fn client_ip(state: &AppState, req: &HttpRequest) -> IpAddr {
-    match req.peer_addr().map(|addr| addr.ip()) {
-        Some(peer) if state.trusted_proxies.contains(&peer) => {
-            forwarded_for(req, &state.trusted_proxies).unwrap_or(peer)
-        }
+    client_addr(
+        req.peer_addr().map(|addr| addr.ip()),
+        req.headers(),
+        &state.trusted_proxies,
+    )
+}
+
+/// Pure address resolution, split from the request wrapper so the trust policy is
+/// testable without a socket.
+#[must_use]
+pub fn client_addr(
+    peer: Option<IpAddr>,
+    headers: &actix_web::http::header::HeaderMap,
+    trusted: &[IpAddr],
+) -> IpAddr {
+    match peer {
+        Some(peer) if trusted.contains(&peer) => forwarded_for(headers, trusted).unwrap_or(peer),
         Some(peer) => peer,
         None => Ipv4Addr::UNSPECIFIED.into(),
     }
 }
 
-fn forwarded_for(req: &HttpRequest, trusted: &[IpAddr]) -> Option<IpAddr> {
-    req.headers()
+#[must_use]
+pub fn forwarded_for(
+    headers: &actix_web::http::header::HeaderMap,
+    trusted: &[IpAddr],
+) -> Option<IpAddr> {
+    headers
         .get("x-forwarded-for")?
         .to_str()
         .ok()?
@@ -309,7 +358,8 @@ fn forwarded_for(req: &HttpRequest, trusted: &[IpAddr]) -> Option<IpAddr> {
 ///
 /// Hop-by-hop headers are dropped: actix frames the body itself (`chunked`), so forwarding
 /// the upstream's `content-length` / `transfer-encoding` would describe the wrong bytes.
-fn to_actix_response(response: http::Response<axum::body::Body>) -> HttpResponse {
+#[must_use]
+pub fn to_actix_response(response: http::Response<axum::body::Body>) -> HttpResponse {
     let (parts, body) = response.into_parts();
     let status = actix_web::http::StatusCode::from_u16(parts.status.as_u16())
         .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
@@ -333,7 +383,8 @@ fn to_actix_response(response: http::Response<axum::body::Body>) -> HttpResponse
     builder.streaming(stream)
 }
 
-fn is_hop_by_hop(name: &str) -> bool {
+#[must_use]
+pub fn is_hop_by_hop(name: &str) -> bool {
     matches!(
         name,
         "content-length"

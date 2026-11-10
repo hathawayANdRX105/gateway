@@ -444,8 +444,12 @@ fn build_tokens(
 fn build_prices(specs: &[PriceSpec]) -> anyhow::Result<(PricingSnapshot, CatalogPriceTable)> {
     let snapshot = PricingSnapshot::default();
     let mut rows: HashMap<String, HashMap<String, ModelPrice>> = HashMap::new();
+    let mut seen = HashSet::new();
 
     for spec in specs {
+        if !seen.insert((spec.model.clone(), spec.group.clone())) {
+            anyhow::bail!("duplicate price for {}/{}", spec.model, spec.group);
+        }
         if !spec.input.is_finite() || !spec.output.is_finite() || !spec.cache.is_finite() {
             anyhow::bail!("price {}: non-finite value", spec.model);
         }
