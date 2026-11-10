@@ -1,13 +1,16 @@
 # gateway — LLM gateway data plane
 
-The public home of the gateway: contract vocabulary, engine stages, and the
-assembly facade a consumer wires up. Everything here is a library crate — no
-process entry, no database, no admin plane. A product assembles these parts.
+The public home of the gateway: contract vocabulary, engine stages, the
+assembly facade a consumer wires up, and the standalone process entry. The
+crates are libraries — a product embeds the facade; the root package is
+`gatewayd`, an actix-web process that serves the same pipeline from a TOML
+config plus a file catalog. No database, no admin plane.
 
 ## Crate manifest
 
 | crate                            | responsibility                                                                                                                                                                                                                                                                                                                   |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gateway-daemon` (root package, bin `gatewayd`) | **The standalone process.** TOML config + file catalog → the same snapshots the facade consumes, served by actix-web: body ceiling, trusted-proxy policy, `/healthz` + `/readyz`, streaming pass-through. Depends on `gateway-facade` only; contains no admission logic.                                                                                                                            |
 | `crates/gateway-facade`          | **The one crate a consumer depends on.** Assembly surface in four modules: `config` (boot values + runtime knobs), `preset` (named chains), `builder` (composition + wiring), `gateway` (the assembled plane and its exits). Re-exports the vocabulary and the engine types a consumer may name, so no other crate appears in a consumer's `Cargo.toml`.                                                                      |
 | `crates/gateway-core`            | Vocabulary + ports shared by the two planes: records (channel / routing / identity / usage), snapshots, retry policy, timeouts, health, metering and proxy vocabulary, the error-code table, and the admin-plane ports (`Ledger`, `SettleSink`, `PriceTable`, `DispatcherHandle`, `HealthHandle`). Internal dependency: nothing. |
 | `crates/gateway-pipeline`        | Orchestration core: `Stage` trait, `RequestCtx`, the chained `Pipeline` runner, axum router integration.                                                                                                                                                                                                                         |
@@ -26,7 +29,8 @@ process entry, no database, no admin plane. A product assembles these parts.
   input/output contracts, the insertion points, and the runtime knob surface.
 - **does not own**: any request-path logic (that is the engines), any data
   loading (that is the consumer), any process shape (embedded server or daemon,
-  the facade does not know).
+  the facade does not know). The standalone shape lives in the root
+  `gateway-daemon` package; embedding consumers keep `Gateway::router()`.
 - **does not leak**: consumers name nothing but `gateway_facade::…` — the
   vocabulary of every other crate is re-exported from it.
 
@@ -70,6 +74,82 @@ Named insertion points:
 Route selection lives inside the forwarding stage (the stage drives re-selection
 through its retry loop), so no separate dispatch stage sits in the default chain.
 
+## Standalone process (`gatewayd`)
+
+The root package is a thin process shell over the same facade; it contains no
+admission logic. Build and run:
+
+```bash
+cargo run --bin gatewayd -- --config gateway.toml
+# load the config + catalog, print the summary, exit without binding
+cargo run --bin gatewayd -- --config gateway.toml --check
+```
+
+`gateway.toml` describes the transport; the catalog it points at describes the
+data plane. Paths are resolved relative to the config file.
+
+```toml
+# gateway.toml
+listen = "127.0.0.1:8080"
+uds_path = "/run/gatewayd.sock"   # optional; same pipeline on a Unix socket
+catalog = "gateway.catalog.toml"
+max_request_bytes = 33554432      # 413 above this; the body is read into memory
+trusted_proxies = ["127.0.0.1"]   # only these peers may set x-forwarded-for
+workers = 0                       # 0 = actix default
+shutdown_timeout_secs = 30
+```
+
+The catalog mirrors the admin plane's loader: channels × keys × groups × models
+become route units, tokens are indexed by SHA-256, prices are `$ / M tokens` and
+are converted to the internal unit (`500_000` = $1). A token without `quota` is
+unlimited; a token without `group` follows its user's group.
+
+```toml
+# gateway.catalog.toml (abridged)
+[[groups]]
+name = "default"
+allowed_models = ["gpt-4o*"]
+multiplier = 1.0
+
+[[users]]
+key = "user-1"
+username = "alice"
+group = "default"
+
+[[tokens]]
+key = "sk-..."            # plaintext here: this file is the credential store
+user = "user-1"
+quota = 2_000_000         # internal units; omit = unlimited
+
+[[channels]]
+key = "ch-1"
+name = "primary"
+provider_type = "openai"
+base_url = "https://api.example.com"
+groups = ["default"]
+[[channels.keys]]
+secret = "sk-upstream"
+[[channels.models]]
+name = "gpt-4o"
+
+[[prices]]
+model = "gpt-4o"
+input = 2.5
+output = 10.0
+cache = 1.25
+```
+
+Transport notes:
+
+- Served scope is the data plane only (`/v1*`); `/healthz` and `/readyz` are
+  separate routes. Unknown paths are 404 before the pipeline runs.
+- The pipeline is the library's: admission chain → `ForwardStage` →
+  protocol bridge. Response bodies stream frame by frame (SSE included); no
+  full-response buffering.
+- The axum `Gateway::router()` remains the embedding exit for products that
+  merge the data plane into their own axum app; the daemon uses actix-web.
+- The catalog is read once at boot; a change needs a restart.
+
 ## Config and runtime knobs
 
 Two disjoint value sets, one rule: **everything a consumer can set lives in
@@ -92,6 +172,7 @@ Two disjoint value sets, one rule: **everything a consumer can set lives in
 ```
 gateway-facade ──> all engines ──> gateway-core ──> (nothing)
        └──────────────────────────┘
+gateway-daemon ──> gateway-facade (+ actix-web / toml; no engine crate)
 ```
 
 - Engines depend only on `gateway-core` plus other engines, never the reverse;

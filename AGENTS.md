@@ -2,9 +2,11 @@
 
 gateway is the public LLM-gateway data-plane workspace in Rust: contract
 vocabulary, engine stages (gate / dispatch / forward / metering / protocol /
-proxy / security) and the assembly facade (`gateway-facade`) a consumer wires
-up. Everything here is a library crate — no process entry, no database, no
-admin plane. A product assembles these parts; this repo must stay product-neutral.
+proxy / security), the assembly facade (`gateway-facade`) a consumer wires up,
+and the standalone actix-web process at the workspace root (`gatewayd`).
+The crates are libraries; the root package is the process shell and contains no
+admission logic. No database, no admin plane. A product assembles these parts;
+this repo must stay product-neutral.
 
 This file carries hard constraints and the order of operations; expanded
 procedures live under `.agent/rules/` — look them up when needed instead of
@@ -52,6 +54,8 @@ gateway-facade ──> all engines ──> gateway-contract ──> app-contract
   (serde / uuid / chrono / thiserror); tokio / axum / reqwest are forbidden in it.
 - The consumer depends on `gateway-facade` and need not name any engine crate;
   keep `GatewayBuilder` insertion points the only extension surface.
+- `gateway-daemon` (root package) may depend on `gateway-facade` plus transport
+  crates (actix-web, toml); it must never depend on an engine crate directly.
 - A new crate or a new dependency edge means updating the `README.md` manifest
   **and** the root `Cargo.toml` layout comment in the same change.
 

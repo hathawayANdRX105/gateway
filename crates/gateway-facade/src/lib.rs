@@ -95,6 +95,7 @@ pub use gateway_gate::{
 pub use gateway_pipeline::{
     BodyReader, BodySource, PipeStream, Pipeline, RequestCtx, RequestMeta, RouteAttribution,
     SelectedRoute, Stage, StageError, StageOutcome, UpstreamError, UpstreamResponse,
+    error_to_response,
 };
 // Egress pool: the manager (consumer builds / reloads it), the URL validator
 // (SSRF policy is the consumer's too), and the probe surface the control plane
@@ -112,3 +113,6 @@ pub use gateway_gate::model::match_model;
 // Price arithmetic lives with the metering engine; the *table* is a port, the
 // *arithmetic* the billing domain needs when testing its own wiring.
 pub use gateway_metering::pricing::price_of;
+// In-memory ledger: the standalone process has no database, so its admission ledger is the
+// engine's memory implementation seeded from the catalog's quota snapshot.
+pub use gateway_metering::ledger::MemoryLedger;

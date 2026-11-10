@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3213" viewBox="0 0 1560 3213" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3480" viewBox="0 0 1560 3480" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
 <defs>
 <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
 </defs>
 <rect width="1560" height="3213" fill="#ffffff"/>
 <rect x="0" y="0" width="1560" height="122" fill="#0f172a"/>
 <text x="780.0" y="54" font-size="30" fill="#f8fafc" font-weight="700" text-anchor="middle">gateway 数据面心智模型 —— LLM 网关的装配、调度与转发</text>
-<text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">纯库仓（11 crate）：gateway-core 承载词汇与端口，引擎 stage 负责请求路径，gateway-facade 是消费方唯一依赖的装配面</text>
+<text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">库 + 独立进程（12 crate）：gateway-core 承载词汇与端口，引擎 stage 负责请求路径，gateway-facade 是装配面，根 src/ 的 gatewayd 用 actix-web 承载传输</text>
 <rect x="48.0" y="152.0" width="346.5" height="86.7" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="1.7"/>
 <text x="64.0" y="181.1" font-size="16" fill="#0f172a" font-weight="700">OpenAI</text>
 <text x="121.7" y="181.1" font-size="16" fill="#0f172a" font-weight="700"> </text>
@@ -71,7 +71,7 @@
 <text x="182.8" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">＋</text>
 <text x="200.3" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
 <text x="204.3" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">gateway_path_guard</text>
-<text x="1492.0" y="293.1" font-size="14" fill="#4f46e5" font-weight="700" text-anchor="end">crate gateway-pipeline</text>
+<text x="1492.0" y="293.1" font-size="14" fill="#4f46e5" font-weight="700" text-anchor="end">crate gateway-pipeline（嵌入出口）</text>
 <text x="68.0" y="329.3" font-size="15" fill="#4f46e5">•</text>
 <text x="88.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">职</text>
 <text x="103.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">责</text>
@@ -2920,4 +2920,13 @@
 <text x="1016.6" y="3145.9" font-size="13.5" fill="#64748b">何</text>
 <text x="1030.1" y="3145.9" font-size="13.5" fill="#64748b"> </text>
 <text x="1033.2" y="3145.9" font-size="13.5" fill="#64748b">crate</text>
+
+<rect x="48" y="3200.0" width="1464" height="236.0" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.2"/>
+<text x="68" y="3236" font-size="17.5" fill="#15803d" font-weight="700">独立进程（仓库根 src/）：actix-web Transport × 同一 Pipeline</text>
+<text x="68" y="3264" font-size="14.5" fill="#166534">• 入口：src/main.rs → gatewayd --config &lt;toml&gt; [--check]；根包 gateway-daemon 只依赖 gateway-facade + actix-web / toml，不触引擎</text>
+<text x="68" y="3292" font-size="14.5" fill="#166534">• 装配：文件 catalog（channels × keys × groups × models）→ dispatch / token / user / group / quota / pricing 快照 → GatewayBuilder::relay().build()</text>
+<text x="68" y="3320" font-size="14.5" fill="#166534">• 传输：TCP HTTP/1.1 + SSE（按 chunk 转发，不缓冲整包）与 UDS（同一 Router，双 listener）；UDP / WebSocket 不做，TLS 交给反代</text>
+<text x="68" y="3348" font-size="14.5" fill="#166534">• 边界：body 上限（超限 413）· 仅 trusted_proxies 可设 X-Forwarded-For · /healthz + /readyz · 仅 /v1* 进 pipeline，其余 404</text>
+<text x="68" y="3376" font-size="14.5" fill="#166534">• 并发：actix 每 worker 一个 runtime，每请求一个 task；Pipeline 仍是顺序 stage 链，上游延迟主导，框架开销不是瓶颈</text>
+<text x="68" y="3406" font-size="13" fill="#64748b">嵌入路径保留：Gateway::router() 仍是 axum Router，供 ferrite 等消费方与 admin 面合并；actix 只替换独立进程的传输实现</text>
 </svg>
