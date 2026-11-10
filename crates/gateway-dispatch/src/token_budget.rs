@@ -18,12 +18,12 @@
 //! - `caps`: per-channel token cap (TPM), `0` = unlimited (the same assembly convention
 //!   as `channel_max_concurrency`), defaulting to `global_default`.
 //!
-//! Shape matches `gateway_gate::concurrency::ConcurrencyState` (DashMap + atomics) with no
+//! Shape matches `gateway_gate::concurrency::ConcurrencyState` (`DashMap` + atomics) with no
 //! background thread; the clock matches `ratelimit` (default `chrono`, tests inject
 //! deterministic milliseconds via `with_clock`).
 //!
 //! Hot path avoids cloning shared state: `preclaim` / `inflight` / `load` go through a
-//! DashMap entry + atomic reads; the RAII handle only holds an `Arc` handle to the shared
+//! `DashMap` entry + atomic reads; the RAII handle only holds an `Arc` handle to the shared
 //! counter (mirroring `OwnedSemaphorePermit`).
 
 use std::sync::Arc;
@@ -42,15 +42,15 @@ const WINDOW_MS: u64 = 60_000;
 /// Per-channel in-flight token counter + minute token sliding window. Shared across
 /// requests (`new` returns `Arc<Self>`).
 ///
-/// Every method takes `&self` (DashMap sharding + atomic counters internally); the hot
+/// Every method takes `&self` (`DashMap` sharding + atomic counters internally); the hot
 /// path takes no global lock and allocates only the key strings for the entry/handle.
 pub struct TokenBudgetState {
-    /// channel_key → token cap (TPM). `0` is not registered; unregistered = unlimited.
+    /// `channel_key` → token cap (TPM). `0` is not registered; unregistered = unlimited.
     caps: DashMap<String, u64>,
-    /// channel_key → estimated in-flight tokens (`Arc` so RAII handles can return from other
+    /// `channel_key` → estimated in-flight tokens (`Arc` so RAII handles can return from other
     /// threads).
     inflight: DashMap<String, Arc<AtomicU64>>,
-    /// channel_key → measured completion EMA (initial [`COMPLETION_EMA_INIT`]).
+    /// `channel_key` → measured completion EMA (initial [`COMPLETION_EMA_INIT`]).
     ema: DashMap<String, Arc<AtomicU64>>,
     /// Minute-level token sliding window (used by `admit_window`; weight = estimated token count).
     window: SlidingWindow,
@@ -114,20 +114,21 @@ impl TokenBudgetState {
 
     /// Channel token cap; unregistered = `0` (= unlimited).
     pub fn cap(&self, channel_key: &str) -> u64 {
-        self.caps.get(channel_key).map(|v| *v).unwrap_or(0)
+        self.caps.get(channel_key).map_or(0, |v| *v)
     }
 
     /// Current estimated in-flight tokens for the channel (unregistered/no in-flight = `0`).
     pub fn inflight(&self, channel_key: &str) -> u64 {
         self.inflight
             .get(channel_key)
-            .map(|c| c.load(Ordering::Relaxed))
-            .unwrap_or(0)
+            .map_or(0, |c| c.load(Ordering::Relaxed))
     }
 
     /// Current in-flight token occupancy for the channel: `Some(min(1.0, inflight / cap))`;
     /// `cap == 0` (unregistered or no cap) ⇒ `None`. P2C discounts channels about to
-    /// exhaust their TPM based on this.
+    // In-flight tokens and the cap are u64 counters; the ratio is an f64 for P2C discounting
+    // and channel token counts stay far below 2^53, so the conversion is exact in practice.
+    #[allow(clippy::cast_precision_loss)]
     pub fn load(&self, channel_key: &str) -> Option<f64> {
         let cap = self.cap(channel_key);
         if cap == 0 {
@@ -140,8 +141,7 @@ impl TokenBudgetState {
     pub fn completion_ema(&self, channel_key: &str) -> u64 {
         self.ema
             .get(channel_key)
-            .map(|e| e.load(Ordering::Relaxed))
-            .unwrap_or(COMPLETION_EMA_INIT)
+            .map_or(COMPLETION_EMA_INIT, |e| e.load(Ordering::Relaxed))
     }
 
     /// Minute-level token window check: whether this channel still has room for the

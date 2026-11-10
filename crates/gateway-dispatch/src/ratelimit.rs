@@ -1,4 +1,4 @@
-//! Purely in-memory sliding-window rate limiting — request-rate protection per unit (RouteUnit).
+//! Purely in-memory sliding-window rate limiting — request-rate protection per unit (`RouteUnit`).
 //!
 //! Reference implementation:
 //! - wildtoken `internal/ratelimit/{limiter.go,parser.go}`:
@@ -35,10 +35,11 @@ impl RateLimitSpec {
     ///
     /// Empty and malformed strings both return `None` (ocr #3): the caller cannot distinguish "not
     /// rate-limited" from "config typo". ponytail: parse does not distinguish either; the config
-    /// layer rejects bad values at write time (same as wildtoken's write-time NormalizeRateLimit
+    /// layer rejects bad values at write time (same as wildtoken's write-time `NormalizeRateLimit`
     /// validation); the hot path only cares whether a limit exists. `requests == 0` or `mult == 0`
     /// are rejected too; the magnitude suffix only scales the request count, so `0k` / `0M` still
     /// yield `None`.
+    #[must_use]
     pub fn parse(s: &str) -> Option<Self> {
         if s.is_empty() {
             return None;
@@ -152,7 +153,9 @@ impl SlidingWindow {
     /// Take the lock without panicking on poisoning (ocr #2: one thread panicking on the hot path
     /// must not take down every request).
     fn lock(&self) -> std::sync::MutexGuard<'_, LimitMap> {
-        self.limits.lock().unwrap_or_else(|e| e.into_inner())
+        self.limits
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Decide + account (weighted): admit within the limit and add `weight`; over the limit
@@ -177,12 +180,14 @@ impl SlidingWindow {
             return true;
         }
 
-        let now_s = (now_ms / 1000) as i64;
-        let window_s = (spec.window_ms / 1000).max(1) as i64;
+        // now_ms / 1000 ≤ u64::MAX / 1000 < i64::MAX, so the cast can never wrap.
+        let now_secs = (now_ms / 1000).cast_signed();
+        // window_ms / 1000 ≥ 1 and ≤ u64::MAX / 1000 < i64::MAX, so the cast can never wrap.
+        let window_s = (spec.window_ms / 1000).max(1).cast_signed();
         // Window start: includes the current second and covers window_s full second-buckets
         // backwards. start = now_s - window_s + 1; strict-side rule: admit when the buckets in that
         // range plus weight are <= requests.
-        let start_s = now_s - window_s + 1;
+        let start_s = now_secs - window_s + 1;
 
         let mut limits = self.lock();
         let buckets = limits.entry(key.to_string()).or_default();
@@ -191,7 +196,7 @@ impl SlidingWindow {
         // long-tail keys. ponytail: every admits call checks, but retain only allocates when an old
         // bucket exists; skipping the background cleanup thread trades this small hot-path cost for
         // no timer coupling at all.
-        let cutoff = now_s - 7200;
+        let cutoff = now_secs - 7200;
         if buckets
             .keys()
             .next()
@@ -201,13 +206,13 @@ impl SlidingWindow {
             buckets.retain(|bucket, _| *bucket >= cutoff);
         }
 
-        let current_count: u64 = buckets.range(start_s..=now_s).map(|(_, c)| *c).sum();
+        let current_count: u64 = buckets.range(start_s..=now_secs).map(|(_, c)| *c).sum();
 
         if current_count.saturating_add(weight) > spec.requests {
             return false;
         }
 
-        *buckets.entry(now_s).or_insert(0) += weight;
+        *buckets.entry(now_secs).or_insert(0) += weight;
         true
     }
 
@@ -220,7 +225,7 @@ impl SlidingWindow {
         self.admits_weighted(key, spec, 1, now_ms)
     }
 
-    /// Test helper: read now_ms from the internal clock, then call admits. Production normally
+    /// Test helper: read `now_ms` from the internal clock, then call admits. Production normally
     /// passes `chrono::Utc::now()` directly to avoid a closure call; the injected clock is mainly
     /// for tests.
     pub fn admits_now(&self, key: &str, spec: Option<&RateLimitSpec>) -> bool {
@@ -231,6 +236,8 @@ impl SlidingWindow {
     /// not need it).
     #[doc(hidden)]
     pub fn bucket_count(&self, key: &str) -> usize {
-        self.lock().get(key).map_or(0, |b| b.len())
+        self.lock()
+            .get(key)
+            .map_or(0, std::collections::BTreeMap::len)
     }
 }

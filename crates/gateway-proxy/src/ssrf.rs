@@ -29,6 +29,11 @@ pub enum SsrfError {
 
 /// URL validation: only IP literals are checked; a domain name must be DNS-resolved by the
 /// caller and then passed through `validate_resolved`
+///
+/// # Errors
+///
+/// Returns [`SsrfError::Dns`] when the URL has no host, or the [`check_ip`] variant
+/// when the host is an IP literal inside a reserved range.
 pub fn validate_url(url: &Url) -> Result<(), SsrfError> {
     let host = url.host().ok_or(SsrfError::Dns("no host".into()))?;
     match host {
@@ -53,7 +58,7 @@ pub fn check_ip(ip: IpAddr) -> Result<(), SsrfError> {
     // Fold to the canonical form: IPv4-mapped addresses are always judged by the IPv4 rules.
     let ip = match ip {
         IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(IpAddr::V6(v6), IpAddr::V4),
-        v4 => v4,
+        v4 @ IpAddr::V4(_) => v4,
     };
     if ip.is_loopback() {
         return Err(SsrfError::Loopback);
@@ -75,6 +80,11 @@ pub fn check_ip(ip: IpAddr) -> Result<(), SsrfError> {
 
 /// Dial-time re-check (DNS-rebinding defense) — takes the addresses the caller resolved and
 /// returns the first one
+///
+/// # Errors
+///
+/// Returns the [`check_ip`] variant of the first address that falls inside a reserved
+/// range; the caller must not dial in that case.
 pub fn validate_resolved(addrs: &[IpAddr]) -> Result<IpAddr, SsrfError> {
     for ip in addrs {
         check_ip(*ip)?;

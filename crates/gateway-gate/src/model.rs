@@ -1,5 +1,5 @@
 //! `model` — gate 5: model allowlist (`token.allowed_models`) plus request-body
-//! model/max_tokens parsing.
+//! `model/max_tokens` parsing.
 //!
 //! Also hosts [`GroupModelGate`]: a group-level model allowlist (backed by
 //! [`crate::snapshot::GroupSnapshot`]), an additional gate parallel to the token-level
@@ -40,7 +40,7 @@ impl Gate for ModelGate {
     }
 }
 
-/// Body `model` field and max_tokens, using field names shared by OpenAI and Anthropic.
+/// Body `model` field and `max_tokens`, using field names shared by `OpenAI` and Anthropic.
 ///
 /// A gate whose only job is to parse the model: assemblies that run no
 /// authentication (see the facade's `Shape::Open`) still need `requested_model`
@@ -65,12 +65,17 @@ impl Gate for ModelParseGate {
 pub struct BodyModel {
     pub model: Option<String>,
     pub max_tokens: Option<u32>,
-    /// Anthropic uses variants such as max_completion_tokens.
+    /// Anthropic uses variants such as `max_completion_tokens`.
     #[serde(default)]
     pub max_completion_tokens: Option<u32>,
 }
 
 /// Shared body-parsing entry point (used by both quota and model).
+///
+/// # Errors
+///
+/// Propagates a [`Rejection`] only when a parsed body violates the gate's constraints;
+/// a non-JSON or unparsable body is skipped with `Ok(())`.
 pub fn parse_body_model_into(body: &BodySource, ctx: &mut GateCtx) -> Result<(), Rejection> {
     let bytes = match body {
         BodySource::InMemory(b) => b.as_ref(),
@@ -88,6 +93,7 @@ pub fn parse_body_model_into(body: &BodySource, ctx: &mut GateCtx) -> Result<(),
 }
 
 /// Model-name matching: exact match, or `*` wildcard (e.g. `gpt-4*` matches `gpt-4o`).
+#[must_use]
 pub fn match_model(pattern: &str, model: &str) -> bool {
     if pattern == model {
         return true;
@@ -102,7 +108,7 @@ pub fn match_model(pattern: &str, model: &str) -> bool {
 /// [`GroupSnapshot`](crate::snapshot::GroupSnapshot).
 ///
 /// An **additional** gate parallel to the token-level [`ModelGate`] (mount order: preferably
-/// after ModelGate, since it relies on that gate having parsed `requested_model` into the
+/// after `ModelGate`, since it relies on that gate having parsed `requested_model` into the
 /// ctx; this gate does not parse the request body itself).
 ///
 /// fail-open policy — "not configured" never blocks:

@@ -1,4 +1,4 @@
-//! `pool` — proxy node pool (single ArcSwap source, indexed by channel_key)
+//! `pool` — proxy node pool (single `ArcSwap` source, indexed by `channel_key`)
 //!
 //! Single state `ArcSwap<HashMap<channel_key, Vec<Arc<ProxyNode>>>>`: `install` builds the
 //! index once and swaps it wholesale; reads go through `load()` lock-free.
@@ -26,6 +26,7 @@ pub struct ProxyPool {
 }
 
 impl ProxyPool {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             by_channel: ArcSwap::from(Arc::new(HashMap::new())),
@@ -45,9 +46,9 @@ impl ProxyPool {
             });
         }
         // Sort each channel list by descending priority (higher priority first).
-        channel_map.values_mut().for_each(|nodes| {
+        for nodes in channel_map.values_mut() {
             nodes.sort_by(|a, b| b.priority.cmp(&a.priority).then_with(|| a.id.cmp(&b.id)));
-        });
+        }
         self.by_channel.store(Arc::new(channel_map));
     }
 

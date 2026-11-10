@@ -40,7 +40,10 @@ fn fake_table(now: &Arc<AtomicU64>, ttl_ms: u64, capacity: usize) -> Arc<StickyT
 }
 
 fn body_with_head(head_len: usize, fill: u8) -> Vec<u8> {
-    let mut v: Vec<u8> = (0..head_len).map(|i| (i % 251) as u8).collect();
+    // `i % 251 < 256`, so `u8::try_from` never fails here.
+    let mut v: Vec<u8> = (0..head_len)
+        .map(|i| u8::try_from(i % 251).expect("i % 251 < 256"))
+        .collect();
     v.extend(std::iter::repeat_n(fill, 256));
     v
 }
@@ -121,7 +124,7 @@ fn key_ignores_differences_beyond_the_fingerprint_window() {
     );
 }
 
-/// Bug it catches: dropping public_model from the key, so different models' sessions collide into one key → cached sessions get bound to a channel that doesn't even serve the model.
+/// Bug it catches: dropping `public_model` from the key, so different models' sessions collide into one key → cached sessions get bound to a channel that doesn't even serve the model.
 #[test]
 fn key_changes_with_model() {
     assert_ne!(fp_key("gpt-4o", BODY), fp_key("claude-3", BODY));
@@ -251,7 +254,7 @@ fn session_hint_truncation_lands_on_char_boundary() {
 
 // ---------- TTL / capacity / expiry cleanup ----------
 
-/// Within TTL ⇒ hit. Bug it catches: an inverted comparison or expire_at treated as already-expired (e.g. comparing against a default-zero timestamp) ⇒ everything misses immediately.
+/// Within TTL ⇒ hit. Bug it catches: an inverted comparison or `expire_at` treated as already-expired (e.g. comparing against a default-zero timestamp) ⇒ everything misses immediately.
 #[test]
 fn bind_then_lookup_hits_within_ttl() {
     let now = Arc::new(AtomicU64::new(T0));
@@ -264,7 +267,7 @@ fn bind_then_lookup_hits_within_ttl() {
 
 /// A second bind slides the expiry (not absolute TTL): hitting after the original
 /// expiry moment proves the expiry was refreshed.
-/// Bug it catches: computing expire_at from the "first bind time" or refusing to
+/// Bug it catches: computing `expire_at` from the "first bind time" or refusing to
 /// refresh on overwrite ⇒ a long-running session goes stale and sticky loses effect halfway through.
 #[test]
 fn rebind_slides_the_expiry() {
@@ -366,7 +369,7 @@ fn full_active_table_admits_new_key() {
 
 /// Hammering a full table from many threads neither panics nor deadlocks.
 /// Bug it catches: mutating the table from inside its own iteration (the old
-/// hand-rolled DashMap eviction could hold two shard write locks at once ⇒
+/// hand-rolled `DashMap` eviction could hold two shard write locks at once ⇒
 /// deadlock — the test hangs, CI times out), or an unchecked removal on the
 /// data plane's hot path panicking instead of degrading. With the store-backed
 /// table this is the regression tripwire for "reintroducing a self-mutating
@@ -533,8 +536,8 @@ fn stage_without_sticky_table_never_sticks() {
     assert_eq!(stage.sticky_channel_for(&ctx), None);
 }
 
-/// ctx.session_hint hit ⇒ returns the bound channel key.
-/// Bug it catches: ctx.session_hint never actually being read (an added field left at None) ⇒ explicit session ids carry no effect at all.
+/// `ctx.session_hint` hit ⇒ returns the bound channel key.
+/// Bug it catches: `ctx.session_hint` never actually being read (an added field left at None) ⇒ explicit session ids carry no effect at all.
 #[test]
 fn stage_hits_by_session_hint_field() {
     let table = StickyTable::new();
@@ -544,8 +547,8 @@ fn stage_hits_by_session_hint_field() {
     assert_eq!(stage.sticky_channel_for(&ctx), Some("ch-a".to_string()));
 }
 
-/// session_hint missing ⇒ falls back to the x-session-id request header.
-/// Bug it catches: the header path not being wired (session_hint=None is always None in production) ⇒ sessions only stick when something else sets the field ⇒ sticky never takes effect.
+/// `session_hint` missing ⇒ falls back to the x-session-id request header.
+/// Bug it catches: the header path not being wired (`session_hint=None` is always None in production) ⇒ sessions only stick when something else sets the field ⇒ sticky never takes effect.
 #[test]
 fn stage_falls_back_to_session_header() {
     let table = StickyTable::new();
@@ -555,7 +558,7 @@ fn stage_falls_back_to_session_header() {
     assert_eq!(stage.sticky_channel_for(&ctx), Some("ch-h".to_string()));
 }
 
-/// session_hint takes priority over the request header: the two bindings point to different channels, and the result follows the field.
+/// `session_hint` takes priority over the request header: the two bindings point to different channels, and the result follows the field.
 /// Bug it catches: the header taking precedence (or the field being ignored) ⇒ an explicitly corrected session id still uses the header's binding ⇒ sticky errors cannot be corrected in time.
 #[test]
 fn stage_session_hint_takes_priority_over_header() {
@@ -589,7 +592,7 @@ fn stage_falls_back_to_body_fingerprint() {
 }
 
 /// When the raw body isn't in memory (spooled to disk), it degrades to no stickiness (and never panics).
-/// Bug it catches: reading disk bodies directly / calling bytes() on a disk body ⇒ disk IO or a panic on the data plane's hot path.
+/// Bug it catches: reading disk bodies directly / calling `bytes()` on a disk body ⇒ disk IO or a panic on the data plane's hot path.
 #[test]
 fn stage_degrades_when_body_not_in_memory() {
     let table = StickyTable::new();

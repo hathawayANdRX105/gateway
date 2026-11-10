@@ -10,7 +10,7 @@
 //! assert through its `cooled_ms` whether a wait happened — **no real sleep**, 0ms wall-clock.
 //!
 //! Assertions land only on **deterministic end states** (error variant / attempt count /
-//! cooled_ms), never on jitter-prone quantities.
+//! `cooled_ms`), never on jitter-prone quantities.
 
 use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::DispatchError;
@@ -334,7 +334,7 @@ fn success_does_not_count_against_budget_even_when_slow() {
 
 /// All unavailable but **no channel is cooling** (e.g. all disabled, or the last failure
 /// was a neutral 4xx that does not trigger cooldown) → `AllUnavailable.retry_after_ms == 0`
-/// (no natural recovery). With retry_after_ms=0 the loop does not sleep (fake clock
+/// (no natural recovery). With `retry_after_ms=0` the loop does not sleep (fake clock
 /// `cooled_ms` should be 0) and returns the variant directly — deterministic.
 #[test]
 fn all_unavailable_without_cooling_reports_zero_retry_after() {
@@ -380,10 +380,10 @@ fn all_unavailable_without_cooling_reports_zero_retry_after() {
     );
 }
 
-/// Termination (bug regression): with the budget **off** (total_budget_ms=0) + cooling
+/// Termination (bug regression): with the budget **off** (`total_budget_ms=0`) + cooling
 /// (ra>0), do **not sleep on the gateway side waiting for cooldown** (no budget cap =
 /// permanent cooling would spin forever). Return AllUnavailable{ra} directly; the client
-/// waits via 504+Retry-After. The fake clock's cooled_ms must be 0 (proof of no wait), and
+/// waits via 504+Retry-After. The fake clock's `cooled_ms` must be 0 (proof of no wait), and
 /// the loop terminates immediately (deterministic).
 #[test]
 fn cooling_with_budget_off_does_not_wait_or_loop() {

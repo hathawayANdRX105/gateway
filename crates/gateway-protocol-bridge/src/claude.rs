@@ -59,6 +59,7 @@ pub struct ClaudeCodec;
 
 impl ClaudeCodec {
     /// Creates a codec (stateless, safe to share).
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -181,11 +182,10 @@ fn claude_stop_reason(reason: &str) -> StopReason {
 
 fn claude_stop_reason_str(reason: &StopReason) -> String {
     match reason {
-        StopReason::Stop => "end_turn".into(),
+        StopReason::Stop | StopReason::Error => "end_turn".into(),
         StopReason::Length => "max_tokens".into(),
         StopReason::ToolUse => "tool_use".into(),
         StopReason::ContentFilter => "refusal".into(),
-        StopReason::Error => "end_turn".into(),
         StopReason::Other(s) => s.clone(),
     }
 }
@@ -234,7 +234,7 @@ impl ClaudeStreamEncoder {
     }
 
     /// Emits `message_start` when necessary (an IR stream may have no explicit
-    /// MessageStart).
+    /// `MessageStart`).
     fn ensure_started(&mut self) -> Vec<Bytes> {
         if self.started {
             return Vec::new();
@@ -306,6 +306,9 @@ impl ClaudeStreamEncoder {
 
     /// Incremental frame of one content block: emits `content_block_start` first
     /// when necessary.
+    // `json!` moves `delta` into the serialized payload, so the argument is genuinely
+    // consumed — borrowing it would not compile against the opaque macro.
+    #[allow(clippy::needless_pass_by_value)]
     fn block_delta(&mut self, index: u32, kind: BlockKind, delta: Value) -> Vec<Bytes> {
         let mut out = self.ensure_block(index, kind, "", "");
         out.push(event_frame(
@@ -336,7 +339,7 @@ impl ClaudeStreamEncoder {
     }
 
     /// `message_delta` + `message_stop` closing frames.
-    fn finish_frames(&mut self, reason: StopReason) -> Vec<Bytes> {
+    fn finish_frames(&mut self, reason: &StopReason) -> Vec<Bytes> {
         if self.stopped {
             return Vec::new();
         }
@@ -346,7 +349,7 @@ impl ClaudeStreamEncoder {
                 "message_delta",
                 &json!({
                     "type": "message_delta",
-                    "delta": {"stop_reason": claude_stop_reason_str(&reason)},
+                    "delta": {"stop_reason": claude_stop_reason_str(reason)},
                 }),
             ),
             event_frame("message_stop", &json!({"type": "message_stop"})),
@@ -408,7 +411,7 @@ impl StreamEncoder for ClaudeStreamEncoder {
             StreamEvent::MessageStop { reason } => {
                 let mut out = self.ensure_started();
                 out.extend(self.close_blocks());
-                out.extend(self.finish_frames(reason.clone()));
+                out.extend(self.finish_frames(reason));
                 out
             }
             StreamEvent::Raw { data } => {
@@ -440,7 +443,7 @@ impl StreamEncoder for ClaudeStreamEncoder {
         }
         let mut out = self.ensure_started();
         out.extend(self.close_blocks());
-        out.extend(self.finish_frames(StopReason::Stop));
+        out.extend(self.finish_frames(&StopReason::Stop));
         Ok(out)
     }
 }
@@ -573,7 +576,7 @@ mod wire {
     }
 
     /// One `messages[]` entry. Claude has only the user/assistant roles;
-    /// tool_result travels inside a user message.
+    /// `tool_result` travels inside a user message.
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
     struct RequestMessage {
@@ -620,7 +623,7 @@ mod wire {
         }
     }
 
-    /// Claude `system` field (string or block array). Unlike OpenAI's helper
+    /// Claude `system` field (string or block array). Unlike `OpenAI`'s helper
     /// (`ir::decode_text_blocks`, deliberately unused here), a Claude empty
     /// string IS a system block of its own.
     #[derive(Debug, Deserialize)]
@@ -799,7 +802,7 @@ mod wire {
     }
 
     impl Tool {
-        /// `None` = entry without a usable `name` (the old filter_map skip).
+        /// `None` = entry without a usable `name` (the old `filter_map` skip).
         fn into_def(self) -> Option<ToolDef> {
             let name = self.name.0?;
             Some(ToolDef {
@@ -817,7 +820,7 @@ mod wire {
 
     /// Claude non-streaming response body. A non-object body or any wrong-typed
     /// field decodes to empty IR rather than failing (the old per-field
-    /// `.unwrap_or_default()` contract, including "missing stop_reason means
+    /// `.unwrap_or_default()` contract, including "missing `stop_reason` means
     /// Stop").
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
@@ -843,8 +846,7 @@ mod wire {
                 stop_reason: self
                     .stop_reason
                     .0
-                    .map(|reason| claude_stop_reason(&reason))
-                    .unwrap_or(StopReason::Stop),
+                    .map_or(StopReason::Stop, |reason| claude_stop_reason(&reason)),
             }
         }
     }
@@ -854,26 +856,29 @@ mod wire {
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
     struct UsageIn {
-        input_tokens: Lenient<u64>,
-        output_tokens: Lenient<u64>,
-        cache_read_input_tokens: Lenient<Option<u64>>,
-        cache_creation_input_tokens: Lenient<Option<u64>>,
+        #[serde(rename = "input_tokens")]
+        input: Lenient<u64>,
+        #[serde(rename = "output_tokens")]
+        output: Lenient<u64>,
+        #[serde(rename = "cache_read_input_tokens")]
+        cache_read_input: Lenient<Option<u64>>,
+        #[serde(rename = "cache_creation_input_tokens")]
+        cache_creation_input: Lenient<Option<u64>>,
     }
-
     impl UsageIn {
         fn into_usage(self) -> Usage {
-            let cache_read = self.cache_read_input_tokens.0;
-            let cache_creation = self.cache_creation_input_tokens.0;
+            let cache_read = self.cache_read_input.0;
+            let cache_creation = self.cache_creation_input.0;
             Usage {
                 // IR prompt is the **total** input; Claude reports cache tokens
                 // outside `input_tokens`, so they are added back here (saturating:
                 // a malformed upstream must not wrap).
                 prompt_tokens: self
-                    .input_tokens
+                    .input
                     .0
                     .saturating_add(cache_read.unwrap_or(0))
                     .saturating_add(cache_creation.unwrap_or(0)),
-                completion_tokens: self.output_tokens.0,
+                completion_tokens: self.output.0,
                 cached_tokens: cache_read,
                 cache_creation_tokens: cache_creation,
                 // Claude reports thinking tokens inside output_tokens; there is no
@@ -942,7 +947,7 @@ mod wire {
         }
     }
 
-    /// `content_block_start`: only tool_use carries information IR needs.
+    /// `content_block_start`: only `tool_use` carries information IR needs.
     #[derive(Debug, Default, Deserialize)]
     #[serde(default)]
     struct ContentBlockStartEvent {
@@ -1205,7 +1210,9 @@ mod wire {
 
         fn from_ir(block: &'a ContentBlock) -> Self {
             match block {
-                ContentBlock::Text { text } => BlockOut::text(text),
+                ContentBlock::Text { text } | ContentBlock::Refusal { text } => {
+                    BlockOut::text(text)
+                }
                 ContentBlock::ToolUse { id, name, input } => BlockOut::ToolUse(ToolUseOut {
                     kind: "tool_use",
                     id,
@@ -1234,7 +1241,6 @@ mod wire {
                 }),
                 // Claude has no refusal content block; degrade to text so the
                 // whole message is not lost.
-                ContentBlock::Refusal { text } => BlockOut::text(text),
                 ContentBlock::Unknown { raw } => BlockOut::Raw(raw.clone()),
             }
         }

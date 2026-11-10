@@ -1,6 +1,6 @@
-//! Idle annealing after a cooldown expires: cooldown_streak decays linearly in base windows
-//! (cooldown_base_ms), and an active success report resets the annealing origin. Everything goes
-//! through the public MemoryHealthTable API + an injected clock.
+//! Idle annealing after a cooldown expires: `cooldown_streak` decays linearly in base windows
+//! (`cooldown_base_ms`), and an active success report resets the annealing origin. Everything goes
+//! through the public `MemoryHealthTable` API + an injected clock.
 
 use gateway_dispatch::health::{
     AttemptReport, FailureClass, HealthSetting, HealthTable, MemoryHealthTable,
@@ -8,7 +8,7 @@ use gateway_dispatch::health::{
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Default config: cooldown_base_ms = 300 → annealing window 300ms.
+/// Default config: `cooldown_base_ms` = 300 → annealing window 300ms.
 const T0: u64 = 1_000_000;
 const WINDOW_MS: u64 = 300;
 
@@ -20,7 +20,7 @@ fn clock_table(now: &Arc<AtomicU64>) -> MemoryHealthTable {
     MemoryHealthTable::with_config_and_clock(HealthSetting::default(), clock)
 }
 
-/// Accumulate two cooldown rounds (cooldown_streak 1 → 2) and return the second round's expiry
+/// Accumulate two cooldown rounds (`cooldown_streak` 1 → 2) and return the second round's expiry
 /// instant + 1.
 /// After the caller advances the clock to that instant and triggers lazy settlement, the
 /// annealing anchor is in place.

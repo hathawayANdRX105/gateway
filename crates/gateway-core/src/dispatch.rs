@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use crate::records::{ChannelRecord, RouteUnitRecord};
 
-/// Route-unit enable status (aligned with ChannelRecord::status: 1 enabled / 2 manually
+/// Route-unit enable status (aligned with `ChannelRecord::status`: 1 enabled / 2 manually
 /// disabled / 3 auto circuit-broken).
 /// dispatch selects only units with status == 1; automatic circuit breaking is decided locally
 /// by the in-memory health table and does not interfere with the center's aggregated

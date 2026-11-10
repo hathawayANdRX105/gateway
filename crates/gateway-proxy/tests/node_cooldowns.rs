@@ -23,7 +23,10 @@ fn node(id: i64, channels: &[&str]) -> ProxyNode {
         port: 8080,
         auth: None,
         opts: None,
-        channel_keys: channels.iter().map(|c| c.to_string()).collect(),
+        channel_keys: channels
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
         priority: 0,
     }
 }
@@ -75,17 +78,17 @@ fn success_evicts_node_from_cooldown_table() {
     );
 }
 
-/// Test: direct-connection feedback (node_id == 0) never enters the cooldown table.
+/// Test: direct-connection feedback (`node_id` == 0) never enters the cooldown table.
 /// Why: 0 is not a real node; including it would make every unbound channel look like
 /// "all bound nodes are cooling".
 #[test]
 fn direct_feedback_is_ignored() {
     let mgr = manager_with(vec![]);
     mgr.feedback(0, 502, true);
-    assert!(mgr.node_cooldowns().is_empty());
+    assert_eq!(mgr.node_cooldowns(), [] as [(i64, std::time::Instant); 0]);
 }
 
-/// Test: channel_node_ids returns node ids by binding, and an unbound channel returns
+/// Test: `channel_node_ids` returns node ids by binding, and an unbound channel returns
 /// empty.
 /// Why: an empty table means "no binding to begin with", so forward treats a direct
 /// connection as the expected path rather than a downgrade.
@@ -94,5 +97,5 @@ fn channel_node_ids_reflects_binding() {
     let mgr = manager_with(vec![node(1, &["ch-a"]), node(2, &["ch-a", "ch-b"])]);
     assert_eq!(mgr.channel_node_ids("ch-a"), vec![1, 2]);
     assert_eq!(mgr.channel_node_ids("ch-b"), vec![2]);
-    assert!(mgr.channel_node_ids("ch-none").is_empty());
+    assert_eq!(mgr.channel_node_ids("ch-none"), [] as [i64; 0]);
 }

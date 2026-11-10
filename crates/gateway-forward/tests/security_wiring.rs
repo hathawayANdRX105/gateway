@@ -111,7 +111,7 @@ async fn dormant_by_default() {
 /// replaced (ASCII case-insensitive; the list has case variants and a multi-word term);
 /// `filter_request=false` skips filtering.
 ///
-/// Which bug makes this red: filtering mounted in the wrong place (after build_task / cost
+/// Which bug makes this red: filtering mounted in the wrong place (after `build_task` / cost
 /// estimation — split accounting), forgetting the `filter_request` switch (filtering while
 /// off), case sensitivity (variants not replaced), or the hit path not rebuilding Bytes
 /// (estimation/cache still sees the original body).

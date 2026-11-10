@@ -20,6 +20,12 @@ pub use gateway_core::proxy::node::{BasicAuth, NodeOpts, ParseError, ProxyNode, 
 ///   (these dial through the meow adapter in [`super::adapter`])
 /// - auth goes through `.basic_auth()` rather than into the URL, avoiding special-character
 ///   escaping issues
+///
+/// # Errors
+///
+/// Returns [`ProxyConvertError`] for the schemes that dial through the meow adapter
+/// (Vless/Vmess/Shadowsocks/Trojan/Hysteria2/AnyTls/Snell) and for a malformed
+/// `Http`/`Socks5` node whose URL cannot be built.
 pub fn to_reqwest_proxy(node: &ProxyNode) -> Result<Option<reqwest::Proxy>, ProxyConvertError> {
     match node.scheme {
         ProxyScheme::Direct => Ok(None),

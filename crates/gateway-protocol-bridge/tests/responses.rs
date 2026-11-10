@@ -1,4 +1,4 @@
-//! Behavior tests for the OpenAI Responses codec.
+//! Behavior tests for the `OpenAI` Responses codec.
 //!
 //! Three things matter here: parsing the three input shapes (Responses' `input` can be a
 //! string, a message array, or an items array), the flat tools shape (unlike Chat's

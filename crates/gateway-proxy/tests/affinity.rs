@@ -21,7 +21,10 @@ fn node(id: i64, channels: &[&str], priority: i32) -> ProxyNode {
         // After the NodeOpts rename (#137) the generic transport-layer options field is
         // opts; Http nodes have no transport-layer options.
         opts: None,
-        channel_keys: channels.iter().map(|c| c.to_string()).collect(),
+        channel_keys: channels
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect(),
         priority,
     }
 }
@@ -139,7 +142,7 @@ fn recovered_node_does_not_grab_back_traffic() {
     }
 }
 
-/// Tests: affinity is isolated per channel_key; channel B's selection does not rewrite
+/// Tests: affinity is isolated per `channel_key`; channel B's selection does not rewrite
 /// channel A's affinity pointer. Why: if the affinity table were shared (e.g. keyed by node
 /// rather than channel), a high-frequency channel would pin a low-frequency channel to the
 /// same node, and A's load could not spread.
@@ -170,7 +173,7 @@ fn affinity_is_isolated_per_channel() {
     );
 }
 
-/// Tests: a channel with no nodes still returns direct node_id=0 (regression guard), and
+/// Tests: a channel with no nodes still returns direct `node_id=0` (regression guard), and
 /// the affinity table does not "leak" nodes from another channel.
 #[test]
 fn empty_channel_falls_back_to_direct() {

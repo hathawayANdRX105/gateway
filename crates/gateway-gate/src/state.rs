@@ -1,5 +1,5 @@
 //! `state` — gate 2: the state gate (enabled / expiry / IP allowlist / user disabled /
-//! auth_version)
+//! `auth_version`)
 
 use std::sync::Arc;
 
@@ -68,10 +68,10 @@ impl Gate for StateGate {
 
         // 6. fill in user / group
         let user_group = user_record.group().to_string();
-        let effective_group = if !token.group.is_empty() {
-            token.group.clone()
-        } else {
+        let effective_group = if token.group.is_empty() {
             user_group.clone()
+        } else {
+            token.group.clone()
         };
 
         ctx.user = Some(UserInfo {

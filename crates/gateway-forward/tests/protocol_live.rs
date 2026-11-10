@@ -111,7 +111,7 @@ async fn node_alive(host: &str, port: u16) -> bool {
 }
 
 /// Dial-failure handling: lenient by default (print and skip), red when
-/// FERRITE_PROXY_LIVE_STRICT=1.
+/// `FERRITE_PROXY_LIVE_STRICT=1`.
 /// Free nodes are extremely sensitive to TLS fingerprints / availability (with meow's
 /// boring-tls feature off, rustls fingerprints are rejected by some reality/trojan servers),
 /// and node-side failures are not code defects.
@@ -128,37 +128,34 @@ fn on_dial_failure(what: &str, e: &gateway_core::error::NormalizedError) {
 /// Build a real proxy node from an environment variable; returns None when absent (prints a
 /// skip line).
 fn parse_env_url(scheme: &str, env_var: &str) -> Option<ProxyNode> {
-    match std::env::var(env_var) {
-        Ok(url) => {
-            match ProxyNode::parse_url(&url) {
-                Ok(node) => {
-                    // Check that the node type matches
-                    let correct_scheme = match scheme {
-                        "vless" => ProxyScheme::Vless,
-                        "ss" | "shadowsocks" => ProxyScheme::Shadowsocks,
-                        "trojan" => ProxyScheme::Trojan,
-                        "vmess" => ProxyScheme::Vmess,
-                        _ => return None,
-                    };
-                    if node.scheme != correct_scheme {
-                        eprintln!(
-                            "environment variable {} proxy type mismatch: expected {:?}, got {:?}",
-                            env_var, correct_scheme, node.scheme
-                        );
-                        return None;
-                    }
-                    Some(node)
+    if let Ok(url) = std::env::var(env_var) {
+        match ProxyNode::parse_url(&url) {
+            Ok(node) => {
+                // Check that the node type matches
+                let correct_scheme = match scheme {
+                    "vless" => ProxyScheme::Vless,
+                    "ss" | "shadowsocks" => ProxyScheme::Shadowsocks,
+                    "trojan" => ProxyScheme::Trojan,
+                    "vmess" => ProxyScheme::Vmess,
+                    _ => return None,
+                };
+                if node.scheme != correct_scheme {
+                    eprintln!(
+                        "environment variable {} proxy type mismatch: expected {:?}, got {:?}",
+                        env_var, correct_scheme, node.scheme
+                    );
+                    return None;
                 }
-                Err(e) => {
-                    eprintln!("{} parse failed: {}", env_var, e);
-                    None
-                }
+                Some(node)
+            }
+            Err(e) => {
+                eprintln!("{env_var} parse failed: {e}");
+                None
             }
         }
-        Err(_) => {
-            eprintln!("skip: {} not set", env_var);
-            None
-        }
+    } else {
+        eprintln!("skip: {env_var} not set");
+        None
     }
 }
 

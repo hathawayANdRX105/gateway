@@ -51,7 +51,7 @@ fn hold() -> Hold {
     }
 }
 
-/// Group selects the price and group_ratio multiplies it: 1M prompt at the vip price
+/// Group selects the price and `group_ratio` multiplies it: 1M prompt at the vip price
 /// ($30/M) × ratio 2 → $60.
 #[test]
 fn settle_event_uses_group_and_group_ratio() {
@@ -218,7 +218,7 @@ fn sink_receives_settled_events() {
     assert_eq!(events[0].cost, 2_250);
 }
 
-/// Usage extraction from non-streaming response bodies: both the OpenAI / Claude shapes;
+/// Usage extraction from non-streaming response bodies: both the `OpenAI` / Claude shapes;
 /// absent or all-zero usage falls back to None.
 #[test]
 fn extract_usage_handles_openai_claude_and_absent() {
@@ -237,7 +237,7 @@ fn extract_usage_handles_openai_claude_and_absent() {
     assert!(extract_usage(br#"{"usage":{"prompt_tokens":0,"completion_tokens":0}}"#).is_none());
 }
 
-/// Finish-reason extraction from non-streaming responses: OpenAI's
+/// Finish-reason extraction from non-streaming responses: `OpenAI`'s
 /// `choices[0].finish_reason` / Claude's top-level `stop_reason`; missing, non-string, empty
 /// string, or invalid JSON → None (never fabricated).
 #[test]
@@ -258,7 +258,7 @@ fn extract_finish_reason_handles_shapes_and_absent() {
     assert!(extract_finish_reason(b"not json").is_none());
 }
 
-/// settle_event passes finish_reason through: supplied means it lands in the record, absent
+/// `settle_event` passes `finish_reason` through: supplied means it lands in the record, absent
 /// means None.
 #[test]
 fn settle_event_carries_finish_reason() {

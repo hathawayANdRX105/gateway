@@ -26,7 +26,7 @@
 //!
 //! Mock style matches `channel_permit_stream.rs` / `retry_wiring.rs`: egress is a
 //! scripted mock injected through the trait (returning an SSE frame sequence with
-//! programmable timing per candidate base_url), dispatch uses the shared mock from
+//! programmable timing per candidate `base_url`), dispatch uses the shared mock from
 //! `tests/common/mod.rs`, and no real network traffic is sent.
 
 mod common;
@@ -55,7 +55,7 @@ type Frame = (Bytes, Duration);
 
 // ---------- Test helpers ----------
 
-/// Scripted SSE egress mock: returns a frame sequence keyed by candidate base_url; frames
+/// Scripted SSE egress mock: returns a frame sequence keyed by candidate `base_url`; frames
 /// are emitted in order after their own delay, and the end of the sequence is EOF (= the
 /// upstream broke the stream).
 struct ScriptedSseEgress {
@@ -139,7 +139,7 @@ fn stream_stage(
         }))
 }
 
-/// Extract the PipeStream after a successful handle (panics with the StageError Debug value
+/// Extract the `PipeStream` after a successful handle (panics with the `StageError` Debug value
 /// on failure).
 async fn expect_stream(
     stage: &ForwardStage,
@@ -151,7 +151,7 @@ async fn expect_stream(
     }
 }
 
-/// Read the PipeStream into a byte vector and drain it (consuming it means the client has
+/// Read the `PipeStream` into a byte vector and drain it (consuming it means the client has
 /// received the whole body).
 async fn read_all(pipe: gateway_pipeline::PipeStream) -> Vec<u8> {
     // axum's into_data_stream() yields Result<Bytes, Error>; on the test path no body error

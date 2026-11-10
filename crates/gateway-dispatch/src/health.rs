@@ -7,10 +7,10 @@
 //!
 //! Model highlights:
 //! - **Five outcome classes**: Success / Fatal / Throttled (429) / Neutral (other
-//!   4xx) / UnauthorizedRun (401/403 escalated on consecutive hits, 3 → Fatal);
+//!   4xx) / `UnauthorizedRun` (401/403 escalated on consecutive hits, 3 → Fatal);
 //! - **EWMA continuous score**: `score = α×obs + (1-α)×score`, obs ∈
-//!   {1.0, 0.0, 0.7(429)}, not updated until MinRequests is exceeded, floored at
-//!   MinScore.
+//!   {1.0, 0.0, 0.7(429)}, not updated until `MinRequests` is exceeded, floored at
+//!   `MinScore`.
 //!   **No longer a weight multiplier**; it only feeds the P2C likelihood;
 //! - **Peak-latency EWMA**: `latency_ewma_ms` records upstream latency; increases
 //!   apply immediately, decreases are pulled toward the latest sample with a 10s
@@ -32,23 +32,23 @@
 //!   tier;
 //! - **Separate 429 cooldown ladder**: Throttled uses a `throttle_streak` fully
 //!   independent of Fatal (the two ledgers never contaminate each other: 429 does
-//!   not write cooldown_streak, Fatal never touches throttle_streak), range
+//!   not write `cooldown_streak`, Fatal never touches `throttle_streak`), range
 //!   `cooldown_base_ms → throttle_max_ms` (default 300ms→1s), same power-law
 //!   shape (p=2) but a fixed 4-step horizon, ladder
 //!   343→475→693→1000ms (truncated to whole ms). An upstream Retry-After header
 //!   (when a hint exists) directly overrides the ladder and is clamped to
 //!   `cooldown_max_ms`. A successful report and idle annealing decrement
-//!   throttle_streak in the same way (reusing the same annealing window);
+//!   `throttle_streak` in the same way (reusing the same annealing window);
 //! - **EWMA time decay**: before updating `ewma_score`, age it toward the default
 //!   score with the time constant `score_decay_tau_ms` (default 15min):
 //!   `prior' = 1 - (1-prior)×exp(-Δt/τ)` — an idle channel's old penalty expires
 //!   over time, half-life T½ = τ·ln2; `score_updated_at_ms` records the baseline
 //!   instant;
 //! - **slow-start ramp**: after cooldown ends the channel enters ramp
-//!   (RampPending); a real failure immediately RampExited. The ramp lives in the
-//!   sampling layer: effective prior = weight × slow_start_factor
+//!   (`RampPending`); a real failure immediately `RampExited`. The ramp lives in the
+//!   sampling layer: effective prior = weight × `slow_start_factor`
 //!   (`request_count/min_requests`), consumed by the selector; this table only
-//!   supplies the ramp state (ramp_pending / ramp_exited / request_count) and no
+//!   supplies the ramp state (`ramp_pending` / `ramp_exited` / `request_count`) and no
 //!   longer owns the weight formula.
 //!
 //! - **Live config reload**: `set_config` replaces the whole config at runtime
@@ -57,7 +57,7 @@
 //!   is never reset (the states table stays as is).
 //!
 //! All state is in memory (Mutex<HashMap>) and is not synchronized across nodes —
-//! center's health_observations is trend material and does not participate in
+//! center's `health_observations` is trend material and does not participate in
 //! hot-path decisions.
 
 use std::collections::HashMap;
@@ -77,7 +77,7 @@ pub use outcome::{AttemptReport, FailureClass};
 pub use outcome::{THROTTLE_RAMP_STEPS, THROTTLED_OBSERVATION, UNAUTHORIZED_ESCALATION_THRESHOLD};
 
 /// Health table trait — reads and writes health state keyed by the candidate key
-/// (RouteUnitRecord::meta.key).
+/// (`RouteUnitRecord::meta.key`).
 ///
 /// Engine-side trait: the hot path (record / selection gating) stays here. The
 /// admin plane uses the narrower `gateway_core::health::HealthHandle` port instead.
@@ -140,7 +140,7 @@ pub trait HealthTable: Send + Sync {
     fn cooling_remaining_ms(&self, unit_key: &str, now_ms: u64) -> Option<u64>;
 
     /// Emergency recall — force the channel's cooldown to end (reusing
-    /// finish_cooldown semantics: clear the cooldown, reset the request count, arm
+    /// `finish_cooldown` semantics: clear the cooldown, reset the request count, arm
     /// the slow-start ramp).
     /// **`cooldown_streak` is preserved**: a recall is not a pardon; the next
     /// failure still climbs from the existing rung.
@@ -156,7 +156,7 @@ pub trait HealthTable: Send + Sync {
 type StateMap = HashMap<String, HealthState>;
 
 /// Pure in-memory health table — a Rust port of phase0 `HealthStore`.
-/// The config is hot-reloadable at runtime (TODO(#311) implemented as set_config:
+/// The config is hot-reloadable at runtime (TODO(#311) implemented as `set_config`:
 /// only parameter values are swapped, state is untouched).
 pub struct MemoryHealthTable {
     states: Mutex<StateMap>,
@@ -178,6 +178,7 @@ impl Default for MemoryHealthTable {
 }
 
 impl MemoryHealthTable {
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(HealthSetting::default())
     }
@@ -204,6 +205,7 @@ impl MemoryHealthTable {
     /// `Arc::new(...)` (`Arc<MemoryHealthTable>` is immutable, so it cannot be
     /// attached at runtime). Not attached by default; see
     /// [`crate::latency_digest`].
+    #[must_use]
     pub fn with_digest(mut self, digest: Arc<LatencyDigestTable>) -> Self {
         self.digest = Some(digest);
         self
@@ -212,13 +214,17 @@ impl MemoryHealthTable {
     /// Take the lock; poisoning does not panic (one thread panicking must not take
     /// down every request).
     fn lock(&self) -> std::sync::MutexGuard<'_, StateMap> {
-        self.states.lock().unwrap_or_else(|e| e.into_inner())
+        self.states
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Take the config-slot lock (poison-tolerant like [`Self::lock`]; lock order
     /// is fixed as states → cfg, never nested the other way, so no deadlock).
     fn lock_cfg(&self) -> std::sync::MutexGuard<'_, HealthSetting> {
-        self.cfg.lock().unwrap_or_else(|e| e.into_inner())
+        self.cfg
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Live-reload config (TODO(#311)): replace only the config values, never
@@ -227,7 +233,7 @@ impl MemoryHealthTable {
     /// `knobs::load_health_setting` path as boot.
     ///
     /// **Input contract (ingest boundary)**: the new value first passes
-    /// [`HealthSetting::validate`]; illegal values (α / min_score non-finite or
+    /// [`HealthSetting::validate`]; illegal values (α / `min_score` non-finite or
     /// outside [0,1]; base above either ceiling) → the whole update is rejected.
     pub fn set_config(&self, cfg: HealthSetting) {
         if let Err(reason) = cfg.validate() {
@@ -409,6 +415,10 @@ impl gateway_core::health::HealthHandle for MemoryHealthTable {
 /// currently fast channel is not permanently depressed by a long-past spike. The
 /// first sample establishes the baseline directly (`0.0` means no observation
 /// yet).
+//
+// The elapsed-ms cast is u64→f64 for the decay exponent; now_ms is epoch
+// milliseconds (~10^12), far below 2^53, so the conversion is exact in practice.
+#[allow(clippy::cast_precision_loss)]
 fn update_latency_ewma(st: &mut HealthState, latency_ms: u32, now_ms: u64) {
     const DECAY_TIME_CONSTANT_MS: f64 = 10_000.0;
 
@@ -435,6 +445,9 @@ fn update_latency_ewma(st: &mut HealthState, latency_ms: u32, now_ms: u64) {
 /// over time; the high-score side converges toward 1.0 (identity).
 /// `score_updated_at_ms == 0` (no baseline yet) or `score_decay_tau_ms == 0`
 /// (disabled) returns the original value unchanged.
+// dt_ms/tau_ms are wall-clock deltas in milliseconds (~10^12 ≪ 2^53), so the u64→f64
+// conversions are exact in practice; they feed a decay exponent, not exact bookkeeping.
+#[allow(clippy::cast_precision_loss)]
 pub(super) fn age_ewma_score(st: &HealthState, cfg: &HealthSetting, now_ms: u64) -> f64 {
     let tau_ms = cfg.score_decay_tau_ms;
     if tau_ms == 0 || st.score_updated_at_ms == 0 {

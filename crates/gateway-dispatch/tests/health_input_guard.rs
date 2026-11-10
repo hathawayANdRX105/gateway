@@ -22,13 +22,13 @@ use gateway_dispatch::health::{
     AttemptReport, FailureClass, HealthSetting, HealthTable, MemoryHealthTable, TpsSample,
 };
 
-/// In-memory health table with a fixed clock (`now_ms` is always 1_000_000).
+/// In-memory health table with a fixed clock (`now_ms` is always `1_000_000`).
 fn table() -> MemoryHealthTable {
     let now = 1_000_000u64;
     MemoryHealthTable::with_config_and_clock(HealthSetting::default(), move || now)
 }
 
-/// `record` / `record_tps` always drop an empty unit_key: the table stays empty.
+/// `record` / `record_tps` always drop an empty `unit_key`: the table stays empty.
 ///
 /// Which bug would make this red: a missing guard, or one placed after entry creation —
 /// `""` becomes a real entry, `entries()` is non-empty (the admin read side gains a

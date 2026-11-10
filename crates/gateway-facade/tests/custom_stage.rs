@@ -226,7 +226,7 @@ async fn default_chain_has_three_stages_plus_insertions() {
 }
 
 /// Non-data-plane paths get the scoped 404 from the path guard, never the
-/// AuthGate's 401.
+/// `AuthGate`'s 401.
 #[tokio::test]
 async fn path_guard_serves_only_data_plane_paths() {
     let app = GatewayBuilder::relay(facade_context()).build();

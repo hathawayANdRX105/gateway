@@ -34,7 +34,7 @@
 //! ```
 //!
 //! Route selection is **inside** the forwarding stage: with the retry handle
-//! wired the ForwardStage drives selection itself through the shared
+//! wired the `ForwardStage` drives selection itself through the shared
 //! Dispatcher, so no separate `DispatchStage` sits in the default chain.
 //!
 //! ## One entry, no side doors

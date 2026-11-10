@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use gateway_security::{FilterConfig, StreamFilter, WordFilter};
 
-/// FilterConfig's default behavior in `wordlist.rs` agrees with its serde behavior.
+/// `FilterConfig`'s default behavior in `wordlist.rs` agrees with its serde behavior.
 #[test]
 fn test_filter_config_default() {
     // With only words given, replacement should be "***" and both switches true.
@@ -23,7 +23,7 @@ fn test_filter_config_default() {
     assert!(config.filter_response);
 }
 
-/// With an empty wordlist, WordFilter::is_empty returns true and filter returns the text
+/// With an empty wordlist, `WordFilter::is_empty` returns true and filter returns the text
 /// unchanged (zero allocation).
 #[test]
 fn test_empty_wordlist() {
@@ -93,7 +93,7 @@ fn test_case_insensitive_match() {
     assert_eq!(filter.filter("my secret text").as_ref(), "my *** text");
 }
 
-/// Multiple and overlapping matches are replaced correctly (AhoCorasick guarantees
+/// Multiple and overlapping matches are replaced correctly (`AhoCorasick` guarantees
 /// correctness).
 #[test]
 fn test_multiple_matches() {
@@ -118,7 +118,7 @@ fn test_multiple_matches() {
 /// down.
 fn drive(words: &[&str], replacement: &str, chunks: &[&str]) -> String {
     let config = FilterConfig {
-        words: words.iter().map(|w| w.to_string()).collect(),
+        words: words.iter().map(std::string::ToString::to_string).collect(),
         replacement: replacement.to_string(),
         ..Default::default()
     };

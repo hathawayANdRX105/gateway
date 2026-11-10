@@ -63,7 +63,7 @@ fn spawn_local_http() -> (std::net::SocketAddr, Arc<AtomicUsize>) {
 }
 
 /// Dialer that connects to the local server directly — a stand-in: in production meow's
-/// ProxyAdapter plays this role.
+/// `ProxyAdapter` plays this role.
 #[derive(Debug)]
 struct LocalDialer(std::net::SocketAddr);
 
@@ -121,7 +121,7 @@ async fn egress_sends_http_over_dialer() {
     let body = Bytes::from_static(br#"{"model":"probe"}"#);
     let resp = egress
         .execute(
-            &format!("http://{}/v1/chat/completions", addr),
+            &format!("http://{addr}/v1/chat/completions"),
             &headers_for(body.len()),
             body,
             &Timeouts::default(),
@@ -166,7 +166,7 @@ async fn dial_failure_is_retryable_502() {
     );
 }
 
-/// dial slower than connect_timeout → timeout, 504, retryable.
+/// dial slower than `connect_timeout` → timeout, 504, retryable.
 #[tokio::test]
 async fn slow_dial_hits_connect_timeout() {
     let egress = AdapterEgress::new(
@@ -186,9 +186,9 @@ async fn slow_dial_hits_connect_timeout() {
     assert!(err.retryable);
 }
 
-/// Streaming: the server response has more data after the first chunk → into_body_stream
+/// Streaming: the server response has more data after the first chunk → `into_body_stream`
 /// gets all of it. The first-byte pre-read + prepend logic must not drop bytes (key
-/// semantics of ReqwestEgress).
+/// semantics of `ReqwestEgress`).
 #[tokio::test]
 async fn body_stream_not_truncated() {
     // Reuse spawn_local_http: the fixed body "local-ok" (8 bytes) is enough to verify
@@ -196,7 +196,7 @@ async fn body_stream_not_truncated() {
     let egress = AdapterEgress::new(Arc::new(LocalDialer(addr)), Duration::from_secs(5));
     let resp = egress
         .execute(
-            &format!("http://{}/", addr),
+            &format!("http://{addr}/"),
             &headers_for(0),
             Bytes::new(),
             &Timeouts::default(),

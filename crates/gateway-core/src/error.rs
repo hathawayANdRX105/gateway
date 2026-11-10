@@ -2,7 +2,7 @@
 //!
 //! A single error-code vocabulary shared by three consumers: gateway error bodies, console
 //! envelope messages, and web frontend i18n. The categorization follows new-api relaykit
-//! types/channel_error.go.
+//! `types/channel_error.go`.
 //!
 //! ## Error code → HTTP status → client behavior
 //!
@@ -31,7 +31,7 @@ pub mod code {
     pub const INTERNAL: &str = "internal";
 }
 
-/// gateway /v1 error body (OpenAI style, compatible with mainstream SDK parsers).
+/// gateway /v1 error body (`OpenAI` style, compatible with mainstream SDK parsers).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GatewayErrorBody {
@@ -50,8 +50,9 @@ pub struct GatewayErrorDetail {
 }
 
 impl GatewayErrorBody {
-    /// Builds an OpenAI-style error body from NormalizedError (SDK-compatible shape, to be
+    /// Builds an OpenAI-style error body from `NormalizedError` (SDK-compatible shape, to be
     /// settled by TODO(#214)).
+    #[must_use]
     pub fn from_normalized(err: &NormalizedError) -> Self {
         Self {
             error: GatewayErrorDetail {
@@ -110,10 +111,10 @@ impl NormalizedError {
         let raw = raw_message.into();
         let (code, http_status, retryable, message) = match status {
             // 408 falls inside the 400..=499 range and must precede the fallback arm to match.
-            408 => (code::UPSTREAM_ERROR, status, true, raw),
-            401 | 403 => (code::INVALID_API_KEY, status, false, raw),
+            // 408 and 429 both fall inside 400..=499 and must precede the
+            // catch-all 4xx arm to match.
+            408 | 500..=599 => (code::UPSTREAM_ERROR, status, true, raw),
             429 => (code::RATE_LIMITED, status, true, raw),
-            500..=599 => (code::UPSTREAM_ERROR, status, true, raw),
             400..=499 => (code::INVALID_API_KEY, status, false, raw),
             _ => (code::UPSTREAM_ERROR, 502, false, raw),
         };

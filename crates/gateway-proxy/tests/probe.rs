@@ -1,7 +1,7 @@
 //! Behavior tests for `probe` and `node_stats`.
 //!
 //! A successful dial needs a real proxy server and cannot be produced locally (the
-//! protocol handshake cannot be simulated with a TcpListener), so following the
+//! protocol handshake cannot be simulated with a `TcpListener`), so following the
 //! convention in `forward/tests/protocol_live.rs` these tests are env-gated: a real dial
 //! runs only when `FERRITE_PROXY_PROBE_URL` is set, otherwise it is skipped. Everything
 //! else exercises real paths that can be verified deterministically.
@@ -172,7 +172,7 @@ async fn node_stats_reports_inflight_and_cooldown() {
 /// When a node is bound to several channels, `node_stats` lists it once (deduplicated by
 /// id).
 ///
-/// The index is channel_key → node list, so binding three channels puts the node in three
+/// The index is `channel_key` → node list, so binding three channels puts the node in three
 /// buckets; `all_nodes` must deduplicate them to 1, otherwise the admin UI shows three
 /// rows for the same node and probing dials it three times. Note that two installs are a
 /// "whole-snapshot replacement", so they cannot test multi-channel bucket deduplication —

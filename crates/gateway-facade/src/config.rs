@@ -48,16 +48,16 @@ pub struct ResponseCacheTuning {
 pub struct State {
     /// Channel / route-unit dispatch snapshot.
     pub dispatch: gateway_core::Snapshot,
-    /// Token snapshot (the AuthGate allow-list decision).
+    /// Token snapshot (the `AuthGate` allow-list decision).
     pub token_snapshot: SharedTokenSnapshot,
-    /// User snapshot (the StateGate ban / version decision).
+    /// User snapshot (the `StateGate` ban / version decision).
     pub user_snapshot: SharedUserSnapshot,
-    /// Group snapshot (the GroupModelGate group allow-list decision).
+    /// Group snapshot (the `GroupModelGate` group allow-list decision).
     pub group_snapshot: SharedGroupSnapshot,
 }
 
 /// Billing settlement injection point: price table + settlement sink installed as
-/// a pair at the ForwardStage settlement commit point.
+/// a pair at the `ForwardStage` settlement commit point.
 ///
 /// The fields are trait objects — the implementations belong to the consumer
 /// (e.g. the billing domain's price table / sink); this crate does not know
@@ -75,7 +75,7 @@ pub struct Settle {
 /// `Default` is a working local shape; a product overrides what it cares about.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Egress timeouts (first_byte_ms decides how long a stalled upstream stays
+    /// Egress timeouts (`first_byte_ms` decides how long a stalled upstream stays
     /// on the wire before failover).
     pub timeouts: Timeouts,
     /// Boot value of the dispatch retry budget (installed into the hot handle;
@@ -193,7 +193,7 @@ pub struct EffectiveConfig {
 /// The runtime-mutable subset, as a value a consumer can build, validate and
 /// hand over. Boot-fixed fields are deliberately absent: they cannot be
 /// expressed here, so they cannot be changed by accident.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ConfigDraft {
     pub retry_policy: Option<RetryPolicy>,
     pub health: Option<HealthSetting>,
@@ -204,6 +204,7 @@ pub struct ConfigDraft {
 
 impl ConfigDraft {
     /// Whether this draft changes anything at all.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.retry_policy.is_none()
             && self.health.is_none()
@@ -220,7 +221,7 @@ pub enum ConfigError {
     #[error("invalid health setting: {0}")]
     Health(&'static str),
 
-    /// A retry budget that can never run an attempt (max_attempts == 0) would
+    /// A retry budget that can never run an attempt (`max_attempts` == 0) would
     /// answer every request with 503; refused.
     #[error("invalid retry policy: {0}")]
     Retry(&'static str),
@@ -309,6 +310,12 @@ impl RuntimeKnobs {
     /// the default for channels **without** a `tpm_limit` override, and it is
     /// re-read when the catalog snapshot reloads. Channels with an explicit
     /// override never follow this knob.
+    ///
+    /// # Errors
+    ///
+    /// Refuses the draft whole (`ConfigError`) when a field would deny all
+    /// traffic: a zero `max_attempts`, a zero rate-limit count or window, or a
+    /// structurally invalid health setting. Nothing is applied on refusal.
     pub fn update(&self, draft: ConfigDraft) -> Result<EffectiveConfig, ConfigError> {
         if let Some(retry) = draft.retry_policy
             && retry.max_attempts == 0

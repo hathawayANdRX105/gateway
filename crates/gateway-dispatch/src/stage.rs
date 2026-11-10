@@ -1,10 +1,10 @@
-//! `stage` — DispatchStage: wires the dispatcher into the pipeline
+//! `stage` — `DispatchStage`: wires the dispatcher into the pipeline
 //!
 //! Second stage of the pipeline hot path: select candidates from the catalog snapshot
-//! (Dispatcher) and write them into ctx. Failure mapping: ModelUnknown → NoRoute (404,
+//! (Dispatcher) and write them into ctx. Failure mapping: `ModelUnknown` → `NoRoute` (404,
 //! the model really is absent), AllUnavailable/BudgetExhausted → Unavailable (no cooling:
-//! 503 unavailable / cooling: 504 + Retry-After), SnapshotNotReady → NotReady (503),
-//! RateLimited → 429.
+//! 503 unavailable / cooling: 504 + Retry-After), `SnapshotNotReady` → `NotReady` (503),
+//! `RateLimited` → 429.
 
 use crate::sticky::{self, StickyKey, StickyTable};
 use crate::{Dispatch, DispatchError};
@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use gateway_pipeline::{BodySource, RequestCtx, Stage, StageError, StageOutcome};
 use std::sync::Arc;
 
-/// Dispatch stage — takes an admitted request (RequestCtx) and writes the selected
+/// Dispatch stage — takes an admitted request (`RequestCtx`) and writes the selected
 /// route into ctx.route.
 pub struct DispatchStage {
     dispatch: Arc<dyn Dispatch>,
@@ -32,6 +32,7 @@ impl DispatchStage {
 
     /// Mount the sticky table (builder). Not calling it = no stickiness on the whole
     /// path.
+    #[must_use]
     pub fn with_sticky_table(mut self, table: Arc<StickyTable>) -> Self {
         self.sticky = Some(table);
         self
@@ -64,7 +65,7 @@ impl DispatchStage {
             });
         let raw_body = match &ctx.request.body {
             BodySource::InMemory(bytes) => Some(bytes.as_ref()),
-            _ => None,
+            BodySource::OnDisk { .. } => None,
         };
         let key = StickyKey::from_request(public_model, session_hint, raw_body)?;
         table.lookup(&key, table.now_ms())

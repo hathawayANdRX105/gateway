@@ -1,4 +1,4 @@
-//! Regression tests for **per-attempt timing** in ForwardStage::with_retry.
+//! Regression tests for **per-attempt timing** in `ForwardStage::with_retry`.
 //!
 //! Background bug: `handle_with_retry` created `started` before the retry loop began,
 //! and both the success and failure health reports used `started.elapsed()` (loop-level
@@ -14,10 +14,10 @@
 //! unchanged in semantics (this file covers only the health-report path).
 //!
 //! Every case uses a hand-written mock (no real network): the custom egress uses
-//! candidate markers to produce the timing "first attempt drags SLOW_ATTEMPT then fails /
+//! candidate markers to produce the timing "first attempt drags `SLOW_ATTEMPT` then fails /
 //! later attempts are instant", and the custom dispatch records (unit key, health result,
 //! latency sample) for each report.
-//! common::MockDispatch drops latency_ms in its report, so the latency dimension cannot
+//! `common::MockDispatch` drops `latency_ms` in its report, so the latency dimension cannot
 //! be asserted there; this file keeps its own dispatch mock that records latency.
 
 mod common;
@@ -77,9 +77,9 @@ fn ok_response() -> ForwardedResponse {
 // ---------- egress mock ----------
 
 /// egress mock: decides fast or slow from the candidate marker in the url.
-/// `SlowOnFirst` makes only the first attempt (`upstream-c1`) drag SLOW_ATTEMPT;
+/// `SlowOnFirst` makes only the first attempt (`upstream-c1`) drag `SLOW_ATTEMPT`;
 /// `upstream-c2` succeeds instantly. `AlwaysSlow` makes every attempt drag
-/// SLOW_ATTEMPT.
+/// `SLOW_ATTEMPT`.
 #[derive(Clone, Copy)]
 enum Pace {
     SlowOnFirst,
@@ -138,7 +138,7 @@ impl Egress for PaceEgress {
 /// each report's (unit key, health result, latency sample) verbatim, so the latency
 /// dimension reported to health can be asserted.
 /// One health report's (unit key, health result, latency sample). The type alias avoids
-/// clippy::type_complexity (CI compiles with -D warnings).
+/// `clippy::type_complexity` (CI compiles with -D warnings).
 type HealthReport = (String, Result<u16, FailureClass>, Option<u32>);
 
 struct LatencyRecordingDispatch {
@@ -210,7 +210,7 @@ impl Dispatch for LatencyRecordingDispatch {
     }
 }
 
-/// Assemble a ForwardStage with retry (max_attempts includes the first attempt).
+/// Assemble a `ForwardStage` with retry (`max_attempts` includes the first attempt).
 fn stage_with_retry(
     egress: Arc<PaceEgress>,
     dispatch: Arc<LatencyRecordingDispatch>,

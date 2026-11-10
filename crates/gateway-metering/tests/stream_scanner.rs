@@ -35,8 +35,8 @@ fn stream_scanner_done_line_ignored() {
     assert_eq!(counts.completion, 0);
 }
 
-/// Streaming finish-reason capture (raw material for fitting truncation_rate):
-/// - OpenAI last frame `choices[0].finish_reason` (a null intermediate frame does not
+/// Streaming finish-reason capture (raw material for fitting `truncation_rate)`:
+/// - `OpenAI` last frame `choices[0].finish_reason` (a null intermediate frame does not
 ///   affect the "last non-missing value wins" rule — later frames override earlier ones);
 /// - Claude `message_delta` frame `delta.stop_reason`;
 /// - streams without a finish field stay None (no value is invented).
@@ -63,7 +63,7 @@ fn stream_scanner_captures_claude_delta_stop_reason() {
     assert_eq!(reason.as_deref(), Some("max_tokens"));
 }
 
-/// OpenAI streaming: intermediate frames carry no usage, the last frame gives real usage
+/// `OpenAI` streaming: intermediate frames carry no usage, the last frame gives real usage
 /// ⇒ settle from the last frame, not the prompt estimate.
 #[test]
 fn stream_scanner_openai_final_frame_counts() {
@@ -80,7 +80,7 @@ fn stream_scanner_openai_final_frame_counts() {
     assert_eq!(counts.cached, 0);
 }
 
-/// DeepSeek shape: the cache field lives under prompt_tokens_details.cached_tokens.
+/// `DeepSeek` shape: the cache field lives under `prompt_tokens_details.cached_tokens`.
 #[test]
 fn stream_scanner_deepseek_cached_tokens_in_details() {
     let mut s = StreamScanner::new();
@@ -93,8 +93,8 @@ fn stream_scanner_deepseek_cached_tokens_in_details() {
     assert_eq!(counts.cached, 80);
 }
 
-/// Claude core regression: message_start gives only input_tokens (nested in message.usage),
-/// while message_delta's output_tokens is cumulative. The old implementation returned
+/// Claude core regression: `message_start` gives only `input_tokens` (nested in message.usage),
+/// while `message_delta`'s `output_tokens` is cumulative. The old implementation returned
 /// {0,0,0} for every frame; the old code must fail this case.
 #[test]
 fn stream_scanner_claude_message_start_plus_delta() {
@@ -113,7 +113,7 @@ fn stream_scanner_claude_message_start_plus_delta() {
     assert_eq!(counts.completion, 50);
 }
 
-/// Claude's multiple message_delta frames grow output_tokens (1 → 30 → 50): take the last
+/// Claude's multiple `message_delta` frames grow `output_tokens` (1 → 30 → 50): take the last
 /// non-zero value 50, neither summing to 81 nor keeping only the first frame's 1.
 #[test]
 fn stream_scanner_claude_delta_output_tokens_grows() {
@@ -127,7 +127,7 @@ fn stream_scanner_claude_delta_output_tokens_grows() {
     assert_eq!(counts.completion, 50);
 }
 
-/// Cache key coverage: top-level cached_tokens (OpenAI-compatible).
+/// Cache key coverage: top-level `cached_tokens` (OpenAI-compatible).
 #[test]
 fn stream_scanner_top_level_cached_tokens() {
     let mut s = StreamScanner::new();
@@ -138,7 +138,7 @@ fn stream_scanner_top_level_cached_tokens() {
     assert_eq!(counts.cached, 80);
 }
 
-/// Cache key coverage: Claude cache_read_input_tokens.
+/// Cache key coverage: Claude `cache_read_input_tokens`.
 #[test]
 fn stream_scanner_claude_cache_read_input_tokens() {
     let mut s = StreamScanner::new();
@@ -302,7 +302,7 @@ fn stream_scanner_tracks_whether_prompt_includes_cache() {
 }
 
 /// Purpose: prove `push` carries a partial line across chunks byte-identically.
-/// Scenario: one valid usage-carrying SSE payload (OpenAI shape, `\r\n\r\n`
+/// Scenario: one valid usage-carrying SSE payload (`OpenAI` shape, `\r\n\r\n`
 /// terminator) is fed in six pushes split at awkward boundaries — mid `data: `
 /// prefix, mid-JSON body, and inside the `\r\n` line terminator — so most calls
 /// must carry a pending partial line over to the next chunk.
@@ -310,7 +310,7 @@ fn stream_scanner_tracks_whether_prompt_includes_cache() {
 /// reason as feeding the same bytes in a single `push`, and the literal usage in
 /// the payload is really parsed (guards against both scanners silently agreeing on
 /// an empty result). A `push` rewrite that drops or double-scans carried-over bytes
-/// across chunks corrupts the JSON line (losing usage/finish_reason) or miscounts
+/// across chunks corrupts the JSON line (losing `usage/finish_reason`) or miscounts
 /// payload bytes, and turns this red.
 #[test]
 fn stream_scanner_chunk_splits_match_single_push() {

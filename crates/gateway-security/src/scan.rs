@@ -64,6 +64,7 @@ impl WordFilter {
     ///
     /// Returns `Cow::Borrowed` when nothing matches or the word list is empty — most
     /// requests do not match and this is the hot path, so it must not allocate.
+    #[must_use]
     pub fn filter<'a>(&self, text: &'a str) -> Cow<'a, str> {
         if self.replacements.is_empty() || !self.ac.is_match(text) {
             return Cow::Borrowed(text);
@@ -93,11 +94,13 @@ impl WordFilter {
     }
 
     /// Whether the word list is empty (callers can skip filtering entirely).
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.replacements.is_empty()
     }
 
     /// Check for a match, for callers that only need a yes/no answer.
+    #[must_use]
     pub fn has_match(&self, text: &str) -> bool {
         self.ac.is_match(text)
     }
@@ -125,6 +128,7 @@ pub struct StreamFilter {
 
 impl StreamFilter {
     /// Create a streaming filter from a shared [`WordFilter`].
+    #[must_use]
     pub fn new(filter: Arc<WordFilter>) -> Self {
         Self {
             filter,

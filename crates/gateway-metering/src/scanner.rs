@@ -1,7 +1,7 @@
-//! Streaming token scanner — mounted in the gateway_forward::stream pipeline.
+//! Streaming token scanner — mounted in the `gateway_forward::stream` pipeline.
 //!
 //! usage semantics align with [`crate::settle::extract_usage`]: the same frame accepts
-//! both OpenAI key names (`prompt_tokens`/`completion_tokens`) and Claude key names
+//! both `OpenAI` key names (`prompt_tokens`/`completion_tokens`) and Claude key names
 //! (`input_tokens`/`output_tokens`), and all three cache locations are recognized;
 //! fields merge across frames (last non-zero wins), and prompt/completion both zero
 //! after merging means the upstream gave no real usage, so the estimate fallback runs
@@ -17,9 +17,9 @@ pub struct TokenCounts {
     pub completion: u64,
     pub cached: u64,
     /// Prompt tokens written to the cache (Claude `cache_creation_input_tokens`,
-    /// OpenAI `prompt_tokens_details.cache_write_tokens`).
+    /// `OpenAI` `prompt_tokens_details.cache_write_tokens`).
     pub cache_creation: u64,
-    /// Whether `prompt` already contains `cached` (OpenAI `prompt_tokens`, Gemini
+    /// Whether `prompt` already contains `cached` (`OpenAI` `prompt_tokens`, Gemini
     /// `promptTokenCount`) rather than reporting cache tokens outside it (Claude
     /// `input_tokens`). `price_of` uses this to avoid charging the cached portion
     /// twice; the stored `usage_logs.prompt_tokens` keeps the vendor-native value.
@@ -81,7 +81,7 @@ pub struct StreamScanner {
     char_count: u64,
     line_buf: Vec<u8>,
     /// Finish reason captured from stream frames (later values override earlier ones; the
-    /// last non-missing value wins): OpenAI's last frame `choices[0].finish_reason` /
+    /// last non-missing value wins): `OpenAI`'s last frame `choices[0].finish_reason` /
     /// Claude's `message_delta` frame `delta.stop_reason`. Values are taken only from
     /// parsed JSON frames, never by rescanning raw bytes; a stream cut mid-way or an
     /// upstream that gives no reason = None (the settlement column stays NULL, no value
@@ -90,6 +90,7 @@ pub struct StreamScanner {
 }
 
 impl StreamScanner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             upstream_usage: None,
@@ -181,6 +182,7 @@ impl StreamScanner {
     /// `(TokenCounts, Option<String>)`: the finish reason comes from the last non-missing
     /// value (see the [`Self::finish_reason`] field docs); an upstream that gives none =
     /// `None`.
+    #[must_use]
     pub fn finish(self, prompt: u64) -> (TokenCounts, Option<String>) {
         // Still all-zero prompt/completion after merging = the upstream sent only empty
         // usage frames, equivalent to sending no usage; consistent with non-streaming
@@ -201,8 +203,8 @@ impl StreamScanner {
     }
 }
 
-/// Frame-level finish_reason extraction (lenient style, as in [`try_extract_usage`]):
-/// OpenAI streaming's last frame `choices[0].finish_reason` (null in intermediate frames
+/// Frame-level `finish_reason` extraction (lenient style, as in [`try_extract_usage`]):
+/// `OpenAI` streaming's last frame `choices[0].finish_reason` (null in intermediate frames
 /// is filtered out naturally by `as_str()`), Claude streaming's `message_delta` frame
 /// `delta.stop_reason`; a top-level `stop_reason` covers the non-streaming Claude shape.
 /// Non-JSON / missing field / non-string / empty string → None.
@@ -216,7 +218,7 @@ fn frame_finish_reason(data: &[u8]) -> Option<String> {
         .map(ToString::to_string)
 }
 
-/// Gemini `candidates[0].finishReason` (e.g. STOP / MAX_TOKENS); non-string / empty
+/// Gemini `candidates[0].finishReason` (e.g. STOP / `MAX_TOKENS`); non-string / empty
 /// string → None.
 pub(crate) fn gemini_finish_reason(v: &JsonValue) -> Option<&str> {
     non_empty_str(
@@ -227,7 +229,7 @@ pub(crate) fn gemini_finish_reason(v: &JsonValue) -> Option<&str> {
 }
 
 /// Frame-level usage extraction (lenient style, as in [`frame_finish_reason`]):
-/// - the usage object is at the top level (OpenAI / DeepSeek last frame, Claude
+/// - the usage object is at the top level (`OpenAI` / `DeepSeek` last frame, Claude
 ///   `message_delta`) or nested under `message.usage` (Claude `message_start`);
 /// - non-JSON / no usage object / all zero → None (all zero = the frame gives no real
 ///   usage, so no `{0,0,0}` record is produced).
@@ -243,7 +245,7 @@ fn try_extract_usage(data: &[u8]) -> Option<TokenCounts> {
     counts.has_primary_usage().then_some(counts)
 }
 
-/// Parse a `usage` object into counts: both OpenAI and Claude token key sets coexist and
+/// Parse a `usage` object into counts: both `OpenAI` and Claude token key sets coexist and
 /// the first present value wins; all cache locations are recognized
 /// (`prompt_tokens_details.cached_tokens` / top-level `cached_tokens` /
 /// `cache_read_input_tokens` / `cachedContentTokenCount`).
@@ -251,7 +253,7 @@ fn try_extract_usage(data: &[u8]) -> Option<TokenCounts> {
 /// Completion convention: the vendor's primary counter, **with Gemini thinking folded
 /// in**. Gemini reports `thoughtsTokenCount` outside `candidatesTokenCount`, and thinking
 /// is billed at the output price, so `completion = candidates + thoughts` (same rule as
-/// new-api and sub2api). OpenAI's `reasoning_tokens` is already inside
+/// new-api and sub2api). `OpenAI`'s `reasoning_tokens` is already inside
 /// `completion_tokens`, so it is only surfaced as a detail and never added again.
 /// Cache-write is collected as a detail (`cache_write_tokens` /
 /// `cache_creation_input_tokens`); `price_of` does not consume it.
@@ -333,7 +335,7 @@ pub(crate) fn counts_from_usage(usage: &JsonValue) -> TokenCounts {
     }
 }
 
-/// `choices[0].finish_reason` (OpenAI shape); non-string / empty string → None.
+/// `choices[0].finish_reason` (`OpenAI` shape); non-string / empty string → None.
 pub(crate) fn choice_finish_reason(v: &JsonValue) -> Option<&str> {
     non_empty_str(
         v.get("choices")

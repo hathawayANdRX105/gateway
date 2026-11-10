@@ -1,5 +1,5 @@
 //! Behavior tests for the IR module: lossless round-trip, escape hatches,
-//! skip_serializing_if, tagged shapes.
+//! `skip_serializing_if`, tagged shapes.
 
 use gateway_protocol_bridge::ir::{
     ContentBlock, LlmRequest, Message, Role, SamplingParams, StopReason, StreamEvent, TextBlock,
@@ -7,7 +7,7 @@ use gateway_protocol_bridge::ir::{
 };
 use serde_json::{Map, Value, json};
 
-/// Build a request covering every ContentBlock variant as the round-trip payload.
+/// Build a request covering every `ContentBlock` variant as the round-trip payload.
 fn full_request() -> LlmRequest {
     LlmRequest {
         model: "gpt-x".into(),

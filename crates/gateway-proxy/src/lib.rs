@@ -17,11 +17,11 @@
 //!
 //! ## File layout
 //!
-//! - [`probe`] — active probing (liveness via TCP dial, reusing meow ProxyHealth)
+//! - [`probe`] — active probing (liveness via TCP dial, reusing meow `ProxyHealth`)
 //! - [`node`] — `reqwest::Proxy` projection of a node (the only reqwest-dependent half)
 //! - [`adapter`] — node → meow `ProxyAdapter` mapping (protocol handshake inside
-//!   dial_tcp)
-//! - [`pool`] — `ProxyPool`: indexed by channel_key + priority-tiered node selection
+//!   `dial_tcp`)
+//! - [`pool`] — `ProxyPool`: indexed by `channel_key` + priority-tiered node selection
 //! - [`ssrf`] — SSRF protection: dual validation of IP literals and DNS results
 //! - [`manager`] — leases / health cooldowns / per-node Client cache (both reqwest and
 //!   adapter paths)

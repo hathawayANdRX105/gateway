@@ -37,6 +37,7 @@ pub struct ProbeResult {
 
 impl ProbeResult {
     /// Whether the probe succeeded (dialed and obtained a latency).
+    #[must_use]
     pub fn is_alive(&self) -> bool {
         self.delay_ms.is_some()
     }
@@ -89,6 +90,8 @@ pub async fn probe_node(node: &ProxyNode, target: &str, timeout: Duration) -> Pr
             // Drop the connection immediately: only the handshake matters, no bytes are sent.
             let elapsed = started.elapsed().as_millis();
             // 0 means dead in ProxyHealth; a sub-millisecond but successful dial is 1.
+            // The clamp bounds the value to u16::MAX, so the cast cannot truncate.
+            #[allow(clippy::cast_possible_truncation)]
             let delay = elapsed.clamp(1, u128::from(u16::MAX)) as u16;
             adapter.health().record_delay(delay);
             ProbeResult {

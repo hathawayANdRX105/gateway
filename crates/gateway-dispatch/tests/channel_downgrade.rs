@@ -4,7 +4,7 @@
 //! client finally sees", not wiring):
 //! 1. A channel-scoped 4xx (401/403/404 shape → `FatalButSwitchable`) on the first
 //!    candidate → that candidate enters the exclude set, the second is selected and wins;
-//!    the health report payload is `Err(Fatal)`, i.e. health::classify's Neutral semantics
+//!    the health report payload is `Err(Fatal)`, i.e. `health::classify`'s Neutral semantics
 //!    (no EWMA change, no streak);
 //! 2. A request-scoped 4xx (400 shape → `Fatal`) with a single candidate → pass through
 //!    directly: one attempt terminates the loop, no second select is issued;
@@ -15,9 +15,9 @@
 //!    a Retryable candidate is tried and no candidate is left → still Err(AllUnavailable);
 //!    the stashed 4xx must not come back.
 //!
-//! Pure classification assertions for classify_channel_scope live in failure_scope.rs;
-//! the egress status-code → channel_scoped mapping is consumed by the stage closure, and
-//! the end-to-end shape is covered by bin/api/tests/route_resolution.rs P0-2.
+//! Pure classification assertions for `classify_channel_scope` live in `failure_scope.rs`;
+//! the egress status-code → `channel_scoped` mapping is consumed by the stage closure, and
+//! the end-to-end shape is covered by `bin/api/tests/route_resolution.rs` P0-2.
 
 use gateway_core::records::{RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::FailureClass;
@@ -52,13 +52,13 @@ fn candidate(key: &str) -> Candidate {
     }
 }
 
-/// Planned result of a single attempt. AttemptOutcome is not Clone, so it is built per key
+/// Planned result of a single attempt. `AttemptOutcome` is not Clone, so it is built per key
 /// on demand.
 #[derive(Clone, Copy, PartialEq)]
 enum Plan {
     /// Upstream 200.
     Ok,
-    /// Channel-scoped 4xx (the loop payload for egress 401/403/404 → channel_scoped).
+    /// Channel-scoped 4xx (the loop payload for egress 401/403/404 → `channel_scoped`).
     Switch,
     /// Retryable failure (5xx / transport-layer shape).
     Retry,
@@ -83,7 +83,7 @@ struct Harness {
     plans: Vec<(&'static str, Plan)>,
     /// Exclude set received by each select.
     selects: Vec<Vec<String>>,
-    /// (unit_key, outcome) received by each report.
+    /// (`unit_key`, outcome) received by each report.
     reports: Vec<(String, Result<u16, FailureClass>)>,
 }
 

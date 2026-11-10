@@ -100,7 +100,9 @@ impl LatencyDigestTable {
     /// Take the lock without panicking on poisoning (same rule as `MemoryHealthTable::lock`: one
     /// thread panicking must not take down every request).
     fn lock(&self) -> MutexGuard<'_, HashMap<String, WindowedDigest>> {
-        self.windows.lock().unwrap_or_else(|e| e.into_inner())
+        self.windows
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Report one latency sample. When `now - last_rotate > window`, rotate first: `prev`
@@ -140,12 +142,11 @@ impl LatencyDigestTable {
         let windows = self.lock();
         windows
             .get(unit_key)
-            .map(|wd| wd.prev.count() + wd.cur.count())
-            .unwrap_or(0.0)
+            .map_or(0.0, |wd| wd.prev.count() + wd.cur.count())
     }
 
-    /// Fetch p50/p95/sample weight under one lock (hot path; replaces calling quantiles() +
-    /// weight()). Returns (p50, p95, weight); empty prev / never reported → None (same semantics
+    /// Fetch p50/p95/sample weight under one lock (hot path; replaces calling `quantiles()` +
+    /// `weight()`). Returns (p50, p95, weight); empty prev / never reported → None (same semantics
     /// as quantiles).
     pub fn quantiles_with_weight(&self, unit_key: &str) -> Option<(f64, f64, f64)> {
         let windows = self.lock();

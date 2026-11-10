@@ -127,7 +127,7 @@ type DialFuture = Pin<Box<dyn Future<Output = std::io::Result<DialedIo>> + Send>
 
 /// hyper connector: turns a [`StreamDialer`] into a `tower::Service<Uri>`.
 ///
-/// HTTPS layers rustls over the dialed plaintext stream (standard WebPKI validation,
+/// HTTPS layers rustls over the dialed plaintext stream (standard `WebPKI` validation,
 /// SNI = target host); the dial and the TLS handshake are each bounded by
 /// `connect_timeout`.
 #[derive(Clone)]
@@ -190,7 +190,7 @@ fn timeout_err(msg: impl Into<String>) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::TimedOut, msg.into())
 }
 
-/// Perform the TLS client handshake over a plaintext stream (standard WebPKI roots,
+/// Perform the TLS client handshake over a plaintext stream (standard `WebPKI` roots,
 /// SNI = host).
 async fn dial_and_wrap_tls(
     plain: Box<dyn DialedStream>,
@@ -227,6 +227,7 @@ impl std::fmt::Debug for AdapterEgress {
 impl AdapterEgress {
     /// Default connect timeout (for diagnostics, aligned with
     /// [`crate::egress::ReqwestEgress::connect_timeout`]).
+    #[must_use]
     pub fn connect_timeout(&self) -> Duration {
         self.connect_timeout
     }
@@ -246,7 +247,7 @@ impl AdapterEgress {
     }
 }
 
-/// hyper response body → the `ForwardedResponse` byte stream (the io::Error boundary
+/// hyper response body → the `ForwardedResponse` byte stream (the `io::Error` boundary
 /// matches the reqwest version).
 fn incoming_to_stream(body: Incoming) -> ByteStream {
     Box::pin(BodyExt::into_stream(body).map(|chunk| match chunk {
@@ -268,7 +269,7 @@ impl crate::egress::Egress for AdapterEgress {
 }
 
 impl AdapterEgress {
-    /// The actual forwarding logic; `Egress::execute` only wraps it in Box::pin.
+    /// The actual forwarding logic; `Egress::execute` only wraps it in `Box::pin`.
     async fn execute_impl(
         &self,
         url: &str,

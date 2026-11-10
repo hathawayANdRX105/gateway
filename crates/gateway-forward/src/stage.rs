@@ -1,8 +1,8 @@
-//! `stage` — ForwardStage: wires forwarding into the pipeline
+//! `stage` — `ForwardStage`: wires forwarding into the pipeline
 //!
 //! Two drive modes:
-//! 1. **Single forward** (default, DispatchStage → ForwardStage chain): assemble a
-//!    ForwardTask from ctx.route (written by DispatchStage) and call forward_once to
+//! 1. **Single forward** (default, `DispatchStage` → `ForwardStage` chain): assemble a
+//!    `ForwardTask` from ctx.route (written by `DispatchStage`) and call `forward_once` to
 //!    send one upstream request;
 //! 2. **Retry loop** (after `with_retry` injects dispatch + RetryPolicy): handle
 //!    ignores ctx.route and drives `gateway_dispatch::retry::run_retry_loop`
@@ -11,7 +11,7 @@
 //!    into ctx.upstream (non-streaming) or straight back to the client (streaming).
 //!
 //! Retry orchestration and health reporting all live inside the
-//! gateway_dispatch::retry loop; this stage only supplies the single-attempt
+//! `gateway_dispatch::retry` loop; this stage only supplies the single-attempt
 //! closure (pure IO) and writes the result into ctx.
 
 use crate::ForwardTask;
@@ -48,7 +48,7 @@ pub struct ForwardStage {
     pub(crate) proxies: Option<Arc<ProxyManager>>,
     /// Dispatcher injected by `with_retry`: when `Some`, handle drives the full
     /// retry loop and ignores `ctx.route`; `None` keeps single-forward semantics
-    /// (reads the route written by DispatchStage).
+    /// (reads the route written by `DispatchStage`).
     pub(crate) dispatch: Option<Arc<dyn Dispatch>>,
     /// Retry budget, effective only while `dispatch` is `Some`.
     ///
@@ -62,7 +62,7 @@ pub struct ForwardStage {
     /// point emits settlement events; `None` = no billing (behaviour as before
     /// billing was wired in).
     pub(crate) price_table: Option<Arc<dyn gateway_metering::pricing::PriceTable>>,
-    /// Settlement output channel (implemented by apps: writes usage_logs /
+    /// Settlement output channel (implemented by apps: writes `usage_logs` /
     /// debits in-memory quota); injected as a pair with `price_table`.
     pub(crate) sink: Option<Arc<dyn gateway_metering::SettleSink>>,
     /// Prehold ledger from the admission track (`QuotaGate`); `None` in the coding
@@ -169,6 +169,7 @@ impl ForwardStage {
     }
 
     /// Leases an egress Client for model requests by `SelectedRoute.channel_key`.
+    #[must_use]
     pub fn with_proxies(mut self, proxies: Arc<ProxyManager>) -> Self {
         self.proxies = Some(proxies);
         self
@@ -180,6 +181,7 @@ impl ForwardStage {
     /// The assembly side calls this after reading values from the PG `options`
     /// table; `first_byte_ms` decides how long a hung upstream is tolerated before
     /// it is failed over to another candidate — the key knob for scheduling feel.
+    #[must_use]
     pub fn with_timeouts(mut self, timeouts: crate::egress::Timeouts) -> Self {
         self.timeouts = timeouts;
         self
@@ -202,6 +204,7 @@ impl ForwardStage {
     /// section) is left to later wiring; production currently enables this with
     /// [`StreamResilience::default`]. The heartbeat (`heartbeat_ms`) belongs to
     /// the Live phase and is not consumed this round.
+    #[must_use]
     pub fn with_stream_resilience(mut self, cfg: Option<StreamResilience>) -> Self {
         self.stream_resilience = cfg;
         self
@@ -217,6 +220,7 @@ impl ForwardStage {
     /// charging still belongs to apps (usage.rs); this channel only produces
     /// events — whether the local balance is also debited is decided by the sink
     /// implementation, avoiding a double charge.
+    #[must_use]
     pub fn with_price_table(
         mut self,
         pt: Arc<dyn gateway_metering::pricing::PriceTable>,
@@ -229,6 +233,7 @@ impl ForwardStage {
     /// Mounts the prehold ledger from the admission track (`QuotaGate`). `None` means
     /// no preholds exist (coding face) and the settlement commit points skip ledger
     /// operations entirely; behavior is unchanged.
+    #[must_use]
     pub fn with_ledger(mut self, ledger: Option<Arc<dyn Ledger>>) -> Self {
         self.ledger = ledger;
         self
@@ -246,6 +251,7 @@ impl ForwardStage {
     /// `settle_actual` refunds the difference (idempotent, independent of Drop
     /// order). When this builder is not called (`None`) the whole block is
     /// skipped, behaviour identical item by item to the status quo.
+    #[must_use]
     pub fn with_token_budget(
         mut self,
         state: Arc<gateway_dispatch::token_budget::TokenBudgetState>,
@@ -261,6 +267,7 @@ impl ForwardStage {
     /// (route selection) looks them up; only same-source sides can hit. Not
     /// calling this builder (`None`) ⇒ the write side is skipped entirely and
     /// settlement semantics are unchanged (design §4 invariant 2).
+    #[must_use]
     pub fn with_sticky_table(mut self, table: Arc<StickyTable>) -> Self {
         self.sticky = Some(table);
         self
@@ -272,6 +279,7 @@ impl ForwardStage {
     /// ⇒ the read and write paths are skipped entirely and behaviour is
     /// byte-for-byte identical to the status quo. See
     /// `crate::stage_cache` for the read / write placement rules.
+    #[must_use]
     pub fn with_response_cache(mut self, cache: Arc<gateway_cache::ResponseCache>) -> Self {
         self.response_cache = Some(cache);
         self
@@ -286,6 +294,7 @@ impl ForwardStage {
     /// Not calling this builder (or an empty word list) ⇒ request-side filtering
     /// is skipped entirely at zero hot-path cost. Response / streaming-side
     /// filtering awaits a later enhancement PR.
+    #[must_use]
     pub fn with_word_filter(mut self, filter: Arc<gateway_security::WordFilter>) -> Self {
         self.word_filter = Some(filter);
         self
@@ -294,6 +303,7 @@ impl ForwardStage {
     /// Overrides the request-side filter switch (`config.api.security`
     /// `filter_request`, defaults to true): when `false`, request-side filtering
     /// is skipped entirely even with a mounted word list.
+    #[must_use]
     pub fn with_word_filter_request(mut self, filter_request: bool) -> Self {
         self.filter_request = filter_request;
         self
@@ -355,7 +365,7 @@ impl ForwardStage {
     /// - minute window full (`admit_window` rejects) ⇒ return a rejection shaped
     ///   exactly like a full concurrency slot (429 retryable,
     ///   `channel_scoped: false`) — the caller does **not** call `submit_failed`
-    ///   (a full window is not an upstream error and has no status_code to
+    ///   (a full window is not an upstream error and has no `status_code` to
     ///   report); the health side goes through the existing 429/Throttled channel
     ///   (retry mode reports Throttled, records no Fatal, enters no channel
     ///   failure cooldown — token-full ≠ channel-bad);
@@ -477,7 +487,7 @@ impl ForwardStage {
     ///
     /// Field assembly matches the original single-pass path: headers stay empty
     /// (the gate already sanitized them; passthrough headers are assembled by
-    /// bin/api), and provider_type/extra_headers come from the candidate's full
+    /// bin/api), and `provider_type/extra_headers` come from the candidate's full
     /// parse.
     pub(crate) fn build_task(
         candidate: &SelectedRoute,
@@ -645,7 +655,7 @@ impl Stage for ForwardStage {
         // failure return drops it at once. Slot full: no submit_failed (a concurrency
         // rejection is not an upstream error and has no status_code to report); short-circuit
         // with 429 semantics.
-        let _permit = match try_acquire_concurrency(&self.concurrency) {
+        let _permit = match try_acquire_concurrency(self.concurrency.as_ref()) {
             Ok(permit) => permit,
             Err(e) => return Err(normalized_to_stage_error(e)),
         };
@@ -690,7 +700,7 @@ impl Stage for ForwardStage {
     }
 }
 
-/// Reads this request's body (InMemory is cloned, OnDisk is read back by length).
+/// Reads this request's body (`InMemory` is cloned, `OnDisk` is read back by length).
 ///
 /// Replayable: `handle` reads it once and every attempt clones the returned
 /// `Bytes`.
@@ -702,7 +712,12 @@ async fn read_request_body(ctx: &RequestCtx) -> Result<Bytes, StageError> {
             let mut file = tokio::fs::File::open(path)
                 .await
                 .map_err(|e| StageError::Internal(anyhow::anyhow!("open body: {e}")))?;
-            let mut buf = vec![0u8; *len as usize];
+            let Ok(len) = usize::try_from(*len) else {
+                return Err(StageError::Internal(anyhow::anyhow!(
+                    "on-disk body length exceeds usize"
+                )));
+            };
+            let mut buf = vec![0u8; len];
             file.read_exact(&mut buf)
                 .await
                 .map_err(|e| StageError::Internal(anyhow::anyhow!("read body: {e}")))?;

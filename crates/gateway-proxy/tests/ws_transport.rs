@@ -1,6 +1,6 @@
 //! WebSocket transport layer: URL query → `NodeOpts` → meow `WsLayer`.
 //!
-//! Both VLESS and VMess support `type=ws&path=/xxx&host=sni-domain`.
+//! Both VLESS and `VMess` support `type=ws&path=/xxx&host=sni-domain`.
 //! Convention: a present `path` means a WS node; `host` is optional and defaults to the
 //! SNI or the node host.
 //! Transport layer order: TLS inside, WS outside (meow-config assembles the chain with

@@ -1,7 +1,7 @@
 //! Shared mocks and request builders for the forward integration tests.
 //!
 //! Each test file pulls this in with `mod common; use common::*;`. The module is a purely
-//! mechanical dedup of the copies inlined in retry_wiring / failure_telemetry / settle:
+//! mechanical dedup of the copies inlined in `retry_wiring` / `failure_telemetry` / settle:
 //! mock logic and assertion semantics are unchanged, and `Plan` / `MockDispatch` take the
 //! superset shape of those files (cases that do not read the recording fields never see
 //! them). `common` is compiled separately into every test binary, so items not used by all
@@ -29,7 +29,7 @@ pub const NON_STREAM_BODY: &[u8] = b"{\"model\":\"m\"}";
 #[allow(dead_code)] // not used by every test binary
 pub const STREAM_BODY: &[u8] = b"{\"model\":\"m\",\"stream\":true}";
 
-/// Build a test candidate: base_url carries the key marker so `ScriptedEgress` can tell
+/// Build a test candidate: `base_url` carries the key marker so `ScriptedEgress` can tell
 /// candidates apart.
 pub fn candidate(key: &str) -> Candidate {
     SelectedRoute {
@@ -58,7 +58,7 @@ pub fn candidate(key: &str) -> Candidate {
 }
 
 /// Build a request ctx: the body decides streaming intent (a `"stream":true` body is
-/// streaming), and route is preset for single-shot mode (after with_retry, handle ignores
+/// streaming), and route is preset for single-shot mode (after `with_retry`, handle ignores
 /// it). The token is fixed to tok-1/g; the channel-attribution fields stay empty (#140:
 /// this group of cases does not rely on attribution).
 pub fn ctx_with_body(body: &'static [u8], route: Candidate) -> RequestCtx {
@@ -111,8 +111,8 @@ pub enum Plan {
 }
 
 /// Scripted egress mock: returns fixed results based on the candidate marker in the url.
-/// The `Fail` NormalizedError is isomorphic to the real egress::classify_status output
-/// (502 → retryable, 400 → not retryable, 401/403/404 → channel_scoped); forward only sees
+/// The `Fail` `NormalizedError` is isomorphic to the real `egress::classify_status` output
+/// (502 → retryable, 400 → not retryable, 401/403/404 → `channel_scoped`); forward only sees
 /// the trait's return value.
 #[allow(dead_code)] // the settle binary does not use this mock
 pub struct ScriptedEgress {
@@ -278,10 +278,7 @@ impl Dispatch for MockDispatch {
         exclude: &[String],
         _sticky_channel_key: Option<&str>,
     ) -> Result<Candidate, DispatchError> {
-        self.selects
-            .lock()
-            .unwrap()
-            .push(exclude.iter().map(|s| s.to_string()).collect());
+        self.selects.lock().unwrap().push(exclude.to_vec());
         self.candidates
             .iter()
             .find(|c| !exclude.contains(&c.unit.meta.key))

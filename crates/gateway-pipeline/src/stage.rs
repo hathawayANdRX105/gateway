@@ -1,6 +1,6 @@
 //! `stage` — the Stage trait + outcome / error definitions
 //!
-//! Every concrete stage (AdmissionStage / DispatchStage / ForwardStage / ProtocolBridgeStage)
+//! Every concrete stage (`AdmissionStage` / `DispatchStage` / `ForwardStage` / `ProtocolBridgeStage`)
 //! implements this trait.
 
 use crate::ctx::{PipeStream, RequestCtx};
@@ -73,7 +73,7 @@ pub enum StageError {
     },
 
     /// All candidates were refused by the dispatch-side rate limiter
-    /// (`gateway_dispatch::DispatchError::RateLimited`). Distinct from NoRoute: the client
+    /// (`gateway_dispatch::DispatchError::RateLimited`). Distinct from `NoRoute`: the client
     /// may succeed if it resends later, mapped to 429.
     #[error("rate limited")]
     RateLimited,

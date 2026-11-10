@@ -67,8 +67,7 @@ impl Gate for QuotaGate {
             .pricing
             .load()
             .lookup(model, group)
-            .map(|p| estimate_cost(&p, max_tokens))
-            .unwrap_or(0);
+            .map_or(0, |p| estimate_cost(&p, max_tokens));
 
         // Balance < cost → reject (fast filter; the prehold below is authoritative).
         if remaining < cost {

@@ -49,8 +49,7 @@ fn text_from_content(v: &Value) -> Option<String> {
 /// content really moved).
 fn user_text_of(fmt: Protocol, v: &Value) -> Option<String> {
     match fmt {
-        Protocol::OpenAi => text_from_content(&v["messages"][0]["content"]),
-        Protocol::Claude => text_from_content(&v["messages"][0]["content"]),
+        Protocol::OpenAi | Protocol::Claude => text_from_content(&v["messages"][0]["content"]),
         Protocol::Gemini => v["contents"][0]["parts"][0]["text"]
             .as_str()
             .map(str::to_string),

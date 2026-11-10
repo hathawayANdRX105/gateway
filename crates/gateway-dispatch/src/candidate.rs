@@ -18,11 +18,12 @@ pub type Candidate = gateway_pipeline::SelectedRoute;
 /// Credentials come from the key in `channel.keys` whose `index == unit.key_index`
 /// (new-api `GetNextEnabledKeyForIndex` semantics: the key is resolved by index, never
 /// rotated).
-/// A missing or out-of-range key → None, which the upper layer treats as NoCandidate.
+/// A missing or out-of-range key → None, which the upper layer treats as `NoCandidate`.
 ///
 /// `provider_type` and `settings` are copied verbatim from `channel`: resolved once during
 /// routing, so forward does not have to go back to the catalog snapshot for the protocol family
 /// and channel override headers.
+#[must_use]
 pub fn resolve_candidate(unit: &RouteUnitRecord, channel: &ChannelRecord) -> Option<Candidate> {
     let key = channel.keys.iter().find(|k| k.index == unit.key_index)?;
     Some(Candidate {

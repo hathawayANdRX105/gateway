@@ -33,11 +33,12 @@ use arc_swap::ArcSwap;
 /// concurrent reader can never observe a pair that existed in no configuration.
 pub struct RateLimiter {
     inner: Mutex<HashMap<(LimitScope, String), SecondWindow>>,
-    /// Limit pair published atomically as a unit: N requests per window_secs.
+    /// Limit pair published atomically as a unit: N requests per `window_secs`.
     limits: ArcSwap<(u32, u32)>,
 }
 
 impl RateLimiter {
+    #[must_use]
     pub fn new(max_requests: u32, window_secs: u32) -> Self {
         Self {
             inner: Mutex::new(HashMap::new()),
@@ -72,8 +73,8 @@ impl RateLimiter {
 /// Algorithm: treat the "current second" as the newest bucket and look back over the last
 /// `window_secs` seconds of buckets; reject once the cumulative count has reached
 /// `max_requests`.
-/// ponytail: HashMap<sec, count>; each acquire opportunistically purges expired buckets,
-/// O(window_secs).
+/// ponytail: `HashMap`<sec, count>; each acquire opportunistically purges expired buckets,
+/// `O(window_secs)`.
 #[derive(Default)]
 struct SecondWindow {
     /// second → request count in that second
@@ -83,7 +84,7 @@ struct SecondWindow {
 impl SecondWindow {
     fn try_acquire(&mut self, now: u64, max: u32, window: u32) -> bool {
         // Drop buckets older than `now - window` (the cutoff second is kept).
-        let cutoff = now.saturating_sub(window as u64);
+        let cutoff = now.saturating_sub(u64::from(window));
         self.buckets.retain(|&sec, _| sec >= cutoff);
 
         let count: u32 = self.buckets.values().copied().sum();
@@ -98,8 +99,7 @@ impl SecondWindow {
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_secs())
 }
 
 pub struct RateLimitGate {

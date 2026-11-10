@@ -15,7 +15,7 @@
 //!
 //! ## Dependency discipline (hard rule)
 //!
-//! Only pure data and pure serialization dependencies (serde / serde_json / chrono /
+//! Only pure data and pure serialization dependencies (serde / `serde_json` / chrono /
 //! thiserror / base64 / url / percent-encoding, plus the in-memory shared-state
 //! primitives arc-swap / dashmap the snapshot vocabulary is built from). Forbidden:
 //! tokio / axum / reqwest / any engine crate — that is what keeps this crate wasm-safe

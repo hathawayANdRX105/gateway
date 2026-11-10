@@ -1,7 +1,7 @@
 //! `RequestPath::parse` / `protocol` — inbound URL classification.
 //!
 //! Acceptance: every guarded data-plane path shape maps to the dialect it speaks;
-//! the fallback stays OpenAI; Gemini URLs expose the path-carried model and the
+//! the fallback stays `OpenAI`; Gemini URLs expose the path-carried model and the
 //! streaming verb; unrelated paths are no longer misclassified by substring luck.
 
 use gateway_core::{ProtocolKind, RequestPath};
@@ -46,7 +46,7 @@ fn parses_each_dialect_family() {
 /// matched junk continuations (`/v1/messages2xyz`, `/v1betafoo`) and the tightened
 /// rules must not.
 /// Scenario: near-miss paths that the old `starts_with`/`contains` rules swallowed.
-/// Accepts: OpenAI fallback for the junk shapes; empty-segment-only paths (which the
+/// Accepts: `OpenAI` fallback for the junk shapes; empty-segment-only paths (which the
 /// entry guard rejects before the parser sees them) still classify by segments.
 #[test]
 fn near_miss_paths_fall_back_instead_of_guessing() {
@@ -113,7 +113,7 @@ fn gemini_model_and_stream_come_from_the_url() {
 /// Purpose: model extraction must not be polluted by extra segments, and non-generate
 /// verbs still address the model resource.
 /// Scenario: a junk segment between model and verb; a `:countTokens` verb.
-/// Accepts: the polluted shape yields no model extraction (GeminiOther); the colon
+/// Accepts: the polluted shape yields no model extraction (`GeminiOther`); the colon
 /// verb form extracts the model with `stream: false`.
 #[test]
 fn deeper_gemini_shapes_extract_no_model() {
@@ -161,7 +161,7 @@ fn query_and_trailing_slash_are_normalized() {
 /// Purpose: regression lock for the tightened rule — the old substring sniffing
 /// classified any path containing "/v1/" + "gemini" as Gemini.
 /// Scenario: unrelated OpenAI/unknown paths whose segments carry the word "gemini".
-/// Accepts: OpenAI dialect; only the anchored Gemini shapes (v1beta prefix or
+/// Accepts: `OpenAI` dialect; only the anchored Gemini shapes (v1beta prefix or
 /// `:generateContent` verb) classify as Gemini.
 #[test]
 fn gemini_substring_no_longer_hijacks_other_paths() {

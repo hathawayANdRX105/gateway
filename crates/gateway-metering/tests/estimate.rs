@@ -31,7 +31,7 @@ fn estimate_tokens_empty_text() {
 }
 
 /// Purpose: prompt estimation charges the actual message text.
-/// Scenario: two plain-string OpenAI messages.
+/// Scenario: two plain-string `OpenAI` messages.
 /// Acceptance: the estimate equals the class-weighted estimate of the two content
 /// strings summed — the extractor reads message content, not raw JSON bytes.
 #[test]
@@ -76,7 +76,7 @@ fn prompt_literal_content_key_in_text_not_double_counted() {
 }
 
 /// Purpose: multimodal prompts bill text only; base64 image data is skipped.
-/// Scenario: OpenAI parts-array content with one text part and one image_url
+/// Scenario: `OpenAI` parts-array content with one text part and one `image_url`
 /// part carrying a large base64 data URL. The old scanner matched nothing in
 /// this shape and fell through to whole-body/4, billing the base64 anyway.
 /// Acceptance: the estimate equals `estimate_tokens` of the text part alone.
@@ -107,7 +107,7 @@ fn prompt_gemini_parts_extracted() {
     );
 }
 
-/// Purpose: OpenAI Responses bodies carry text under `input` (string form and
+/// Purpose: `OpenAI` Responses bodies carry text under `input` (string form and
 /// message-items form), which the old literal-`content` scanner never matched.
 /// Scenario: two Responses request shapes.
 /// Acceptance: each estimate equals the weighted estimate of the input text.

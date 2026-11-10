@@ -289,8 +289,8 @@ async fn serve_once(
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let handle = tokio::spawn(async move {
-        let (mut sock, _) = listener.accept().await.unwrap();
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let (mut sock, _) = listener.accept().await.unwrap();
         let mut buf = [0u8; 4096];
         let _ = sock.read(&mut buf).await; // read the request headers
         let resp = format!(
@@ -306,6 +306,7 @@ async fn serve_once(
 
 #[tokio::test]
 async fn egress_returns_body_for_2xx() {
+    use futures_util::StreamExt;
     let (url, server) = serve_once("200 OK", "hello world").await;
     let egress = ReqwestEgress::new();
     let resp = egress
@@ -315,7 +316,6 @@ async fn egress_returns_body_for_2xx() {
     assert_eq!(resp.status(), 200);
 
     let mut stream = resp.into_body_stream();
-    use futures_util::StreamExt;
     let mut all = Vec::new();
     while let Some(chunk) = stream.next().await {
         all.extend_from_slice(&chunk.unwrap());
@@ -414,13 +414,13 @@ fn forward_task_is_cloneable() {
 /// the upstream reports model not found.
 /// Regression: smoke found the alias mapping was not in effect, and the upstream
 /// still received the public alias.
-/// resolve_upstream_model decides the model in the Gemini path: channel mapping
+/// `resolve_upstream_model` decides the model in the Gemini path: channel mapping
 /// first, falling back to the client by default.
-/// Real HTTP loopback: when a Claude client (hitting /v1/messages) hits an OpenAI
+/// Real HTTP loopback: when a Claude client (hitting /v1/messages) hits an `OpenAI`
 /// channel, the upstream must receive /v1/chat/completions — an observable
 /// reproduction of the bug fixed in this PR.
 ///
-/// Full forward_once chain (prepare builds the real URL → reqwest really sends →
+/// Full `forward_once` chain (prepare builds the real URL → reqwest really sends →
 /// the response is converted back to the inbound format); the mock upstream returns
 /// only a minimal Chat completion body; a conversion failure turns the test red
 /// directly.
@@ -435,6 +435,7 @@ async fn forward_once_routes_claude_client_to_openai_endpoint() {
     let port = listener.local_addr().expect("addr").port();
     let (req_path_tx, req_path_rx) = std::sync::mpsc::channel::<String>();
     std::thread::spawn(move || {
+        use std::io::Write;
         let (mut stream, _) = listener.accept().expect("accept");
         let mut buf = [0u8; 4096];
         let n = stream.read(&mut buf).expect("read");
@@ -460,7 +461,6 @@ async fn forward_once_routes_claude_client_to_openai_endpoint() {
             bytes.len(),
             bytes
         );
-        use std::io::Write;
         let _ = stream.write_all(resp.as_bytes());
         let _ = stream.flush();
     });
@@ -506,15 +506,15 @@ async fn forward_once_routes_claude_client_to_openai_endpoint() {
     );
 }
 
-/// Real contract for cross-format + upstream 4xx: forward_once must propagate the
+/// Real contract for cross-format + upstream 4xx: `forward_once` must propagate the
 /// upstream's 400 verbatim as Err(NormalizedError{status:400, retryable:false}),
 /// not turn it into a retryable 502.
 ///
 /// There is an easy-to-trip point on this path: both production Egress
-/// implementations (ReqwestEgress / AdapterEgress) classify non-2xx as Err inside
-/// execute and let `?` propagate it, so translate_response only ever sees 2xx. This
+/// implementations (`ReqwestEgress` / `AdapterEgress`) classify non-2xx as Err inside
+/// execute and let `?` propagate it, so `translate_response` only ever sees 2xx. This
 /// test locks that contract — if an Egress ever changes to passing non-2xx through
-/// as Ok(ForwardedResponse), the error body would reach translate_response and fail
+/// as Ok(ForwardedResponse), the error body would reach `translate_response` and fail
 /// to parse as the success shape decoder, degrading the upstream's 400 into
 /// ferrite's retryable 502 (inducing retries of an already rejected request).
 #[tokio::test]
@@ -525,6 +525,7 @@ async fn cross_format_upstream_400_propagates_as_400_not_502() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let port = listener.local_addr().expect("addr").port();
     std::thread::spawn(move || {
+        use std::io::Write;
         let (mut stream, _) = listener.accept().expect("accept");
         let mut buf = [0u8; 4096];
         let _ = stream.read(&mut buf).expect("read");
@@ -535,7 +536,6 @@ async fn cross_format_upstream_400_propagates_as_400_not_502() {
             err.len(),
             err
         );
-        use std::io::Write;
         let _ = stream.write_all(resp.as_bytes());
         let _ = stream.flush();
     });
@@ -590,12 +590,12 @@ async fn cross_format_upstream_400_propagates_as_400_not_502() {
 /// Real loopback contract for a non-2xx streaming upstream: when the upstream
 /// replies 413 with an SSE content-type, the client must get 413 (not a retryable
 /// 502), and the error body is converted to the inbound format shape by
-/// error_mapping.
+/// `error_mapping`.
 ///
 /// Note: this loopback **does not verify the pipeline guard itself** —
-/// ReqwestEgress already classifies non-2xx as Err inside execute (see the note on
+/// `ReqwestEgress` already classifies non-2xx as Err inside execute (see the note on
 /// the non-streaming test above), so the request never reaches the guard; the
-/// guard's fault injection is covered in adaptor_wiring.rs. This test locks the
+/// guard's fault injection is covered in `adaptor_wiring.rs`. This test locks the
 /// client-facing contract that "413 does not degrade into 502 and the error shape
 /// is returned in the inbound format".
 #[tokio::test]
@@ -606,6 +606,7 @@ async fn stream_upstream_413_propagates_as_413_not_sse() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let port = listener.local_addr().expect("addr").port();
     std::thread::spawn(move || {
+        use std::io::Write;
         let (mut stream, _) = listener.accept().expect("accept");
         let mut buf = [0u8; 4096];
         let _ = stream.read(&mut buf).expect("read");
@@ -619,7 +620,6 @@ async fn stream_upstream_413_propagates_as_413_not_sse() {
             err.len(),
             err
         );
-        use std::io::Write;
         let _ = stream.write_all(resp.as_bytes());
         let _ = stream.flush();
     });

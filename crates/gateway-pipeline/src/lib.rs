@@ -1,6 +1,6 @@
 //! `gateway-pipeline` — the gateway orchestration core
 //!
-//! Defines the Stage trait / RequestCtx / Pipeline / axum integration, and is the common
+//! Defines the Stage trait / `RequestCtx` / Pipeline / axum integration, and is the common
 //! dependency of the gateway crates that participate in the pipeline (gate / dispatch /
 //! forward / protocol-bridge). It does not depend on any concrete stage crate in return,
 //! keeping the dependency direction one-way.
@@ -16,7 +16,7 @@
 //! Shared contract types keep only [`TokenInfo`], which cross-crate consumers require; the
 //! remaining snapshots (token / user / pricing / quota / ip-policy / sensitive-words) are
 //! implemented by their respective owners:
-//! - `gate`'s `snapshot.rs` (TokenSnapshot / UserSnapshot live there)
+//! - `gate`'s `snapshot.rs` (`TokenSnapshot` / `UserSnapshot` live there)
 //! - `gate`'s `quota.rs` / `state.rs` / `ratelimit.rs`
 //! - `security`'s `wordlist.rs`
 //! - `dispatch`'s `health.rs` / `ratelimit.rs`
@@ -43,7 +43,7 @@ pub use stage::{Stage, StageError, StageOutcome, UpstreamError};
 pub struct TokenInfo {
     /// token identity primary key: `TokenRecord.meta.key` (UUID string)
     pub id: String,
-    /// Owning user's UUID string (settlement looks it up in user_balances; see gate::TokenInfo)
+    /// Owning user's UUID string (settlement looks it up in `user_balances`; see `gate::TokenInfo`)
     pub user_key: String,
     pub group: String,
     pub enabled: bool,

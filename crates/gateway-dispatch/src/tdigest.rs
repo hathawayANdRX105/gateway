@@ -88,6 +88,11 @@ pub struct Tdigest {
 impl Tdigest {
     /// Create a new digest. `delta ≥ 1` (typically 20~300); smaller is more accurate with
     /// more centroids.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `delta` is not finite or is less than 1.
+    #[must_use]
     pub fn new(delta: f64) -> Self {
         assert!(
             delta.is_finite() && delta >= 1.0,
@@ -101,11 +106,13 @@ impl Tdigest {
         }
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.centroids.is_empty()
     }
 
     /// Total weight (equals the sample count when all weights are 1).
+    #[must_use]
     pub fn count(&self) -> f64 {
         self.total
     }
@@ -117,6 +124,13 @@ impl Tdigest {
 
     /// Add a weighted point. `weight == 0` is a no-op; negative/NaN weight or a non-finite
     /// `value` panics.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `value` or `weight` is not finite, or if `weight` is negative.
+    // δ is asserted finite and ≥ 1 in `T::new` and the field is private, so it always fits
+    // usize; the cast is provably in range.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub fn add_weighted(&mut self, value: f64, weight: f64) {
         assert!(
             value.is_finite(),
@@ -154,11 +168,16 @@ impl Tdigest {
     /// Quantile estimate, `q ∈ [0, 1]`; an empty digest returns `None`, out-of-range q
     /// panics.
     ///
+    /// # Panics
+    ///
+    /// Panics if `q` is not finite or outside `[0, 1]`.
+    ///
     /// Centroid i's "center quantile" is `(cumulative weight before it + w_i/2) / n`; when q
     /// falls between adjacent center quantiles, interpolate linearly between their means (a
     /// centroid has no internal distribution information — this is t-digest's accuracy
     /// boundary). q=0/q=1 fall outside the first/last center quantile and return that
     /// endpoint's mean.
+    #[must_use]
     pub fn quantile(&self, q: f64) -> Option<f64> {
         assert!(
             q.is_finite() && (0.0..=1.0).contains(&q),
@@ -193,6 +212,7 @@ impl Tdigest {
     }
 
     /// Same as `quantile(0.5)`.
+    #[must_use]
     pub fn median(&self) -> Option<f64> {
         self.quantile(0.5)
     }

@@ -1,4 +1,4 @@
-//! `stage_retry` — ForwardStage retry mode: `with_retry` mounting + `handle_with_retry` main loop.
+//! `stage_retry` — `ForwardStage` retry mode: `with_retry` mounting + `handle_with_retry` main loop.
 //!
 //! Calls `gateway_dispatch::retry::run_retry_loop` to drive "select candidate → single attempt →
 //! health report → exclude tried → select again"; the attempt closure is pure IO (on success it
@@ -20,9 +20,10 @@ use crate::stage_telemetry::{millis_saturating, normalized_to_stage_error};
 
 impl ForwardStage {
     /// Enable the failover retry loop: handle no longer reads `ctx.route` (it can coexist with
-    /// DispatchStage but does not depend on it) and instead drives
+    /// `DispatchStage` but does not depend on it) and instead drives
     /// `gateway_dispatch::retry::run_retry_loop` itself — after each attempt it reports health to
     /// `dispatch`, and a retryable failure switches candidates for another round.
+    #[must_use]
     pub fn with_retry(mut self, dispatch: Arc<dyn Dispatch>, policy: RetryPolicy) -> Self {
         self.dispatch = Some(dispatch);
         self.retry_policy = Arc::new(ArcSwap::from_pointee(policy));
@@ -33,6 +34,7 @@ impl ForwardStage {
     /// (TODO(#311): the bin/api assembly layer hands the same `ArcSwap` to both the options polling
     /// side and this stage so the two share one budget; use `with_retry` when sharing is not
     /// needed).
+    #[must_use]
     pub fn with_retry_handle(
         mut self,
         dispatch: Arc<dyn Dispatch>,
@@ -51,6 +53,7 @@ impl ForwardStage {
 
     /// Clone the hot-reload handle (the assembly layer hands the same handle to the options polling
     /// side, see [`Self::with_retry_handle`]).
+    #[must_use]
     pub fn retry_policy_handle(&self) -> Arc<ArcSwap<RetryPolicy>> {
         Arc::clone(&self.retry_policy)
     }
@@ -154,9 +157,9 @@ impl ForwardStage {
     /// protocol / sticky key).
     ///
     /// Computed once per request: not recomputed inside the loop, and the sticky key does not
-    /// change per attempt. The failure-observation timing origin is taken here — duration_ms =
+    /// change per attempt. The failure-observation timing origin is taken here — `duration_ms` =
     /// wall-clock ms from "entering retry → that failure" (including earlier attempts and routing
-    /// time); the health report's latency_ms uses the attempt-local timer (attempt_started) and
+    /// time); the health report's `latency_ms` uses the attempt-local timer (`attempt_started`) and
     /// does not share this origin.
     fn retry_inputs(
         &self,
@@ -228,7 +231,7 @@ impl ForwardStage {
         // submit_failed; health follows the Retryable arm with degraded semantics (same as P1-C:
         // drives candidate switching, the health table records no real upstream failure); the
         // error is stashed for a 429 passthrough when the budget is exhausted.
-        let _permit = match try_acquire_concurrency(&self.concurrency) {
+        let _permit = match try_acquire_concurrency(self.concurrency.as_ref()) {
             Ok(permit) => permit,
             Err(e) => {
                 let outcome = if e.retryable {
@@ -370,7 +373,7 @@ impl ForwardStage {
     /// passthrough).
     ///
     /// Three outcomes (the clock-holding half of `drain_stream_window`):
-    /// - EOF inside the window with a completion criterion ([DONE]/finish_reason) → the buffer is
+    /// - EOF inside the window with a completion criterion ([DONE]/`finish_reason`) → the buffer is
     ///   drained as the whole response (the client gets everything at once, zero perception);
     /// - EOF inside the window without a criterion / stream error → discard this attempt and switch
     ///   candidates;
@@ -382,6 +385,7 @@ impl ForwardStage {
         stream: bool,
         forwarded: &mut crate::Forwarded,
     ) -> Option<String> {
+        use crate::stream_resilience::WindowDrain;
         if !stream {
             return None;
         }
@@ -391,7 +395,6 @@ impl ForwardStage {
             std::time::Duration::from_millis(cfg.window_ms),
         )
         .await;
-        use crate::stream_resilience::WindowDrain;
         match drain {
             // The complete stream was collected inside the window: the buffer is the whole response
             // body, nothing left to wait for, go straight to Live.
@@ -446,7 +449,7 @@ impl ForwardStage {
     }
 
     /// Failed-attempt classification: 429 → Throttled; retryable/degraded → Retryable;
-    /// channel-scoped 4xx → FatalButSwitchable; everything else → Fatal.
+    /// channel-scoped 4xx → `FatalButSwitchable`; everything else → Fatal.
     fn failure_result(
         &self,
         task: &crate::ForwardTask,
@@ -608,7 +611,7 @@ struct AttemptRunner<'a> {
 }
 
 impl AttemptRunner<'_> {
-    /// Assemble the ForwardTask for this attempt.
+    /// Assemble the `ForwardTask` for this attempt.
     ///
     /// Called in the closure's synchronous section: the returned future only owns the task and does
     /// not borrow `candidate`, satisfying `run_retry_loop`'s lifetime bound on
@@ -658,7 +661,7 @@ struct RetryInputs {
     group: String,
     /// Public model name (for routing).
     model: String,
-    /// Client request path (reused by each attempt's ForwardTask).
+    /// Client request path (reused by each attempt's `ForwardTask`).
     path: String,
     /// Inbound protocol (decode on the request direction, encode on the response direction).
     inbound_format: gateway_pipeline::ProtocolKind,
@@ -679,7 +682,7 @@ struct RetryCommit<'a> {
     cache_key: Option<gateway_cache::CacheKey>,
 }
 
-/// Retry-loop error → `StageError` (E1 mapping: distinguished from DispatchStage's single-shot
+/// Retry-loop error → `StageError` (E1 mapping: distinguished from `DispatchStage`'s single-shot
 /// mapping).
 fn dispatch_error_to_stage_error(e: DispatchError, slots: &AttemptSlots) -> StageError {
     match e {
@@ -721,5 +724,5 @@ fn dispatch_error_to_stage_error(e: DispatchError, slots: &AttemptSlots) -> Stag
 /// inner value is enough (both slots are plain assignments, so no logically inconsistent state
 /// exists).
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }

@@ -1,7 +1,7 @@
 //! Behaviour tests for the Gemini codec.
 //!
 //! Besides the two-way round-trip, these tests pin three concrete defects of the old
-//! implementation (`adaptor::convert_gemini_event_to_openai`): finish_reason passed through
+//! implementation (`adaptor::convert_gemini_event_to_openai`): `finish_reason` passed through
 //! verbatim, a freshly generated uuid per chunk id, and `choices` being an empty array in
 //! the usage frame. All three cases are written so that the old behaviour necessarily fails.
 

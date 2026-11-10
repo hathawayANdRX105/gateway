@@ -10,7 +10,7 @@
 //! gates read.
 //!
 //! `TokenEntry` wraps the contract's [`TokenRecord`] + the gate-only `allowed_models`;
-//! it does not reuse the contract TokenRecord because the latter does not list allowed
+//! it does not reuse the contract `TokenRecord` because the latter does not list allowed
 //! models (a gate-only concept).
 
 use std::net::IpAddr;
@@ -34,27 +34,31 @@ pub use gateway_core::gate::{
 ///
 /// Internally stores raw CIDR strings (serde-friendly) and parses on demand.
 /// ponytail: string parsing saves a pile of derives compared with serializing
-/// CidrRange directly; the list is short, so the cost is negligible.
+/// `CidrRange` directly; the list is short, so the cost is negligible.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct IpPolicy {
     cidrs: Vec<String>,
 }
 
 impl IpPolicy {
+    #[must_use]
     pub fn allows_everyone() -> Self {
         Self { cidrs: vec![] }
     }
 
+    #[must_use]
     pub fn from_cidrs(cidrs: &[String]) -> Self {
         Self {
             cidrs: cidrs.to_vec(),
         }
     }
 
+    #[must_use]
     pub fn cidrs(&self) -> &[String] {
         &self.cidrs
     }
 
+    #[must_use]
     pub fn allows(&self, ip: &IpAddr) -> bool {
         if self.cidrs.is_empty() {
             return true;
@@ -153,9 +157,9 @@ pub type SharedIpPolicy = std::sync::Arc<arc_swap::ArcSwap<IpPolicy>>;
 pub trait UserView {
     /// Whether the user is enabled (status == 1)
     fn is_enabled(&self) -> bool;
-    /// auth_version monotonicity — used for "old tokens become invalid immediately after a
+    /// `auth_version` monotonicity — used for "old tokens become invalid immediately after a
     /// password/2FA change". Here `meta.schema_version` is used as a coarse proxy; the real
-    /// auth_version is maintained by the sync layer.
+    /// `auth_version` is maintained by the sync layer.
     fn auth_version(&self) -> u64;
     /// User group string
     fn group(&self) -> &str;
@@ -166,7 +170,7 @@ impl UserView for UserRecord {
         self.status == 1
     }
     fn auth_version(&self) -> u64 {
-        self.meta.schema_version as u64
+        u64::from(self.meta.schema_version)
     }
     fn group(&self) -> &str {
         &self.group
@@ -181,7 +185,7 @@ pub trait TokenView {
     /// unix timestamp; None = never expires.
     fn expires_at_unix(&self) -> Option<i64>;
     fn user_key(&self) -> &str;
-    /// The token's own remaining quota (i64::MAX when unlimited_quota).
+    /// The token's own remaining quota (`i64::MAX` when `unlimited_quota`).
     fn quota_remaining(&self) -> i64;
 }
 
@@ -190,13 +194,13 @@ impl TokenView for TokenRecord {
         self.status == 1
     }
     fn auth_version(&self) -> u64 {
-        self.meta.schema_version as u64
+        u64::from(self.meta.schema_version)
     }
     fn group(&self) -> Option<&str> {
         self.group.as_deref()
     }
     fn expires_at_unix(&self) -> Option<i64> {
-        self.expires_at.as_ref().map(|t| t.timestamp())
+        self.expires_at.as_ref().map(chrono::DateTime::timestamp)
     }
     fn user_key(&self) -> &str {
         &self.user_key
@@ -211,11 +215,13 @@ impl TokenView for TokenRecord {
 }
 
 /// Current unix timestamp.
+#[must_use]
 pub fn now_unix() -> i64 {
     Utc::now().timestamp()
 }
 
 /// `DateTime<Utc>` → unix (kept public for tests / boundary callers).
+#[must_use]
 pub fn to_unix(t: &DateTime<Utc>) -> i64 {
     t.timestamp()
 }

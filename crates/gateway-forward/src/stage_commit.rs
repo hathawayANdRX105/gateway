@@ -1,5 +1,5 @@
 //! Response commit: non-streaming collects the full body into `ctx.upstream`;
-//! streaming flows straight back through the SseScanner + StreamScanner
+//! streaming flows straight back through the `SseScanner` + `StreamScanner`
 //! scan-chain unfold orchestration.
 //!
 //! All settle / tps / sticky hook invocations live inside
@@ -28,12 +28,12 @@ impl ForwardStage {
     /// Commits the upstream response of one successful attempt.
     ///
     /// Non-streaming → collect the whole body into `ctx.upstream`; streaming →
-    /// unfold the SseScanner + StreamScanner scan chain into
+    /// unfold the `SseScanner` + `StreamScanner` scan chain into
     /// [`StageOutcome::Stream`] and stream directly back. `candidate` is the winning
-    /// candidate (the streaming context needs its channel_key/upstream_model).
+    /// candidate (the streaming context needs its `channel_key/upstream_model`).
     ///
     /// When `with_price_table` has mounted a price table, both paths produce the
-    /// UsageEvent for the sink inside this function (the single commit point):
+    /// `UsageEvent` for the sink inside this function (the single commit point):
     /// streaming settles via [`stream::finish`] when the stream ends or fails
     /// midway; non-streaming goes through `settle_non_stream` once the full body
     /// is collected.
@@ -86,7 +86,7 @@ impl ForwardStage {
             // (completed / upstream disconnected / dropped after client
             // disconnect) — P2C's available_permits / inflight therefore reflect
             // the real number of concurrent streams, not just established ones.
-            _guards: (
+            guards: (
                 forwarded.channel_permit,
                 forwarded.token_handle,
                 hold.map(|h| HoldGuard::new(ledger, h)),
@@ -133,29 +133,32 @@ impl ForwardStage {
     }
 
     /// Streaming settlement context: attribution keys come from the user/token
-    /// metadata written by AuthGate; the price table is mounted with the stage.
+    /// metadata written by `AuthGate`; the price table is mounted with the stage.
     fn sse_context(&self, ctx: &RequestCtx, candidate: &SelectedRoute) -> stream::SseContext {
         // Missing attribution falls back to empty strings (same as the old
         // behavior): events are still produced, just without an owner key.
-        let (user_key, token_key, group) = match settlement_identity(ctx) {
-            Some(identity) => identity,
-            None => {
-                tracing::warn!("streaming settlement missing attribution, using empty identity");
-                Default::default()
-            }
+        let (user_key, token_key, group) = if let Some(identity) = settlement_identity(ctx) {
+            identity
+        } else {
+            tracing::warn!("streaming settlement missing attribution, using empty identity");
+            Default::default()
         };
         let mut sse_ctx = stream::SseContext::new();
         sse_ctx.user_key = user_key;
         sse_ctx.token_key = token_key;
-        sse_ctx.channel_key = candidate.unit.channel_key.clone();
-        sse_ctx.public_model = candidate.unit.public_model.clone();
-        sse_ctx.upstream_model = candidate.upstream_model.clone();
+        sse_ctx.channel_key.clone_from(&candidate.unit.channel_key);
+        sse_ctx
+            .public_model
+            .clone_from(&candidate.unit.public_model);
+        sse_ctx
+            .upstream_model
+            .clone_from(&candidate.unit.upstream_model);
         sse_ctx.group = group;
         // Group ratio is injected by apps; the library layer defaults to 1.0
         sse_ctx.group_ratio = 1.0;
         // When the price table is not mounted (None), finish does not settle;
         // behavior matches the pre-billing era.
-        sse_ctx.price_table = self.price_table.clone();
+        sse_ctx.price_table.clone_from(&self.price_table);
         sse_ctx
     }
 
@@ -285,7 +288,7 @@ struct StreamCommitState {
     sse: Option<stream::SseContext>,
     /// RAII guards whose lifetime follows the stream: (per-channel concurrency
     /// permit, token reservation handle).
-    _guards: (
+    guards: (
         Option<tokio::sync::OwnedSemaphorePermit>,
         Option<gateway_dispatch::token_budget::TokenHandle>,
         Option<HoldGuard>,
@@ -320,6 +323,13 @@ async fn next_stream_item(
     group_id: String,
     sticky_bind: Option<Arc<StickyBind>>,
 ) -> Option<(Result<Bytes, std::io::Error>, StreamCommitState)> {
+    enum Step {
+        Chunk(Bytes),
+        Eof,
+        UpstreamErr(std::io::Error),
+        IdleTimeout,
+        MaxTimeout,
+    }
     // Already settled: a previous terminal arm already ran `finish_stream` and
     // took `sse`; the unfold may still poll once more after we returned a
     // terminal item — end the stream instead of re-settling or re-firing an
@@ -330,13 +340,6 @@ async fn next_stream_item(
     // The select only observes: each arm yields an owned `Step` because the
     // sibling futures keep borrowing `state` while a handler runs, so all
     // settlement work happens in the match below instead.
-    enum Step {
-        Chunk(Bytes),
-        Eof,
-        UpstreamErr(std::io::Error),
-        IdleTimeout,
-        MaxTimeout,
-    }
     let step = tokio::select! {
         biased;
         // Data: one upstream chunk (the two existing settlement arms, EOF ->
@@ -368,7 +371,7 @@ async fn next_stream_item(
                                     .get_or_insert_with(std::time::Instant::now);
                             }
                             SseEvent::Usage => state.tps.usage_seen = true,
-                            _ => {}
+                            SseEvent::Ping => {}
                         }
                     }
                     piped.passthrough
@@ -388,7 +391,7 @@ async fn next_stream_item(
             // bill already incurred; the error item is still returned.
             finish_stream(
                 &mut state,
-                &sink,
+                sink.as_ref(),
                 &group_id,
                 sticky_bind.as_ref(),
                 500,
@@ -401,7 +404,7 @@ async fn next_stream_item(
             // Stream completed = settlement commit point (status 200).
             finish_stream(
                 &mut state,
-                &sink,
+                sink.as_ref(),
                 &group_id,
                 sticky_bind.as_ref(),
                 200,
@@ -410,20 +413,20 @@ async fn next_stream_item(
             state.settled = true;
             None
         }
-        Step::IdleTimeout => settle_timeout(
+        Step::IdleTimeout => Some(settle_timeout(
             state,
-            &sink,
+            sink.as_ref(),
             &group_id,
             sticky_bind.as_ref(),
             "stream idle timeout",
-        ),
-        Step::MaxTimeout => settle_timeout(
+        )),
+        Step::MaxTimeout => Some(settle_timeout(
             state,
-            &sink,
+            sink.as_ref(),
             &group_id,
             sticky_bind.as_ref(),
             "stream max duration exceeded",
-        ),
+        )),
     }
 }
 
@@ -433,17 +436,17 @@ async fn next_stream_item(
 /// never drift.
 fn settle_timeout(
     mut state: StreamCommitState,
-    sink: &Option<Arc<dyn gateway_metering::SettleSink>>,
+    sink: Option<&Arc<dyn gateway_metering::SettleSink>>,
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
     reason: &'static str,
-) -> Option<(Result<Bytes, std::io::Error>, StreamCommitState)> {
+) -> (Result<Bytes, std::io::Error>, StreamCommitState) {
     finish_stream(&mut state, sink, group_id, sticky_bind, 500, Some(reason));
     state.settled = true;
-    Some((
+    (
         Err(std::io::Error::new(std::io::ErrorKind::TimedOut, reason)),
         state,
-    ))
+    )
 }
 
 /// Streaming settlement commit point (shared by the completed / disconnected arms).
@@ -454,7 +457,7 @@ fn settle_timeout(
 /// and must not be a success sample.
 fn finish_stream(
     state: &mut StreamCommitState,
-    sink: &Option<Arc<dyn gateway_metering::SettleSink>>,
+    sink: Option<&Arc<dyn gateway_metering::SettleSink>>,
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
     status_code: u16,
@@ -471,7 +474,7 @@ fn finish_stream(
     // metered actual cost (refund the difference or charge the extra on a negative
     // delta). Settle consumes the hold, so Drop becomes a no-op; when the stream
     // is dropped before settlement, Drop refunds the full estimate.
-    if priced && let Some(guard) = state._guards.2.as_mut() {
+    if priced && let Some(guard) = state.guards.2.as_mut() {
         // priced only holds when a price table is mounted, in which case finish
         // produces an event with a cost; fall back to 0 (full refund) defensively.
         guard.settle(cost.unwrap_or(0));

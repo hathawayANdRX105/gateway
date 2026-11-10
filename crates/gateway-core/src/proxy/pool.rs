@@ -10,7 +10,7 @@
 
 use crate::proxy::node::ProxyNode;
 
-/// Full proxy-node snapshot (from service::sync).
+/// Full proxy-node snapshot (from `service::sync`).
 #[derive(Default)]
 pub struct ProxySnapshot {
     pub nodes: Vec<ProxyNode>,
@@ -26,7 +26,7 @@ pub struct NodeStats {
     pub failure_count: u32,
     /// Remaining cooldown seconds; 0 when not cooling down
     pub cooldown_remaining_secs: u64,
-    /// Latest probe delay (from the adapter's ProxyHealth); None when unrecorded
+    /// Latest probe delay (from the adapter's `ProxyHealth`); None when unrecorded
     pub last_delay_ms: Option<u16>,
 }
 

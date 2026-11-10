@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 /// Weight table (TODO(#332) calibration): latin≈0.25 tok/char, cjk≈0.6, digit≈0.3...
 ///
 /// Cost: O(n) in characters, single pass, no allocation.
+#[must_use]
 pub fn estimate_tokens(text: &str) -> u64 {
     let mut cjk = 0u64;
     let mut latin = 0u64;
@@ -31,9 +32,20 @@ pub fn estimate_tokens(text: &str) -> u64 {
     }
 
     // CJK ≈ 0.6 tok/char, Latin ≈ 0.25 tok/char, digit ≈ 0.3 tok/char, other ≈ 1.0
+    //
+    // The u64 -> f64 casts are exact for any realistic input: a request body cannot
+    // carry more than 2^52 characters, so the mantissa is never exhausted. The
+    // f64 -> u64 cast is safe because every term is non-negative and the sum is
+    // finite, so `ceil` yields a non-negative value.
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     let tokens =
-        (cjk as f64 * 0.6) + (latin as f64 * 0.25) + (digit as f64 * 0.3) + (other as f64 * 1.0);
-    tokens.ceil() as u64
+        ((cjk as f64 * 0.6) + (latin as f64 * 0.25) + (digit as f64 * 0.3) + (other as f64 * 1.0))
+            .ceil() as u64;
+    tokens
 }
 
 /// Billable prompt tokens extracted from an already-parsed request body.
@@ -41,15 +53,15 @@ pub fn estimate_tokens(text: &str) -> u64 {
 /// Covers the content-bearing shapes a translated body can take (`translate_request`
 /// passes bodies through untouched when src == dst, so the body is typically the client's
 /// own JSON):
-/// - OpenAI chat / Claude: `messages[].content` (plain string, or a parts array — text
+/// - `OpenAI` chat / Claude: `messages[].content` (plain string, or a parts array — text
 ///   blocks under `text`, `tool_result` blocks under `content`) plus Claude's top-level
 ///   `system`;
 /// - Gemini: `contents[].parts[].text` and `systemInstruction.parts[].text`;
-/// - OpenAI Responses: `input` (a string, or items carrying `content`).
+/// - `OpenAI` Responses: `input` (a string, or items carrying `content`).
 ///
 /// Other billable carriers (Responses `instructions`, `function_call.arguments`,
 /// `function_call_output.output`) were never counted by the pre-rewrite scanner either;
-/// wiring them in is TODO(#334). Non-text parts (image_url, base64 data URLs) carry
+/// wiring them in is TODO(#334). Non-text parts (`image_url`, base64 data URLs) carry
 /// neither field and never count.
 ///
 /// The dialect extractors are summed, not dispatched: real bodies carry exactly one
@@ -60,6 +72,7 @@ pub fn estimate_tokens(text: &str) -> u64 {
 /// the caller then applies its own raw-text fallback.
 ///
 /// Cost: O(n) in body bytes — one tree walk, no allocation.
+#[must_use]
 pub fn estimate_prompt_from_value(body: &Value) -> Option<u64> {
     let total =
         messages_tokens(body) + system_tokens(body) + gemini_tokens(body) + responses_tokens(body);
@@ -89,22 +102,22 @@ pub fn estimate_prompt_tokens(adapted_body: &bytes::Bytes) -> u64 {
 /// divided by 4. Counts chars, never bytes, so CJK-heavy bodies are not inflated 3×.
 ///
 /// Cost: O(n) in characters.
+#[must_use]
 pub fn raw_length_tokens(raw: &str) -> u64 {
     raw.chars().count() as u64 / 4
 }
 
-/// Sum over `messages[].content` (OpenAI chat / Claude shape; Responses items go through
+/// Sum over `messages[].content` (`OpenAI` chat / Claude shape; Responses items go through
 /// `responses_tokens` because their text lives under `input`).
 fn messages_tokens(body: &Value) -> u64 {
     body.get("messages")
         .and_then(Value::as_array)
-        .map(|msgs| {
+        .map_or(0, |msgs| {
             msgs.iter()
                 .filter_map(|m| m.get("content"))
                 .map(content_tokens)
                 .sum()
         })
-        .unwrap_or(0)
 }
 
 /// One `content`-shaped value: a plain string, or a parts/blocks array whose text sits in
@@ -112,22 +125,18 @@ fn messages_tokens(body: &Value) -> u64 {
 fn content_tokens(content: &Value) -> u64 {
     content
         .as_str()
-        .map(estimate_tokens)
-        .unwrap_or_else(|| parts_tokens(content))
+        .map_or_else(|| parts_tokens(content), estimate_tokens)
 }
 
 /// Parts/blocks array: estimates one value per object item (see [`part_tokens`]).
 fn parts_tokens(parts: &Value) -> u64 {
-    parts
-        .as_array()
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_object)
-                .map(part_tokens)
-                .sum()
-        })
-        .unwrap_or(0)
+    parts.as_array().map_or(0, |items| {
+        items
+            .iter()
+            .filter_map(Value::as_object)
+            .map(part_tokens)
+            .sum()
+    })
 }
 
 /// One parts item: the `text` field for text blocks; otherwise the nested `content`
@@ -145,7 +154,7 @@ fn part_tokens(part: &Map<String, Value>) -> u64 {
 
 /// Claude's top-level `system`: plain string or text-block array.
 fn system_tokens(body: &Value) -> u64 {
-    body.get("system").map(content_tokens).unwrap_or(0)
+    body.get("system").map_or(0, content_tokens)
 }
 
 /// Gemini dialect: `contents[].parts[].text` plus `systemInstruction.parts[].text`.
@@ -153,22 +162,20 @@ fn gemini_tokens(body: &Value) -> u64 {
     let contents = body
         .get("contents")
         .and_then(Value::as_array)
-        .map(|cs| {
+        .map_or(0, |cs| {
             cs.iter()
                 .filter_map(|c| c.get("parts"))
                 .map(parts_tokens)
                 .sum()
-        })
-        .unwrap_or(0);
+        });
     let instruction = body
         .get("systemInstruction")
         .and_then(|s| s.get("parts"))
-        .map(parts_tokens)
-        .unwrap_or(0);
+        .map_or(0, parts_tokens);
     contents + instruction
 }
 
-/// OpenAI Responses dialect: `input` is a plain string or an array of items, each a bare
+/// `OpenAI` Responses dialect: `input` is a plain string or an array of items, each a bare
 /// string or an object carrying a `content` field.
 fn responses_tokens(body: &Value) -> u64 {
     body.get("input").map_or(0, |input| {

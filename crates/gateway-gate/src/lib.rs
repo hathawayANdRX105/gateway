@@ -64,7 +64,7 @@ pub struct TokenInfo {
     /// rate-limit buckets are keyed by it directly
     pub id: String,
     /// The UUID string of the user owning the token (`TokenRecord.user_key`). Settlement
-    /// debits by looking up user_balances with the user key — forward once had only
+    /// debits by looking up `user_balances` with the user key — forward once had only
     /// token.id available and debited the wrong key (the wallet was never charged,
     /// confirmed by e2e); this field closes that attribution chain.
     pub user_key: String,

@@ -1,7 +1,7 @@
-//! `error_mapping` — NormalizedError → per-protocol error shapes
+//! `error_mapping` — `NormalizedError` → per-protocol error shapes
 //!
 //! The single internal error representation (`gateway_core::error::NormalizedError`); this
-//! module maps it into the error response body each of OpenAI Chat / OpenAI Responses /
+//! module maps it into the error response body each of `OpenAI` Chat / `OpenAI` Responses /
 //! Anthropic / Gemini specifies.
 //!
 //! ## Classification is an enum, never a string probe
@@ -57,7 +57,7 @@ impl ErrorClass {
         }
     }
 
-    /// OpenAI Chat / Responses `error.type`.
+    /// `OpenAI` Chat / Responses `error.type`.
     fn openai_type(self) -> &'static str {
         match self {
             Self::Auth => "invalid_api_key",
@@ -101,7 +101,10 @@ enum StageFailure {
 
 impl StageFailure {
     fn from_stage_error(e: &StageError) -> Self {
-        use gateway_pipeline::StageError::*;
+        use gateway_pipeline::StageError::{
+            Forbidden, Internal, NoRoute, NotReady, PayloadTooLarge, QuotaExhausted, RateLimited,
+            Unauthenticated, Unavailable, Upstream,
+        };
         match e {
             Unauthenticated(_) => Self::Auth,
             QuotaExhausted { .. } => Self::Quota,
@@ -148,10 +151,10 @@ impl StageFailure {
             } => http::StatusCode::GATEWAY_TIMEOUT,
             Self::Unavailable {
                 retry_after_secs: None,
-            } => http::StatusCode::SERVICE_UNAVAILABLE,
+            }
+            | Self::NotReady => http::StatusCode::SERVICE_UNAVAILABLE,
             // Matches the RateLimited mapping in gateway_pipeline::error_to_response.
             Self::RateLimited => http::StatusCode::TOO_MANY_REQUESTS,
-            Self::NotReady => http::StatusCode::SERVICE_UNAVAILABLE,
             Self::PayloadTooLarge => http::StatusCode::PAYLOAD_TOO_LARGE,
             Self::Upstream => http::StatusCode::BAD_GATEWAY,
             Self::Internal => http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -167,7 +170,8 @@ impl StageFailure {
     }
 }
 
-/// OpenAI Chat Completions-compatible error shape (for SDK parsing).
+/// `OpenAI` Chat Completions-compatible error shape (for SDK parsing).
+#[must_use]
 pub fn to_openai_shape(err: &NormalizedError) -> serde_json::Value {
     serde_json::json!({
         "error": {
@@ -178,13 +182,14 @@ pub fn to_openai_shape(err: &NormalizedError) -> serde_json::Value {
     })
 }
 
-/// OpenAI Responses error shape.
+/// `OpenAI` Responses error shape.
 ///
-/// Responses and Chat are both OpenAI, but their error bodies differ: client SDKs read
+/// Responses and Chat are both `OpenAI`, but their error bodies differ: client SDKs read
 /// `error.{code,message,type}`, where **`code` is a nullable string** (not the internal
 /// error code) and `type` carries the classification. The old implementation folded
 /// `OpenAIResp` and `OpenAI` into one branch in [`map_error`], so Responses clients got
 /// the Chat shape — they are split here.
+#[must_use]
 pub fn to_responses_shape(err: &NormalizedError) -> serde_json::Value {
     serde_json::json!({
         "error": {
@@ -196,6 +201,7 @@ pub fn to_responses_shape(err: &NormalizedError) -> serde_json::Value {
 }
 
 /// Anthropic error shape.
+#[must_use]
 pub fn to_anthropic_shape(err: &NormalizedError) -> serde_json::Value {
     serde_json::json!({
         "type": "error",
@@ -207,6 +213,7 @@ pub fn to_anthropic_shape(err: &NormalizedError) -> serde_json::Value {
 }
 
 /// Gemini error shape.
+#[must_use]
 pub fn to_gemini_shape(err: &NormalizedError) -> serde_json::Value {
     serde_json::json!({
         "error": {
@@ -230,8 +237,8 @@ fn gemini_status_name(status: u16) -> &'static str {
 }
 
 /// `StageError` → HTTP Response in each protocol's error shape
-pub fn map_error(e: StageError, target: ProtocolKind) -> Response<Body> {
-    let failure = StageFailure::from_stage_error(&e);
+pub fn map_error(e: &StageError, target: ProtocolKind) -> Response<Body> {
+    let failure = StageFailure::from_stage_error(e);
     // message comes from StageError's Display, so `model not configured for
     // {group}/{model}` is carried into the error body as-is.
     let normalized = NormalizedError {
@@ -271,7 +278,7 @@ pub fn map_error(e: StageError, target: ProtocolKind) -> Response<Body> {
 
 /// Retry-After (seconds) from the shortest remaining cooldown ms:
 /// `ceil(retry_after_ms / 1000)`. Promised only when "a channel is cooling"
-/// (retry_after_ms > 0); 0 ms (no cooling channel, e.g. all disabled / rate limited /
+/// (`retry_after_ms` > 0); 0 ms (no cooling channel, e.g. all disabled / rate limited /
 /// no such model) returns None and promises no retry time — resending immediately is
 /// pointless.
 fn cooldown_secs(retry_after_ms: u64) -> Option<u64> {

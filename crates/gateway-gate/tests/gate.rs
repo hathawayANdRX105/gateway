@@ -467,7 +467,7 @@ async fn graylist_blocks_after_streak_threshold() {
 // 7. concurrency — RAII slot: returned on ctx drop / RateLimited when full / unregistered passes
 // ---------------------------------------------------------------------------
 
-/// Build a RequestCtx with a SelectedRoute (concurrency is a post-dispatch gate; handle
+/// Build a `RequestCtx` with a `SelectedRoute` (concurrency is a post-dispatch gate; handle
 /// needs ctx.route to know which channel's slot to take).
 fn ctx_with_channel(channel_key: &str) -> RequestCtx {
     let mut ctx = RequestCtx::new(make_meta(HeaderMap::new(), b"{}".to_vec()));
@@ -569,7 +569,7 @@ async fn concurrency_unregistered_channel_passes_through() {
     ));
 }
 
-/// StageError::RateLimited → HTTP 429 mapping (the router already implements it; this pins
+/// `StageError::RateLimited` → HTTP 429 mapping (the router already implements it; this pins
 /// the contract: concurrency slot exhaustion reuses this variant and must not silently
 /// degrade to 500).
 #[test]
@@ -660,7 +660,7 @@ async fn chain_full_happy_path_lifts_token_to_ctx() {
                 resp.status()
             );
         }
-        _ => panic!("expected Continue"),
+        StageOutcome::Stream(_) => panic!("expected Continue"),
     }
     let promoted = ctx.token.as_ref().expect("token promoted");
     assert_eq!(promoted.group, "vip");

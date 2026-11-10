@@ -3,9 +3,9 @@
 //!
 //! Coverage (the contract of `ForwardStage::submit_failed` (`pub(crate)`) in
 //! `gateway_forward::stage_telemetry`):
-//! 1. single-shot mode: forward_task returns `Err(NormalizedError)` → the sink receives
+//! 1. single-shot mode: `forward_task` returns `Err(NormalizedError)` → the sink receives
 //!    exactly 1 event with status=502, cost=0, all-zero counts and a non-empty error,
-//!    and StageError still short-circuits as usual;
+//!    and `StageError` still short-circuits as usual;
 //! 2. retry mode: after the budget is exhausted, **one event per failed attempt**
 //!    (retries leave an observation trace too);
 //! 3. Fatal 4xx: a single attempt terminates, still producing 1 observation event and
@@ -15,7 +15,7 @@
 //! 5. with no pt/sink mounted, the failure path behaves unchanged (still errors, emits
 //!    no event, does not panic).
 //!
-//! Mock style matches retry_wiring.rs: hand-written Dispatch + scripted Egress, no real
+//! Mock style matches `retry_wiring.rs`: hand-written Dispatch + scripted Egress, no real
 //! network (the mock and request builders are shared in `tests/common/mod.rs`; this
 //! file only builds failure plans).
 

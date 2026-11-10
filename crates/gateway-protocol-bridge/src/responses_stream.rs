@@ -63,6 +63,9 @@ impl ResponsesStreamEncoder {
 
     /// Snapshot of the whole response (carried by both `response.created` and
     /// `response.completed`).
+    // json! moves `output` into the serialized response body, so the argument is
+    // genuinely consumed — borrowing it would not compile against the opaque macro.
+    #[allow(clippy::needless_pass_by_value)]
     fn response_snapshot(&self, status: &str, output: Vec<Value>) -> Value {
         json!({
             "id": self.id,
@@ -141,8 +144,8 @@ impl ResponsesStreamEncoder {
     /// Get or create the tool item for an IR index, returning (frames to send, the entry).
     ///
     /// `call_id` / `name` only seed a newly created entry; when `update_identity` is true
-    /// (ToolCallStart) they also fill in an existing entry's identity from non-empty
-    /// inputs — a ToolCallDelta that arrives first must not overwrite the real identity
+    /// (`ToolCallStart`) they also fill in an existing entry's identity from non-empty
+    /// inputs — a `ToolCallDelta` that arrives first must not overwrite the real identity
     /// with a placeholder id, so it passes false.
     fn ensure_tool_item(
         &mut self,
@@ -183,7 +186,7 @@ impl ResponsesStreamEncoder {
         (out, entry)
     }
 
-    /// `response.output_item.added` (function_call, status in_progress).
+    /// `response.output_item.added` (`function_call`, status `in_progress`).
     fn tool_item_added_frame(entry: &ToolState) -> Bytes {
         event_frame(
             "response.output_item.added",
@@ -202,7 +205,7 @@ impl ResponsesStreamEncoder {
         )
     }
 
-    /// The text item's closing trio: text.done → content_part.done → output_item.done.
+    /// The text item's closing trio: text.done → `content_part.done` → `output_item.done`.
     ///
     /// Returns (frames, item JSON reused by the final snapshot).
     fn close_text_item(&self, index: u32) -> (Vec<Bytes>, Value) {
@@ -247,11 +250,10 @@ impl ResponsesStreamEncoder {
         (frames, item)
     }
 
-    /// Closing frames for a tool item: arguments.done + output_item.done.
-    fn close_tool_item(&self, index: u32, state: &ToolState) -> (Vec<Bytes>, Value) {
+    /// Closing frames for a tool item: arguments.done + `output_item.done`.
+    fn close_tool_item(index: u32, state: &ToolState) -> (Vec<Bytes>, Value) {
         let item = json!({
             "type": "function_call",
-            "id": state.item_id,
             "call_id": state.call_id,
             "name": state.name,
             "arguments": state.arguments,
@@ -319,7 +321,7 @@ impl ResponsesStreamEncoder {
     }
 
     /// Finish: close opened items and emit `response.completed` / `response.incomplete`.
-    fn finish_stream(&mut self, reason: StopReason) -> Vec<Bytes> {
+    fn finish_stream(&mut self, reason: &StopReason) -> Vec<Bytes> {
         if self.finished {
             return Vec::new();
         }
@@ -344,14 +346,14 @@ impl ResponsesStreamEncoder {
             if !state.opened {
                 continue;
             }
-            let (frames, item) = self.close_tool_item(index, state);
+            let (frames, item) = Self::close_tool_item(index, state);
             out.extend(frames);
             output.push((index, item));
         }
 
         output.sort_by_key(|(i, _)| *i);
         let items: Vec<Value> = output.into_iter().map(|(_, v)| v).collect();
-        out.push(self.completion_frame(&reason, items));
+        out.push(self.completion_frame(reason, items));
         out
     }
 }
@@ -361,9 +363,9 @@ impl StreamEncoder for ResponsesStreamEncoder {
         match ev {
             StreamEvent::MessageStart { id, model } => {
                 if !id.is_empty() {
-                    self.id = id.clone();
+                    self.id.clone_from(id);
                 }
-                self.model = model.clone();
+                self.model.clone_from(model);
                 Ok(self.ensure_created())
             }
             StreamEvent::TextDelta { text, .. } => {
@@ -415,10 +417,9 @@ impl StreamEncoder for ResponsesStreamEncoder {
             // Responses has no standalone usage event; usage appears only in the final
             // response snapshot. This encoder's snapshot has no usage field, so no frame is
             // emitted here (keeping the existing output shape).
-            StreamEvent::MessageDelta { .. } => Ok(Vec::new()),
-            StreamEvent::MessageStop { reason } => Ok(self.finish_stream(reason.clone())),
+            StreamEvent::MessageDelta { .. } | StreamEvent::Raw { .. } => Ok(Vec::new()),
+            StreamEvent::MessageStop { reason } => Ok(self.finish_stream(reason)),
             // Raw vendor events have no Responses representation; ignore explicitly.
-            StreamEvent::Raw { .. } => Ok(Vec::new()),
             StreamEvent::Error { message } => Ok(self.failure_frames(message)),
         }
     }
@@ -427,6 +428,6 @@ impl StreamEncoder for ResponsesStreamEncoder {
         if self.finished {
             return Ok(Vec::new());
         }
-        Ok(self.finish_stream(StopReason::Stop))
+        Ok(self.finish_stream(&StopReason::Stop))
     }
 }

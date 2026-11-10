@@ -1,6 +1,6 @@
 //! SSE frame scanner — byte-faithful forwarding plus event detection.
 //!
-//! Guarantees (matching new-api scan_sse.go):
+//! Guarantees (matching new-api `scan_sse.go)`:
 //! - forwarded bytes are byte-identical to the upstream (vendor-private frames
 //!   included), with no reordering and no dropped whitespace;
 //! - no fabricated [DONE]: an upstream truncation stays a truncation and is reported
@@ -8,7 +8,7 @@
 //! - bounded write side: downstream backpressure never buffers the upstream unboundedly
 //!   (TODO(#502): waterline parameter).
 //!
-//! Division of labour with gateway_metering::StreamScanner: this type handles only
+//! Division of labour with `gateway_metering::StreamScanner`: this type handles only
 //! **frames** (event/data/id boundaries, keepalive, termination); token counting is
 //! metering's job.
 
@@ -21,7 +21,7 @@ use serde_json::Value;
 pub struct SseScanner {
     /// Leftover line buffer (an incomplete line spanning chunks).
     line_buf: Vec<u8>,
-    /// Whether FirstToken has been reported (idempotent, reported once).
+    /// Whether `FirstToken` has been reported (idempotent, reported once).
     saw_first_token: bool,
     /// Whether [DONE] has been seen.
     saw_done: bool,
@@ -157,11 +157,13 @@ impl SseScanner {
     /// Used for cross-format conversion: the target-format encoder decides from this
     /// whether `finish()` still needs to append a terminal frame (it must not when the
     /// upstream already sent one, or the client would see two stream terminations).
+    #[must_use]
     pub fn saw_done(&self) -> bool {
         self.saw_done
     }
 
     /// Upstream end: report how it terminated.
+    #[must_use]
     pub fn finish(self) -> SseEnd {
         if self.saw_done {
             SseEnd::Clean
@@ -187,7 +189,7 @@ pub enum SseEnd {
 
 // ==== Frame construction: SSE output shapes shared by the four codecs ====
 
-/// SSE frame with only `data:` (OpenAI / Gemini shape).
+/// SSE frame with only `data:` (`OpenAI` / Gemini shape).
 pub(crate) fn data_frame(payload: &Value) -> Bytes {
     Bytes::from(format!("data: {payload}\n\n"))
 }

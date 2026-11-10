@@ -15,7 +15,7 @@
 //!   time), truncated to [`SESSION_PREFIX_LIMIT`] bytes so an oversized header cannot blow up
 //!   table memory;
 //! - `"fp:" + SipHash-1-3 zero-key fingerprint of the first 4KB of the raw request body`
-//!   ([FINGERPRINT_WINDOW] bytes): weak stickiness for shared prefixes. **Only the hash is
+//!   ([`FINGERPRINT_WINDOW`] bytes): weak stickiness for shared prefixes. **Only the hash is
 //!   stored, never the prefix text** (privacy + bounded memory).
 //!
 //! ## Fingerprint source: raw request body, not the adapted body
@@ -30,7 +30,7 @@
 //! bytes of `ctx.request.body`.
 //!
 //! **Known limitation (not pretended away)**: when the same session enters through different
-//! client protocols (OpenAI / Anthropic / Gemini entry points), the raw bytes differ ⇒ the
+//! client protocols (`OpenAI` / Anthropic / Gemini entry points), the raw bytes differ ⇒ the
 //! fingerprint keys differ ⇒ the lookup misses ⇒ behaviour degrades to the status quo (P2C
 //! only, no stickiness). That is a **distribution shift, not a correctness loss**: a miss costs
 //! only one boost. The main path for strong cross-protocol stickiness is the explicit
@@ -96,22 +96,21 @@ impl StickyKey {
     ///    header — otherwise every session would crowd into the same `"sid:"` key and pollute
     ///    each other.
     /// 2. Otherwise fall back to the raw-body fingerprint ([`FINGERPRINT_WINDOW`] bytes);
-    ///    `raw_body` is `None` (not InMemory) or the body is empty ⇒ `None`: no shared prefix,
+    ///    `raw_body` is `None` (not `InMemory`) or the body is empty ⇒ `None`: no shared prefix,
     ///    no reason to be sticky.
     pub fn from_request(
         public_model: &str,
         session_hint: Option<&str>,
         raw_body: Option<&[u8]>,
     ) -> Option<Self> {
-        let prefix = match session_hint.map(str::trim).filter(|h| !h.is_empty()) {
-            Some(hint) => truncate_utf8(&format!("sid:{hint}"), SESSION_PREFIX_LIMIT),
-            None => {
-                let body = raw_body?;
-                if body.is_empty() {
-                    return None;
-                }
-                fingerprint(body)
+        let prefix = if let Some(hint) = session_hint.map(str::trim).filter(|h| !h.is_empty()) {
+            truncate_utf8(&format!("sid:{hint}"), SESSION_PREFIX_LIMIT)
+        } else {
+            let body = raw_body?;
+            if body.is_empty() {
+                return None;
             }
+            fingerprint(body)
         };
         Some(Self {
             public_model: public_model.to_string(),
@@ -144,7 +143,8 @@ pub struct StickyTable {
 }
 
 impl StickyTable {
-    /// Default profile: TTL 300s / capacity 10_000 / `chrono::Utc` millisecond clock.
+    /// Default profile: TTL 300s / capacity `10_000` / `chrono::Utc` millisecond clock.
+    #[must_use]
     pub fn new() -> Arc<Self> {
         Self::with_clock(
             || u64::try_from(chrono::Utc::now().timestamp_millis()).unwrap_or(u64::MAX),
@@ -240,7 +240,7 @@ fn fingerprint(body: &[u8]) -> String {
 /// invalid string).
 ///
 /// Cost: the boundary lookup is O(1) (`floor_char_boundary` backwalks at most 3 bytes), so the
-/// total cost is O(min(limit, s.len())) for the copy.
+/// total cost is O(min(limit, `s.len()`)) for the copy.
 fn truncate_utf8(s: &str, limit: usize) -> String {
     s[..s.floor_char_boundary(limit)].to_string()
 }

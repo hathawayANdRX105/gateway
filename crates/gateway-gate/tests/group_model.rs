@@ -1,5 +1,5 @@
-//! `gateway-gate` group-level model gate integration tests — GroupSnapshot queries +
-//! GroupModelGate decisions
+//! `gateway-gate` group-level model gate integration tests — `GroupSnapshot` queries +
+//! `GroupModelGate` decisions
 //!
 //! Covers: group allowlist hit / wildcard hit, rejection on miss, fail-open when
 //! unconfigured, whole-group rejection for a disabled group, missing model, snapshot query
@@ -44,7 +44,7 @@ fn group_snapshot() -> SharedGroupSnapshot {
     Arc::new(ArcSwap::from_pointee(groups))
 }
 
-/// Minimal GateCtx: only the group / requested_model input fields matter.
+/// Minimal `GateCtx`: only the group / `requested_model` input fields matter.
 fn ctx(group: Option<&str>, model: Option<&str>) -> GateCtx {
     let client_ip: IpAddr = "10.0.0.5".parse().unwrap();
     GateCtx {
@@ -200,7 +200,7 @@ fn snapshot_queries_and_fallbacks() {
     // Confirm the default values themselves (enabled=true: the default group seed / anything
     // not explicitly disabled takes the enabled path)
     let d = GroupEntry::default();
-    assert!(d.allowed_models.is_empty());
+    assert_eq!(d.allowed_models, [] as [std::string::String; 0]);
     assert_eq!(d.multiplier, 1.0);
     assert!(d.enabled);
     assert!(!groups.is_disabled("vip"));
@@ -225,7 +225,7 @@ fn snapshot_queries_and_fallbacks() {
 
 #[tokio::test]
 async fn rejection_maps_to_403_with_code() {
-    let resp = rejection_to_response(Rejection::ModelNotAllowedForGroup {
+    let resp = rejection_to_response(&Rejection::ModelNotAllowedForGroup {
         model: "claude-x".into(),
         group: "vip".into(),
     });
@@ -245,7 +245,7 @@ async fn rejection_maps_to_403_with_code() {
 
 #[tokio::test]
 async fn group_disabled_maps_to_403_with_code() {
-    let resp = rejection_to_response(Rejection::GroupDisabled {
+    let resp = rejection_to_response(&Rejection::GroupDisabled {
         group: "blocked".into(),
     });
     assert_eq!(resp.status(), 403);

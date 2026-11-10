@@ -60,11 +60,13 @@ where
     /// Bounded by entry count, no TTL. Idle eviction (moka's LRU) reclaims the
     /// least recently used entries once `max_capacity` is exceeded, and live
     /// values never expire.
+    #[must_use]
     pub fn bounded(max_capacity: u64) -> Self {
         Self::build(moka::sync::Cache::builder().max_capacity(max_capacity))
     }
 
     /// Bounded by entry count with an entry TTL.
+    #[must_use]
     pub fn bounded_with_ttl(max_capacity: u64, ttl: Duration) -> Self {
         Self::build(
             moka::sync::Cache::builder()
@@ -91,6 +93,7 @@ where
 
     /// Bounded by entry count with a time-to-idle: entries unused for `idle`
     /// are reclaimed; actively used ones never expire.
+    #[must_use]
     pub fn bounded_with_idle(max_capacity: u64, idle: Duration) -> Self {
         Self::build(
             moka::sync::Cache::builder()
@@ -120,15 +123,12 @@ where
     /// Owned-value design: the value is cloned, so callers cannot hold borrows
     /// into the map across await points.
     pub fn get(&self, key: &K) -> Option<V> {
-        match self.inner.get(key) {
-            Some(v) => {
-                self.hits.fetch_add(1, Ordering::Relaxed);
-                Some(v)
-            }
-            None => {
-                self.misses.fetch_add(1, Ordering::Relaxed);
-                None
-            }
+        if let Some(v) = self.inner.get(key) {
+            self.hits.fetch_add(1, Ordering::Relaxed);
+            Some(v)
+        } else {
+            self.misses.fetch_add(1, Ordering::Relaxed);
+            None
         }
     }
 
@@ -153,6 +153,9 @@ where
 
     /// Entry count, forced through moka's maintenance so counters drained by
     /// earlier reads/writes are applied. Observability path only.
+    // moka's entry_count is u64; a cache cannot hold more entries than usize on
+    // the running target, so the narrowing cast is lossless in practice.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn len(&self) -> usize {
         self.inner.run_pending_tasks();
         self.inner.entry_count() as usize

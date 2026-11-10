@@ -1,4 +1,4 @@
-//! Smoke test: meow adapter → adapter_egress bridge → real upstream.
+//! Smoke test: meow adapter → `adapter_egress` bridge → real upstream.
 //!
 //! Verifies the full promise of PR #84: the stream produced by
 //! `ProxyAdapter::dial_tcp` can carry a real HTTPS request through

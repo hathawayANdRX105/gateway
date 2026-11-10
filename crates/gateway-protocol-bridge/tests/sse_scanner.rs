@@ -17,7 +17,7 @@ fn sse_scanner_second_data_line_no_first_token() {
     let mut s = SseScanner::default();
     let _ = s.push(&Bytes::from_static(b"data: {\"role\":\"assistant\"}\n\n"));
     let (_, events) = s.push(&Bytes::from_static(b"data: {\"content\":\"hello\"}\n\n"));
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [gateway_protocol_bridge::sse::SseEvent; 0]);
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn sse_scanner_done_triggers_clean_end() {
     let mut s = SseScanner::default();
     let _ = s.push(&Bytes::from_static(b"data: {\"role\":\"assistant\"}\n\n"));
     let (_, events) = s.push(&Bytes::from_static(b"data: [DONE]\n\n"));
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [gateway_protocol_bridge::sse::SseEvent; 0]);
     assert_eq!(s.finish(), SseEnd::Clean);
 }
 
@@ -58,7 +58,7 @@ fn sse_scanner_usage_field_triggers_usage_event() {
 fn sse_scanner_cross_chunk_line_reassembly() {
     let mut s = SseScanner::default();
     let (p1, e1) = s.push(&Bytes::from_static(b"data: {\"role\""));
-    assert!(e1.is_empty());
+    assert_eq!(e1, [] as [gateway_protocol_bridge::sse::SseEvent; 0]);
     let (p2, e2) = s.push(&Bytes::from_static(b":\"assistant\"}\n\n"));
     assert_eq!(e2, vec![SseEvent::FirstToken]);
     // Passthrough must be byte-faithful: the two chunks reassemble into the original
@@ -75,7 +75,7 @@ fn sse_scanner_cross_chunk_line_reassembly() {
 fn sse_scanner_empty_lines_are_frame_separators() {
     let mut s = SseScanner::default();
     let (_, events) = s.push(&Bytes::from_static(b"\n\n\n"));
-    assert!(events.is_empty());
+    assert_eq!(events, [] as [gateway_protocol_bridge::sse::SseEvent; 0]);
 }
 
 #[test]

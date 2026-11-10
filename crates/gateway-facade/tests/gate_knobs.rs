@@ -6,6 +6,7 @@ use gateway_facade::*;
 
 use arc_swap::ArcSwap;
 use bytes::Bytes;
+use http::HeaderMap;
 use std::sync::Arc;
 
 /// Purpose: `RateLimiter::set_limits` retunes the window without losing the
@@ -39,7 +40,7 @@ fn rate_limiter_limits_are_hot_and_atomic() {
 /// *without* judging a token allowlist — the token-less preset needs the parse,
 /// not the verdict.
 /// Scenario: a body carrying `model` / `max_tokens`, with no token in the
-/// context (what a chain without AuthGate looks like).
+/// context (what a chain without `AuthGate` looks like).
 /// Accepts: the gate returns Ok and both fields are promoted; a body without a
 /// model is accepted silently (parsing is best-effort) and leaves the field
 /// None, which the forward stage reports as its own error.
@@ -53,7 +54,7 @@ async fn model_parse_gate_promotes_without_judging_a_token() {
             request_meta: RequestMeta {
                 method: "POST".into(),
                 path: "/v1/chat/completions".into(),
-                headers: Default::default(),
+                headers: HeaderMap::default(),
                 body: BodySource::InMemory(Bytes::from(body)),
                 client_ip: "127.0.0.1".parse::<IpAddr>().unwrap(),
                 request_id: uuid::Uuid::new_v4(),

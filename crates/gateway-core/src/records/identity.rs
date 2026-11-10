@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// User.
 ///
-/// `quota` follows new-api semantics (the smallest internal billing unit, 500_000 = $1).
+/// `quota` follows new-api semantics (the smallest internal billing unit, `500_000` = $1).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserRecord {
@@ -26,7 +26,7 @@ pub struct UserRecord {
     pub status: u8,
     /// 1 user / 10 admin / 100 root.
     pub role: u16,
-    /// User creation timestamp. TODO(#207): auto-group policy — new-api resolve_group.go.
+    /// User creation timestamp. TODO(#207): auto-group policy — new-api `resolve_group.go`.
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -45,7 +45,7 @@ pub struct TokenRecord {
     /// Fixed group for the token; None = follow the user's group (new-api token group
     /// semantics).
     pub group: Option<String>,
-    /// Token-specific quota limit; ignored when unlimited_quota = true.
+    /// Token-specific quota limit; ignored when `unlimited_quota` = true.
     pub quota: i64,
     pub unlimited_quota: bool,
     pub used_quota: i64,

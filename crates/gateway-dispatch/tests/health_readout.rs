@@ -4,10 +4,10 @@
 //! Pins two points:
 //! 1. `MemoryHealthTable::entries()` is empty before `record`; after one Fatal failure
 //!    the unit appears in entries and its cooldown field takes effect
-//!    (`cooldown_until_ms > now`, i.e. the "remaining_ms > 0" semantics);
+//!    (`cooldown_until_ms > now`, i.e. the "`remaining_ms` > 0" semantics);
 //! 2. `Dispatcher::snapshot()` is `None` before `set_snapshot` and `Some` after loading.
 //!
-//! All clocks are fixed through `with_config_and_clock`, so until_ms deltas are
+//! All clocks are fixed through `with_config_and_clock`, so `until_ms` deltas are
 //! deterministic.
 
 use gateway_gate::concurrency::ConcurrencyState;
@@ -16,12 +16,12 @@ use std::sync::Arc;
 use gateway_dispatch::health::{ChannelOutcome, HealthSetting};
 use gateway_dispatch::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable, Snapshot};
 
-/// Build a minimal Snapshot (empty units/channels) for the snapshot() existence tests.
+/// Build a minimal Snapshot (empty units/channels) for the `snapshot()` existence tests.
 fn empty_snapshot() -> Arc<Snapshot> {
     Arc::new(Snapshot::default())
 }
 
-/// entries() is empty before any record.
+/// `entries()` is empty before any record.
 #[test]
 fn entries_empty_before_any_record() {
     let table = MemoryHealthTable::new();
@@ -30,7 +30,7 @@ fn entries_empty_before_any_record() {
 
 /// A single transport-layer failure triggers cooldown (the cooldown no longer has an
 /// "N consecutive" threshold); the unit appears in entries and is inside its cooldown
-/// window (remaining_ms > 0).
+/// window (`remaining_ms` > 0).
 #[test]
 fn entries_shows_cooling_unit_after_first_failure() {
     let now_ms = 1_000_000u64;
@@ -72,7 +72,7 @@ fn entries_contains_neutral_units_without_cooling() {
     assert!(!entries[0].1.is_cooling(now_ms));
 }
 
-/// entries() is a data snapshot cloned under the lock: continuing to record after reading
+/// `entries()` is a data snapshot cloned under the lock: continuing to record after reading
 /// does not affect the copy already read.
 #[test]
 fn entries_is_a_copy_not_a_live_view() {
@@ -92,8 +92,7 @@ fn entries_is_a_copy_not_a_live_view() {
     let streak_before = snapshot
         .iter()
         .find(|(k, _)| k == key)
-        .map(|(_, st)| st.cooldown_streak)
-        .unwrap_or(0);
+        .map_or(0, |(_, st)| st.cooldown_streak);
 
     table.record(
         key,
@@ -107,7 +106,7 @@ fn entries_is_a_copy_not_a_live_view() {
     );
 }
 
-/// Dispatcher::snapshot() is None before set_snapshot.
+/// `Dispatcher::snapshot()` is None before `set_snapshot`.
 #[test]
 fn dispatcher_snapshot_none_before_set() {
     let dispatcher = gateway_dispatch::Dispatcher::new(
@@ -118,7 +117,7 @@ fn dispatcher_snapshot_none_before_set() {
     assert!(dispatcher.snapshot().is_none());
 }
 
-/// Some after set_snapshot, with readable contents (an empty snapshot has empty units but
+/// Some after `set_snapshot`, with readable contents (an empty snapshot has empty units but
 /// a valid handle).
 #[test]
 fn dispatcher_snapshot_some_after_set() {
@@ -132,7 +131,10 @@ fn dispatcher_snapshot_some_after_set() {
     let snap = dispatcher
         .snapshot()
         .expect("snapshot should be readable after set_snapshot");
-    assert!(snap.units.is_empty());
+    assert_eq!(
+        snap.units,
+        [] as [gateway_core::records::routing::RouteUnitRecord; 0]
+    );
     assert!(snap.channels.is_empty());
 }
 

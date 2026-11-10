@@ -25,7 +25,7 @@ pub struct ModelPrice {
     pub output: f64,
     /// $/M cached-read tokens.
     pub cache: f64,
-    /// Group multiplier (GroupRecord.rate_multiplier).
+    /// Group multiplier (`GroupRecord.rate_multiplier`).
     #[serde(default = "default_group_multiplier")]
     pub group_multiplier: f64,
 }
@@ -41,7 +41,7 @@ pub trait PriceTable: Send + Sync {
     /// `group` is the request group name (e.g. "default" / "vip"); implementations may
     /// return a different price per group. [`ModelPrice::group_multiplier`] in the returned
     /// value participates in the settlement arithmetic; the **authoritative request-side
-    /// source** of the group multiplier (GroupRecord.rate_multiplier) is passed by the
+    /// source** of the group multiplier (`GroupRecord.rate_multiplier`) is passed by the
     /// caller as `group_ratio`, not through this table.
     fn lookup(&self, model: &str, group: &str) -> Option<ModelPrice>;
 }
@@ -80,6 +80,11 @@ pub struct Insufficient {
 pub trait Ledger: Send + Sync {
     /// Prehold: reserve `estimated` for `(user_key, token_key)`; insufficient →
     /// [`Insufficient`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Insufficient`] when the remaining balance cannot cover
+    /// `estimated`; no reservation is taken in that case.
     fn prehold(
         &self,
         user_key: &str,
@@ -96,7 +101,7 @@ pub trait Ledger: Send + Sync {
     fn reseed(&self, quotas: &crate::gate::QuotaSnapshot);
 }
 
-/// Settle-artifact delivery channel: implemented on the apps side (write usage_logs / debit
+/// Settle-artifact delivery channel: implemented on the apps side (write `usage_logs` / debit
 /// the in-memory quota).
 ///
 /// The library layer only produces events and knows no storage. Implementations must be

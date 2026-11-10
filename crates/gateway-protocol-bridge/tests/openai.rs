@@ -1,4 +1,4 @@
-//! Behavior tests for the OpenAI Chat Completions codec.
+//! Behavior tests for the `OpenAI` Chat Completions codec.
 //!
 //! Two maps of behavior: lossless bidirectional round-trip (the hard contract of IR as the hub),
 //! shape constraints of streaming output — id stable across the stream, non-empty choices on
