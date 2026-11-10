@@ -46,6 +46,12 @@ jobs:
         with:
           toolchain: nightly-2026-08-20
           components: rustfmt, clippy, rustc-dev, rust-src
+      # The dylint lint libraries link against rustc's LLVM runtime, which the
+      # action's component install can leave half-applied on the runner image.
+      # Re-assert the two components before building; rustup makes this a no-op
+      # when they are already in place.
+      - name: Ensure rustc-dev / llvm-tools components
+        run: rustup component add --toolchain nightly-2026-08-20 rustc-dev llvm-tools
       - name: Install cargo-dylint
         run: cargo +nightly-2026-08-20 install cargo-dylint --locked
       - name: Clone rust-specs (lint rule library)
