@@ -55,7 +55,8 @@ gateway-facade ──> all engines ──> gateway-contract ──> app-contract
 - The consumer depends on `gateway-facade` and need not name any engine crate;
   keep `GatewayBuilder` insertion points the only extension surface.
 - `gateway-daemon` (root package) may depend on `gateway-facade` plus transport
-  crates (actix-web, toml); it must never depend on an engine crate directly.
+  crates (actix-web, axum body types, http, toml); it must never depend on an
+  engine crate directly.
 - A new crate or a new dependency edge means updating the `README.md` manifest
   **and** the root `Cargo.toml` layout comment in the same change.
 

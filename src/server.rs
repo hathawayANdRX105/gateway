@@ -278,28 +278,31 @@ fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::HeaderM
 }
 
 /// Client address: the socket peer unless it is an explicitly trusted proxy, in which case
-/// the first `x-forwarded-for` segment wins.
+/// the forwarded chain is walked from the right and the first address that is not itself a
+/// trusted proxy wins.
 ///
-/// Trusting the header unconditionally would let any client forge its own address and slip
-/// past the state gate's IP policy, so the default is "never trust".
+/// Right-to-left is the only safe direction: every proxy appends to the chain, so the
+/// left-most entry is whatever the client sent and is trivially forgeable. The default
+/// (`trusted_proxies` empty) never reads the header at all.
 fn client_ip(state: &AppState, req: &HttpRequest) -> IpAddr {
     match req.peer_addr().map(|addr| addr.ip()) {
-        Some(peer) if state.trusted_proxies.contains(&peer) => forwarded_for(req).unwrap_or(peer),
+        Some(peer) if state.trusted_proxies.contains(&peer) => {
+            forwarded_for(req, &state.trusted_proxies).unwrap_or(peer)
+        }
         Some(peer) => peer,
         None => Ipv4Addr::UNSPECIFIED.into(),
     }
 }
 
-fn forwarded_for(req: &HttpRequest) -> Option<IpAddr> {
+fn forwarded_for(req: &HttpRequest, trusted: &[IpAddr]) -> Option<IpAddr> {
     req.headers()
         .get("x-forwarded-for")?
         .to_str()
         .ok()?
         .split(',')
-        .next()?
-        .trim()
-        .parse()
-        .ok()
+        .rev()
+        .filter_map(|part| part.trim().parse::<IpAddr>().ok())
+        .find(|ip| !trusted.contains(ip))
 }
 
 /// Pipeline response → actix response, streaming the body frame by frame.
