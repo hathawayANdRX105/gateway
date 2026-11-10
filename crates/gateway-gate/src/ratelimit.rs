@@ -24,24 +24,36 @@ pub enum LimitScope {
     PerGroup,   // by user group
 }
 
+use arc_swap::ArcSwap;
+
 /// Rate limiter (sliding window by second buckets).
 ///
-/// Maintains one [`SecondWindow`] per `(scope, key)` internally.
+/// Maintains one [`SecondWindow`] per `(scope, key)` internally. The limit pair is
+/// interior-mutable (see [`Self::set_limits`]) and published as **one** value, so a
+/// concurrent reader can never observe a pair that existed in no configuration.
 pub struct RateLimiter {
     inner: Mutex<HashMap<(LimitScope, String), SecondWindow>>,
-    /// Default limit: N requests per window_secs seconds. For simplicity all scopes currently
-    /// share this pair of values.
-    pub max_requests: u32,
-    pub window_secs: u32,
+    /// Limit pair published atomically as a unit: N requests per window_secs.
+    limits: ArcSwap<(u32, u32)>,
 }
 
 impl RateLimiter {
     pub fn new(max_requests: u32, window_secs: u32) -> Self {
         Self {
             inner: Mutex::new(HashMap::new()),
-            max_requests,
-            window_secs,
+            limits: ArcSwap::from_pointee((max_requests, window_secs)),
         }
+    }
+
+    /// Limit pair currently in effect.
+    pub fn limits(&self) -> (u32, u32) {
+        **self.limits.load()
+    }
+
+    /// Replace the limit pair at runtime; existing per-key windows keep their
+    /// history. Published as one value — no reader sees a torn pair.
+    pub fn set_limits(&self, max_requests: u32, window_secs: u32) {
+        self.limits.store(Arc::new((max_requests, window_secs)));
     }
 
     /// Try to acquire one permit. true = allowed, false = over limit.
@@ -49,7 +61,8 @@ impl RateLimiter {
         let now = now_secs();
         let mut map = self.inner.lock();
         let bucket = map.entry((scope, key.to_string())).or_default();
-        bucket.try_acquire(now, self.max_requests, self.window_secs)
+        let (max_requests, window_secs) = self.limits();
+        bucket.try_acquire(now, max_requests, window_secs)
     }
 }
 

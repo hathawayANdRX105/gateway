@@ -1,6 +1,6 @@
 //! `node` — the reqwest projection of a [`ProxyNode`]
 //!
-//! The node type and its URL parser live in `gateway-contract::proxy::node`: the admin plane
+//! The node type and its URL parser live in `gateway-core::proxy::node`: the admin plane
 //! parses and validates stored links, and it must be able to do so without linking an
 //! egress engine. What stays here is the part that needs `reqwest` — turning a node into a
 //! `reqwest::Proxy` for `ClientBuilder::proxy()` — plus the re-export that keeps the

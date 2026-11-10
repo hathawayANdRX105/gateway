@@ -7,7 +7,7 @@
 //! in $/M tokens).
 //!
 //! The price **vocabulary** — [`ModelPrice`] and the [`PriceTable`] port — lives in
-//! `gateway-contract::metering` and is re-exported here, because the billing crate
+//! `gateway-core::metering` and is re-exported here, because the billing crate
 //! implements that port over its own table and must not link this engine to do so. The
 //! arithmetic below ([`price_of`], which needs [`crate::scanner::TokenCounts`]) stays with
 //! the engine: it is settlement behavior, not a value the two sides exchange.

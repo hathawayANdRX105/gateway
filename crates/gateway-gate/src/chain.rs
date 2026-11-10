@@ -109,6 +109,26 @@ impl GateChain {
         self
     }
 
+    /// Drop the gate with this name (see [`Gate::name`]); returns whether one was
+    /// removed. Composition support for callers that assemble their own chain from
+    /// a preset.
+    pub fn remove(&mut self, name: &str) -> bool {
+        let before = self.gates.len();
+        self.gates.retain(|gate| gate.name() != name);
+        self.gates.len() != before
+    }
+
+    /// Whether a gate with this name is currently mounted.
+    pub fn contains(&self, name: &str) -> bool {
+        self.gates.iter().any(|gate| gate.name() == name)
+    }
+
+    /// Append a boxed gate — the facade builder stores appended gates as trait
+    /// objects and pushes them here.
+    pub fn push_gate_shared(&mut self, gate: Arc<dyn Gate>) {
+        self.gates.push(gate);
+    }
+
     pub fn len(&self) -> usize {
         self.gates.len()
     }

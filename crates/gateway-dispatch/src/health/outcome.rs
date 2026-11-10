@@ -5,7 +5,7 @@
 //! constants, along with `classify` (status code → outcome, including 401/403 consecutive
 //! escalation) and `apply_outcome` (accounting entry: EWMA observation, cooldown, slow-start).
 //! The shared vocabulary ([`ChannelOutcome`] / [`TpsSample`] / the EWMA constants) lives on the
-//! injection surface (`gateway-contract`) and is re-exported by the parent module. The ladder
+//! vocabulary crate (`gateway-core`) and is re-exported by the parent module. The ladder
 //! durations themselves live in the [`cooldown`] submodule.
 
 use super::cooldown::{finish_cooldown, start_cooldown};

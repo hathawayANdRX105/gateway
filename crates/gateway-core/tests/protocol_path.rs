@@ -4,7 +4,7 @@
 //! the fallback stays OpenAI; Gemini URLs expose the path-carried model and the
 //! streaming verb; unrelated paths are no longer misclassified by substring luck.
 
-use gateway_contract::{ProtocolKind, RequestPath};
+use gateway_core::{ProtocolKind, RequestPath};
 
 /// Purpose: pin the shape + dialect pair for every recognized family in one table.
 /// Scenario: representative paths of the guarded scope (`/v1*`, `/v1beta*`).

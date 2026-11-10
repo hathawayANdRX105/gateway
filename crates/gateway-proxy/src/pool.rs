@@ -9,7 +9,7 @@
 //! leaves through the old egress), which buys a lock-free read path. Strong consistency
 //! would require a read-write lock and per-request contention — not worth it.
 //!
-//! The snapshot type itself is vocabulary and lives in `gateway-contract::proxy::pool`; it is
+//! The snapshot type itself is vocabulary and lives in `gateway-core::proxy::pool`; it is
 //! re-exported here so existing `gateway_proxy::pool::*` paths keep resolving.
 
 use arc_swap::ArcSwap;

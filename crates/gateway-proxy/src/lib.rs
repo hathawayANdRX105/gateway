@@ -11,7 +11,7 @@
 //! ## What is vocabulary and what is engine
 //!
 //! Nothing here is vocabulary. Node types, the URL / share-link parsers, the snapshot
-//! type, and the admin-plane port live in `gateway-contract::proxy` (the injection surface);
+//! type, and the admin-plane port live in `gateway-core::proxy` (the vocabulary surface);
 //! this crate re-exports them at the crate root so existing call sites keep
 //! resolving. Everything that dials, leases, caches, or probes stays here.
 //!

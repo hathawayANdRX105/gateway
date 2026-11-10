@@ -47,7 +47,7 @@ impl Protocol {
     /// Inbound protocol decision (pipeline side) → this crate's format identifier.
     ///
     /// The two value domains correspond one-to-one but belong to different crates:
-    /// `ProtocolKind` is the shared-surface inbound contract (lives in `gateway-contract`,
+    /// `ProtocolKind` is the shared-surface inbound contract (lives in `gateway-core`,
     /// re-exported by the pipeline facade, passed between stages), while `Protocol`
     /// only serves protocol conversion. The conversion is centralized here so every call site
     /// does not write its own match.

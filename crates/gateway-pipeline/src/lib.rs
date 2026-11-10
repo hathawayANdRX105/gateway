@@ -31,11 +31,11 @@ pub use ctx::{
     BodyReader, BodySource, DropGuards, PipeStream, RequestCtx, RequestMeta, RouteAttribution,
     SelectedRoute, StreamedAccum, UpstreamResponse,
 };
-// Inbound protocol vocabulary lives in the shared surface (gateway-contract); this facade
+// Inbound protocol vocabulary lives in the shared vocabulary (gateway-core); this facade
 // keeps the historical `gateway_pipeline::ProtocolKind` path working.
 pub use gateway_core::ProtocolKind;
 pub use pipeline::Pipeline;
-pub use router::{build_router, error_to_response};
+pub use router::{build_router, data_plane_guard, error_to_response};
 pub use stage::{Stage, StageError, StageOutcome, UpstreamError};
 
 /// Product of token authentication (Admission writes it into `RequestCtx.token`)

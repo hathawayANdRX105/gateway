@@ -8,7 +8,7 @@
 //! The 400/404 controls pin the flip side: the catch-all must stay
 //! non-retryable, and 408 must not make all of 4xx retryable.
 
-use app_contract::error::{NormalizedError, code};
+use gateway_core::error::{NormalizedError, code};
 
 #[test]
 fn upstream_408_is_a_retryable_upstream_error() {

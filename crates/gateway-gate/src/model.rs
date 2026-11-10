@@ -41,6 +41,26 @@ impl Gate for ModelGate {
 }
 
 /// Body `model` field and max_tokens, using field names shared by OpenAI and Anthropic.
+///
+/// A gate whose only job is to parse the model: assemblies that run no
+/// authentication (see the facade's `Shape::Open`) still need `requested_model`
+/// in the context before forwarding, so parsing must be expressible without a
+/// token. It runs `ensure_model_parsed` and nothing else — no allowlist, no
+/// token lookup.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ModelParseGate;
+
+#[async_trait]
+impl Gate for ModelParseGate {
+    fn name(&self) -> &'static str {
+        "model-parse"
+    }
+
+    async fn check(&self, ctx: &mut GateCtx) -> Result<(), Rejection> {
+        ctx.ensure_model_parsed()
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BodyModel {
     pub model: Option<String>,

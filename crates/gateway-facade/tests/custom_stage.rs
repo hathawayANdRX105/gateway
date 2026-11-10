@@ -16,20 +16,9 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 
-use gateway_core::dispatch::Snapshot;
-use gateway_core::egress::Timeouts;
-use gateway_core::gate::{
-    GroupSnapshot, SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot, TokenEntry,
-    TokenSnapshot, UserSnapshot,
-};
-use gateway_core::health::HealthSetting;
-use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
-use gateway_facade::{Context, GatewayBuilder, GatewayConfig, ResponseCacheTuning, State};
-use gateway_forward::egress::{Egress, ForwardedResponse};
-use gateway_gate::auth::sha256;
-use gateway_pipeline::{RequestCtx, Stage, StageError, StageOutcome};
-use gateway_proxy::{ProxyManager, ProxySnapshot};
-use gateway_security::FilterConfig;
+// Single-entry discipline: this test names `gateway_facade` and nothing else —
+// the vocabulary and the engine types it touches arrive through the re-exports.
+use gateway_facade::*;
 
 /// The only egress in this test: never called — selection fails on the empty
 /// catalog before the forwarding stage would reach the upstream.
@@ -45,9 +34,8 @@ impl Egress for UnreachableEgress {
         _timeouts: &'a Timeouts,
     ) -> std::pin::Pin<
         Box<
-            dyn std::future::Future<
-                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
-                > + Send
+            dyn std::future::Future<Output = Result<ForwardedResponse, NormalizedError>>
+                + Send
                 + 'a,
         >,
     > {
@@ -141,20 +129,9 @@ fn facade_context() -> Context {
         Arc::new(ArcSwap::from(Arc::new(GroupSnapshot::default())));
 
     Context {
-        egress: Arc::new(UnreachableEgress),
-        wire_proxy_pool: false,
-        proxies: Arc::new(ProxyManager::new()),
-        proxy_snapshot: ProxySnapshot::default(),
-        security: FilterConfig::default(),
-        state: State {
-            dispatch: Snapshot::default(),
-            token_snapshot,
-            user_snapshot,
-            group_snapshot,
-        },
-        tuning: GatewayConfig {
+        config: Config {
             health: HealthSetting::default(),
-            retry_policy: gateway_core::dispatch::RetryPolicy::default(),
+            retry_policy: RetryPolicy::default(),
             timeouts: Timeouts::default(),
             digest_enabled: false,
             sticky_enabled: false,
@@ -168,10 +145,23 @@ fn facade_context() -> Context {
                 max_total_bytes: 1 << 20,
                 max_entry_bytes: 1 << 18,
             }),
+            ..Config::default()
         },
-        quota_gate: None,
-        settle: None,
-        ledger: None,
+        components: Components {
+            egress: Arc::new(UnreachableEgress),
+            wire_proxy_pool: false,
+            proxies: Arc::new(ProxyManager::new()),
+            proxy_snapshot: ProxySnapshot::default(),
+            state: State {
+                dispatch: Snapshot::default(),
+                token_snapshot,
+                user_snapshot,
+                group_snapshot,
+            },
+            quota_gate: None,
+            settle: None,
+            ledger: None,
+        },
     }
 }
 

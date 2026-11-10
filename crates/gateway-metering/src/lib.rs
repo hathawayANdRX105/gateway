@@ -13,7 +13,7 @@
 //! [`estimate`].
 //!
 //! The two things the apps side exchanges with this engine — the [`SettleSink`] delivery
-//! channel and the [`pricing::PriceTable`] port — are declared in `gateway-contract::metering`
+//! channel and the [`pricing::PriceTable`] port — are declared in `gateway-core::metering`
 //! and re-exported here, so the billing crate can implement them without depending on this
 //! crate.
 //! The WAL push to center is driven by service/sync; this module only "produces
