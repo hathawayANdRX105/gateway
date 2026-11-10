@@ -172,7 +172,7 @@ pub struct Catalog {
 }
 
 /// What the catalog contains, reported by the readiness endpoint.
-#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CatalogCounts {
     pub channels: usize,
     pub route_units: usize,

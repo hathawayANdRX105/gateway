@@ -84,8 +84,8 @@ impl DaemonConfig {
     }
 
     fn validate(&self) -> anyhow::Result<()> {
-        if self.listen.trim().is_empty() && self.uds_path.is_none() {
-            anyhow::bail!("config: at least one of listen / uds_path must be set");
+        if self.listen.trim().is_empty() {
+            anyhow::bail!("config: listen must not be empty (uds_path is additional)");
         }
         if self.max_request_bytes == 0 {
             anyhow::bail!("config: max_request_bytes must be greater than zero");
