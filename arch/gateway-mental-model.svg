@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3213" viewBox="0 0 1560 3213" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3187.3" viewBox="0 0 1560 3187.3" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
 <defs>
 <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
 </defs>
-<rect width="1560" height="3213" fill="#ffffff"/>
+<rect width="1560" height="3187.3" fill="#ffffff"/>
 <rect x="0" y="0" width="1560" height="122" fill="#0f172a"/>
 <text x="780.0" y="54" font-size="30" fill="#f8fafc" font-weight="700" text-anchor="middle">gateway 数据面心智模型 —— LLM 网关的装配、调度与转发</text>
 <text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">库 + 独立进程（12 crate）：gatewayd（根 src/）以 actix-web 承载传输，向下进入 gateway-pipeline；gateway-core 承载词汇与端口，gateway-facade 是装配面</text>
@@ -1468,7 +1468,7 @@
 <text x="1046.9" y="1947.7" font-size="14.5" fill="#0f172a" font-weight="700">response</text>
 <text x="1111.9" y="1947.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
 <text x="1115.2" y="1947.7" font-size="14.5" fill="#0f172a" font-weight="700">extensions</text>
-<rect x="48" y="2018.5" width="719.0" height="319.8" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="1.7"/>
+<rect x="48" y="2018.5" width="1464.0" height="319.8" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="1.7" />
 <text x="68.0" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700">上</text>
 <text x="85.5" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700">游</text>
 <text x="103.0" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700">厂</text>
@@ -1478,7 +1478,7 @@
 <text x="159.5" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
 <text x="163.4" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700">出</text>
 <text x="180.9" y="2052.9" font-size="17.5" fill="#0f172a" font-weight="700">口</text>
-<text x="747.0" y="2052.9" font-size="14" fill="#dc2626" font-weight="700" text-anchor="end">gateway-forward · gateway-proxy</text>
+<text x="1492.0" y="2052.9" font-size="14" fill="#dc2626" font-weight="700" text-anchor="end">gateway-forward · gateway-proxy</text>
 <text x="68.0" y="2089.2" font-size="15" fill="#dc2626">•</text>
 <text x="88.0" y="2089.2" font-size="15" fill="#0f172a" font-weight="700">端</text>
 <text x="103.0" y="2089.2" font-size="15" fill="#0f172a" font-weight="700">点</text>
@@ -1728,927 +1728,927 @@
 <text x="238.0" y="2325.4" font-size="15" fill="#1e293b">代</text>
 <text x="253.0" y="2325.4" font-size="15" fill="#1e293b">理</text>
 <text x="268.0" y="2325.4" font-size="15" fill="#1e293b">池</text>
-<rect x="793.0" y="2018.5" width="719.0" height="793" rx="12" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="813.0" y="2054.6" font-size="17.5" fill="#5b21b6" font-weight="700">调度内部 —— 被 ForwardStage 每轮调用</text>
-<text x="1492.0" y="2054.6" font-size="14" fill="#7c3aed" font-weight="700" text-anchor="end">crate gateway-dispatch</text>
-<rect x="813.0" y="2070.6" width="679.0" height="351.2" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="829.0" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">P2C</text>
-<text x="857.7" y="2098.9" font-size="15" fill="#0f172a" font-weight="700"> </text>
-<text x="861.1" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">选</text>
-<text x="876.1" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">择</text>
-<text x="891.1" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">器</text>
-<text x="906.1" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">（</text>
-<text x="921.1" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">selector.rs</text>
-<text x="997.7" y="2098.9" font-size="15" fill="#0f172a" font-weight="700">）</text>
-<text x="829.0" y="2131.4" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2131.4" font-size="14.5" fill="#0f172a" font-weight="700">候</text>
-<text x="863.5" y="2131.4" font-size="14.5" fill="#0f172a" font-weight="700">选</text>
-<text x="878.0" y="2131.4" font-size="14.5" fill="#0f172a" font-weight="700">来</text>
-<text x="892.5" y="2131.4" font-size="14.5" fill="#0f172a" font-weight="700">源</text>
-<text x="907.0" y="2131.4" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="921.5" y="2131.4" font-size="14.5" fill="#1e293b">Snapshot</text>
-<text x="985.7" y="2131.4" font-size="14.5" fill="#1e293b">（</text>
-<text x="1000.2" y="2131.4" font-size="14.5" fill="#1e293b">Arc&lt;ArcSwap&gt;</text>
-<text x="1096.9" y="2131.4" font-size="14.5" fill="#1e293b">）</text>
-<text x="1111.4" y="2131.4" font-size="14.5" fill="#1e293b">按</text>
-<text x="1125.9" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1129.1" y="2131.4" font-size="14.5" fill="#1e293b">group+model</text>
-<text x="1220.7" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1224.0" y="2131.4" font-size="14.5" fill="#1e293b">命</text>
-<text x="1238.5" y="2131.4" font-size="14.5" fill="#1e293b">中</text>
-<text x="1253.0" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1256.2" y="2131.4" font-size="14.5" fill="#1e293b">route</text>
-<text x="1292.5" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1295.8" y="2131.4" font-size="14.5" fill="#1e293b">units</text>
-<text x="1329.5" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1332.8" y="2131.4" font-size="14.5" fill="#1e293b">→</text>
-<text x="1347.2" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1350.5" y="2131.4" font-size="14.5" fill="#1e293b">空</text>
-<text x="1365.0" y="2131.4" font-size="14.5" fill="#1e293b">则</text>
-<text x="1379.5" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1382.8" y="2131.4" font-size="14.5" fill="#1e293b">fallback</text>
-<text x="1435.8" y="2131.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1439.1" y="2131.4" font-size="14.5" fill="#1e293b">渠</text>
-<text x="1453.6" y="2131.4" font-size="14.5" fill="#1e293b">道</text>
-<text x="829.0" y="2156.8" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2156.8" font-size="14.5" fill="#1e293b">→</text>
-<text x="863.5" y="2156.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="866.8" y="2156.8" font-size="14.5" fill="#1e293b">渠</text>
-<text x="881.2" y="2156.8" font-size="14.5" fill="#1e293b">道</text>
-<text x="895.8" y="2156.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="899.0" y="2156.8" font-size="14.5" fill="#1e293b">status</text>
-<text x="939.6" y="2156.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="942.8" y="2156.8" font-size="14.5" fill="#1e293b">过</text>
-<text x="957.3" y="2156.8" font-size="14.5" fill="#1e293b">滤</text>
-<text x="971.8" y="2156.8" font-size="14.5" fill="#1e293b">；</text>
-<text x="986.3" y="2156.8" font-size="14.5" fill="#1e293b">set_snapshot</text>
-<text x="1076.9" y="2156.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="1080.1" y="2156.8" font-size="14.5" fill="#1e293b">热</text>
-<text x="1094.6" y="2156.8" font-size="14.5" fill="#1e293b">替</text>
-<text x="1109.1" y="2156.8" font-size="14.5" fill="#1e293b">换</text>
-<text x="829.0" y="2182.3" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">prior</text>
-<text x="884.5" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="887.8" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
-<text x="896.3" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="899.6" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">权</text>
-<text x="914.1" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">重</text>
-<text x="928.6" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="931.9" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="946.4" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="949.7" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">slow-start</text>
-<text x="1021.9" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1025.2" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">ramp</text>
-<text x="1063.0" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1066.3" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="1080.8" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1084.1" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">sticky</text>
-<text x="1126.2" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1129.5" y="2182.3" font-size="14.5" fill="#0f172a" font-weight="700">boost</text>
-<text x="1169.9" y="2182.3" font-size="14.5" fill="#1e293b">，</text>
-<text x="1184.4" y="2182.3" font-size="14.5" fill="#1e293b">归</text>
-<text x="1198.9" y="2182.3" font-size="14.5" fill="#1e293b">一</text>
-<text x="1213.4" y="2182.3" font-size="14.5" fill="#1e293b">化</text>
-<text x="1227.9" y="2182.3" font-size="14.5" fill="#1e293b">（</text>
-<text x="1242.4" y="2182.3" font-size="14.5" fill="#1e293b">Σprior=1</text>
-<text x="1300.2" y="2182.3" font-size="14.5" fill="#1e293b">）</text>
-<text x="1314.7" y="2182.3" font-size="14.5" fill="#1e293b">——</text>
-<text x="1339.0" y="2182.3" font-size="14.5" fill="#1e293b"> </text>
-<text x="1342.2" y="2182.3" font-size="14.5" fill="#1e293b">只</text>
-<text x="1356.7" y="2182.3" font-size="14.5" fill="#1e293b">决</text>
-<text x="1371.2" y="2182.3" font-size="14.5" fill="#1e293b">定</text>
-<text x="1385.7" y="2182.3" font-size="14.5" fill="#1e293b">谁</text>
-<text x="1400.2" y="2182.3" font-size="14.5" fill="#1e293b">被</text>
-<text x="1414.7" y="2182.3" font-size="14.5" fill="#1e293b">抽</text>
-<text x="1429.2" y="2182.3" font-size="14.5" fill="#1e293b">中</text>
-<text x="1443.7" y="2182.3" font-size="14.5" fill="#1e293b">，</text>
-<text x="1458.2" y="2182.3" font-size="14.5" fill="#1e293b">不</text>
-<text x="829.0" y="2207.8" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2207.8" font-size="14.5" fill="#1e293b">进</text>
-<text x="863.5" y="2207.8" font-size="14.5" fill="#1e293b">决</text>
-<text x="878.0" y="2207.8" font-size="14.5" fill="#1e293b">策</text>
-<text x="892.5" y="2207.8" font-size="14.5" fill="#1e293b">分</text>
-<text x="829.0" y="2233.2" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">likelihood</text>
-<text x="920.5" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="923.8" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
-<text x="932.3" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="935.6" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">时</text>
-<text x="950.1" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">延</text>
-<text x="964.6" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="967.9" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="982.4" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="985.7" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">健</text>
-<text x="1000.2" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">康</text>
-<text x="1014.7" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
-<text x="1029.2" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1032.5" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="1047.0" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1050.3" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">并</text>
-<text x="1064.8" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">发</text>
-<text x="1079.3" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">余</text>
-<text x="1093.8" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">量</text>
-<text x="1108.3" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1111.6" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="1126.1" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1129.4" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">TPM</text>
-<text x="1160.5" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1163.8" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">余</text>
-<text x="1178.3" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">量</text>
-<text x="1192.8" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1196.1" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
-<text x="1210.6" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1213.9" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">吞</text>
-<text x="1228.4" y="2233.2" font-size="14.5" fill="#0f172a" font-weight="700">吐</text>
-<text x="1242.9" y="2233.2" font-size="14.5" fill="#1e293b">，</text>
-<text x="1257.4" y="2233.2" font-size="14.5" fill="#1e293b">clamp</text>
-<text x="1299.5" y="2233.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="1302.8" y="2233.2" font-size="14.5" fill="#1e293b">到</text>
-<text x="1317.2" y="2233.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="1320.5" y="2233.2" font-size="14.5" fill="#1e293b">[LIKELIHOOD_FLOOR,</text>
-<text x="829.0" y="2258.7" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2258.7" font-size="14.5" fill="#1e293b">1.0]</text>
-<text x="829.0" y="2284.2" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2284.2" font-size="14.5" fill="#0f172a" font-weight="700">P2C</text>
-<text x="876.8" y="2284.2" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="891.2" y="2284.2" font-size="14.5" fill="#1e293b">按</text>
-<text x="905.8" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="909.0" y="2284.2" font-size="14.5" fill="#1e293b">prior</text>
-<text x="942.0" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="945.2" y="2284.2" font-size="14.5" fill="#1e293b">抽</text>
-<text x="959.8" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="963.0" y="2284.2" font-size="14.5" fill="#1e293b">2</text>
-<text x="971.0" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="974.3" y="2284.2" font-size="14.5" fill="#1e293b">个</text>
-<text x="988.8" y="2284.2" font-size="14.5" fill="#1e293b">候</text>
-<text x="1003.3" y="2284.2" font-size="14.5" fill="#1e293b">选</text>
-<text x="1017.8" y="2284.2" font-size="14.5" fill="#1e293b">比</text>
-<text x="1032.3" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="1035.5" y="2284.2" font-size="14.5" fill="#1e293b">likelihood</text>
-<text x="1102.8" y="2284.2" font-size="14.5" fill="#1e293b">，</text>
-<text x="1117.3" y="2284.2" font-size="14.5" fill="#1e293b">加</text>
-<text x="1131.8" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="1135.1" y="2284.2" font-size="14.5" fill="#1e293b">explore</text>
-<text x="1185.6" y="2284.2" font-size="14.5" fill="#1e293b"> </text>
-<text x="1188.9" y="2284.2" font-size="14.5" fill="#1e293b">随</text>
-<text x="1203.4" y="2284.2" font-size="14.5" fill="#1e293b">机</text>
-<text x="1217.9" y="2284.2" font-size="14.5" fill="#1e293b">探</text>
-<text x="1232.4" y="2284.2" font-size="14.5" fill="#1e293b">索</text>
-<text x="1246.9" y="2284.2" font-size="14.5" fill="#1e293b">（</text>
-<text x="1261.4" y="2284.2" font-size="14.5" fill="#1e293b">防</text>
-<text x="1275.9" y="2284.2" font-size="14.5" fill="#1e293b">冷</text>
-<text x="1290.4" y="2284.2" font-size="14.5" fill="#1e293b">启</text>
-<text x="1304.9" y="2284.2" font-size="14.5" fill="#1e293b">动</text>
-<text x="1319.4" y="2284.2" font-size="14.5" fill="#1e293b">饿</text>
-<text x="1333.9" y="2284.2" font-size="14.5" fill="#1e293b">死</text>
-<text x="1348.4" y="2284.2" font-size="14.5" fill="#1e293b">新</text>
-<text x="1362.9" y="2284.2" font-size="14.5" fill="#1e293b">渠</text>
-<text x="1377.4" y="2284.2" font-size="14.5" fill="#1e293b">道</text>
-<text x="1391.9" y="2284.2" font-size="14.5" fill="#1e293b">）</text>
-<text x="829.0" y="2309.7" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2309.7" font-size="14.5" fill="#0f172a" font-weight="700">兜</text>
-<text x="863.5" y="2309.7" font-size="14.5" fill="#0f172a" font-weight="700">底</text>
-<text x="878.0" y="2309.7" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="892.5" y="2309.7" font-size="14.5" fill="#1e293b">池</text>
-<text x="907.0" y="2309.7" font-size="14.5" fill="#1e293b">空</text>
-<text x="921.5" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="924.8" y="2309.7" font-size="14.5" fill="#1e293b">→</text>
-<text x="939.2" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="942.5" y="2309.7" font-size="14.5" fill="#1e293b">recall_fainted</text>
-<text x="1035.4" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1038.7" y="2309.7" font-size="14.5" fill="#1e293b">忽</text>
-<text x="1053.2" y="2309.7" font-size="14.5" fill="#1e293b">略</text>
-<text x="1067.7" y="2309.7" font-size="14.5" fill="#1e293b">部</text>
-<text x="1082.2" y="2309.7" font-size="14.5" fill="#1e293b">分</text>
-<text x="1096.7" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1099.9" y="2309.7" font-size="14.5" fill="#1e293b">filter</text>
-<text x="1131.6" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1134.9" y="2309.7" font-size="14.5" fill="#1e293b">召</text>
-<text x="1149.4" y="2309.7" font-size="14.5" fill="#1e293b">回</text>
-<text x="1163.9" y="2309.7" font-size="14.5" fill="#1e293b">；</text>
-<text x="1178.4" y="2309.7" font-size="14.5" fill="#1e293b">再</text>
-<text x="1192.9" y="2309.7" font-size="14.5" fill="#1e293b">空</text>
-<text x="1207.4" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1210.6" y="2309.7" font-size="14.5" fill="#1e293b">→</text>
-<text x="1225.1" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1228.4" y="2309.7" font-size="14.5" fill="#1e293b">ModelUnknown</text>
-<text x="1335.4" y="2309.7" font-size="14.5" fill="#1e293b">（</text>
-<text x="1349.9" y="2309.7" font-size="14.5" fill="#1e293b">终</text>
-<text x="1364.4" y="2309.7" font-size="14.5" fill="#1e293b">端</text>
-<text x="1378.9" y="2309.7" font-size="14.5" fill="#1e293b"> </text>
-<text x="1382.2" y="2309.7" font-size="14.5" fill="#1e293b">404</text>
-<text x="1406.3" y="2309.7" font-size="14.5" fill="#1e293b">，</text>
-<text x="1420.8" y="2309.7" font-size="14.5" fill="#1e293b">客</text>
-<text x="1435.3" y="2309.7" font-size="14.5" fill="#1e293b">户</text>
-<text x="1449.8" y="2309.7" font-size="14.5" fill="#1e293b">端</text>
-<text x="829.0" y="2335.1" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2335.1" font-size="14.5" fill="#1e293b">不</text>
-<text x="863.5" y="2335.1" font-size="14.5" fill="#1e293b">该</text>
-<text x="878.0" y="2335.1" font-size="14.5" fill="#1e293b">重</text>
-<text x="892.5" y="2335.1" font-size="14.5" fill="#1e293b">试</text>
-<text x="907.0" y="2335.1" font-size="14.5" fill="#1e293b">）</text>
-<text x="829.0" y="2360.6" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">调</text>
-<text x="863.5" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">度</text>
-<text x="878.0" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">侧</text>
-<text x="892.5" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">限</text>
-<text x="907.0" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">流</text>
-<text x="921.5" y="2360.6" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="936.0" y="2360.6" font-size="14.5" fill="#1e293b">limits</text>
-<text x="973.6" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="976.9" y="2360.6" font-size="14.5" fill="#1e293b">非</text>
-<text x="991.4" y="2360.6" font-size="14.5" fill="#1e293b">空</text>
-<text x="1005.9" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1009.1" y="2360.6" font-size="14.5" fill="#1e293b">→</text>
-<text x="1023.6" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1026.9" y="2360.6" font-size="14.5" fill="#1e293b">pick_within_limits</text>
-<text x="1151.8" y="2360.6" font-size="14.5" fill="#1e293b">；</text>
-<text x="1166.2" y="2360.6" font-size="14.5" fill="#1e293b">被</text>
-<text x="1180.8" y="2360.6" font-size="14.5" fill="#1e293b">限</text>
-<text x="1195.2" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1198.5" y="2360.6" font-size="14.5" fill="#1e293b">→</text>
-<text x="1213.0" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1216.2" y="2360.6" font-size="14.5" fill="#1e293b">RateLimited</text>
-<text x="1298.1" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1301.4" y="2360.6" font-size="14.5" fill="#1e293b">→</text>
-<text x="1315.9" y="2360.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1319.1" y="2360.6" font-size="14.5" fill="#1e293b">429</text>
-<text x="829.0" y="2386.1" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2386.1" font-size="14.5" fill="#0f172a" font-weight="700">共</text>
-<text x="863.5" y="2386.1" font-size="14.5" fill="#0f172a" font-weight="700">享</text>
-<text x="878.0" y="2386.1" font-size="14.5" fill="#0f172a" font-weight="700">状</text>
-<text x="892.5" y="2386.1" font-size="14.5" fill="#0f172a" font-weight="700">态</text>
-<text x="907.0" y="2386.1" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="921.5" y="2386.1" font-size="14.5" fill="#1e293b">并</text>
-<text x="936.0" y="2386.1" font-size="14.5" fill="#1e293b">发</text>
-<text x="950.5" y="2386.1" font-size="14.5" fill="#1e293b">信</text>
-<text x="965.0" y="2386.1" font-size="14.5" fill="#1e293b">号</text>
-<text x="979.5" y="2386.1" font-size="14.5" fill="#1e293b">量</text>
-<text x="994.0" y="2386.1" font-size="14.5" fill="#1e293b">与</text>
-<text x="1008.5" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1011.8" y="2386.1" font-size="14.5" fill="#1e293b">token</text>
-<text x="1050.4" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1053.6" y="2386.1" font-size="14.5" fill="#1e293b">预</text>
-<text x="1068.1" y="2386.1" font-size="14.5" fill="#1e293b">算</text>
-<text x="1082.6" y="2386.1" font-size="14.5" fill="#1e293b">和</text>
-<text x="1097.1" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1100.4" y="2386.1" font-size="14.5" fill="#1e293b">ForwardStage</text>
-<text x="1194.4" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1197.7" y="2386.1" font-size="14.5" fill="#1e293b">是</text>
-<text x="1212.2" y="2386.1" font-size="14.5" fill="#1e293b">同</text>
-<text x="1226.7" y="2386.1" font-size="14.5" fill="#1e293b">一</text>
-<text x="1241.2" y="2386.1" font-size="14.5" fill="#1e293b">实</text>
-<text x="1255.7" y="2386.1" font-size="14.5" fill="#1e293b">例</text>
-<text x="1270.2" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1273.4" y="2386.1" font-size="14.5" fill="#1e293b">——</text>
-<text x="1297.7" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1301.0" y="2386.1" font-size="14.5" fill="#1e293b">P2C</text>
-<text x="1327.5" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1330.7" y="2386.1" font-size="14.5" fill="#1e293b">读</text>
-<text x="1345.2" y="2386.1" font-size="14.5" fill="#1e293b">到</text>
-<text x="1359.7" y="2386.1" font-size="14.5" fill="#1e293b">的</text>
-<text x="1374.2" y="2386.1" font-size="14.5" fill="#1e293b">余</text>
-<text x="1388.7" y="2386.1" font-size="14.5" fill="#1e293b">量</text>
-<text x="1403.2" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1406.5" y="2386.1" font-size="14.5" fill="#1e293b">=</text>
-<text x="1414.5" y="2386.1" font-size="14.5" fill="#1e293b"> </text>
-<text x="1417.8" y="2386.1" font-size="14.5" fill="#1e293b">真</text>
-<text x="1432.2" y="2386.1" font-size="14.5" fill="#1e293b">实</text>
-<text x="1446.8" y="2386.1" font-size="14.5" fill="#1e293b">占</text>
-<text x="829.0" y="2411.6" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2411.6" font-size="14.5" fill="#1e293b">用</text>
-<rect x="813.0" y="2435.8" width="679.0" height="361.6" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="829.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">健</text>
-<text x="844.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">康</text>
-<text x="859.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">度</text>
-<text x="874.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">状</text>
-<text x="889.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">态</text>
-<text x="904.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">机</text>
-<text x="919.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">（</text>
-<text x="934.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">health.rs</text>
-<text x="1000.3" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">，</text>
-<text x="1015.3" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">移</text>
-<text x="1030.3" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">植</text>
-<text x="1045.3" y="2464.1" font-size="15" fill="#0f172a" font-weight="700"> </text>
-<text x="1048.7" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">new-api</text>
-<text x="1108.5" y="2464.1" font-size="15" fill="#0f172a" font-weight="700"> </text>
-<text x="1112.0" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">track_health.go</text>
-<text x="1229.2" y="2464.1" font-size="15" fill="#0f172a" font-weight="700">）</text>
-<text x="829.0" y="2496.6" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">五</text>
-<text x="863.5" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">类</text>
-<text x="878.0" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">结</text>
-<text x="892.5" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">果</text>
-<text x="907.0" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="910.3" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">→</text>
-<text x="924.8" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="928.1" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">观</text>
-<text x="942.6" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">测</text>
-<text x="957.1" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">值</text>
-<text x="971.6" y="2496.6" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="986.1" y="2496.6" font-size="14.5" fill="#1e293b">Success</text>
-<text x="1039.2" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1042.5" y="2496.6" font-size="14.5" fill="#1e293b">1.0</text>
-<text x="1062.6" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1065.8" y="2496.6" font-size="14.5" fill="#1e293b">/</text>
-<text x="1071.5" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1074.8" y="2496.6" font-size="14.5" fill="#1e293b">429</text>
-<text x="1098.9" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1102.2" y="2496.6" font-size="14.5" fill="#1e293b">0.7</text>
-<text x="1122.3" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1125.5" y="2496.6" font-size="14.5" fill="#1e293b">/</text>
-<text x="1131.2" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1134.5" y="2496.6" font-size="14.5" fill="#1e293b">Fatal</text>
-<text x="1167.3" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1170.5" y="2496.6" font-size="14.5" fill="#1e293b">0</text>
-<text x="1178.6" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1181.8" y="2496.6" font-size="14.5" fill="#1e293b">/</text>
-<text x="1187.5" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1190.8" y="2496.6" font-size="14.5" fill="#1e293b">Neutral</text>
-<text x="1241.1" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1244.3" y="2496.6" font-size="14.5" fill="#1e293b">不</text>
-<text x="1258.8" y="2496.6" font-size="14.5" fill="#1e293b">计</text>
-<text x="1273.3" y="2496.6" font-size="14.5" fill="#1e293b">分</text>
-<text x="1287.8" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1291.1" y="2496.6" font-size="14.5" fill="#1e293b">/</text>
-<text x="1296.8" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1300.0" y="2496.6" font-size="14.5" fill="#1e293b">401·403</text>
-<text x="1356.4" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1359.7" y="2496.6" font-size="14.5" fill="#1e293b">连</text>
-<text x="1374.2" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1377.4" y="2496.6" font-size="14.5" fill="#1e293b">3</text>
-<text x="1385.5" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1388.7" y="2496.6" font-size="14.5" fill="#1e293b">次</text>
-<text x="1403.2" y="2496.6" font-size="14.5" fill="#1e293b">升</text>
-<text x="1417.7" y="2496.6" font-size="14.5" fill="#1e293b">级</text>
-<text x="1432.2" y="2496.6" font-size="14.5" fill="#1e293b"> </text>
-<text x="1435.5" y="2496.6" font-size="14.5" fill="#1e293b">Fatal</text>
-<text x="829.0" y="2522.0" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">EWMA</text>
-<text x="892.9" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="896.2" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">评</text>
-<text x="910.7" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
-<text x="925.2" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="928.5" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">score</text>
-<text x="966.5" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="969.8" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
-<text x="978.3" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="981.6" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">α·obs</text>
-<text x="1025.3" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1028.6" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">+</text>
-<text x="1037.2" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="1040.5" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">(1−α)·score</text>
-<text x="1124.8" y="2522.0" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="1139.3" y="2522.0" font-size="14.5" fill="#1e293b">未</text>
-<text x="1153.8" y="2522.0" font-size="14.5" fill="#1e293b">到</text>
-<text x="1168.3" y="2522.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1171.6" y="2522.0" font-size="14.5" fill="#1e293b">MinRequests</text>
-<text x="1257.6" y="2522.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1260.9" y="2522.0" font-size="14.5" fill="#1e293b">不</text>
-<text x="1275.4" y="2522.0" font-size="14.5" fill="#1e293b">更</text>
-<text x="1289.9" y="2522.0" font-size="14.5" fill="#1e293b">新</text>
-<text x="1304.4" y="2522.0" font-size="14.5" fill="#1e293b">；</text>
-<text x="1318.9" y="2522.0" font-size="14.5" fill="#1e293b">下</text>
-<text x="1333.4" y="2522.0" font-size="14.5" fill="#1e293b">限</text>
-<text x="1347.9" y="2522.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1351.1" y="2522.0" font-size="14.5" fill="#1e293b">MinScore</text>
-<text x="1413.7" y="2522.0" font-size="14.5" fill="#1e293b">；</text>
-<text x="1428.2" y="2522.0" font-size="14.5" fill="#1e293b">15min</text>
-<text x="829.0" y="2547.5" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2547.5" font-size="14.5" fill="#1e293b">时</text>
-<text x="863.5" y="2547.5" font-size="14.5" fill="#1e293b">间</text>
-<text x="878.0" y="2547.5" font-size="14.5" fill="#1e293b">常</text>
-<text x="892.5" y="2547.5" font-size="14.5" fill="#1e293b">数</text>
-<text x="907.0" y="2547.5" font-size="14.5" fill="#1e293b">向</text>
-<text x="921.5" y="2547.5" font-size="14.5" fill="#1e293b">默</text>
-<text x="936.0" y="2547.5" font-size="14.5" fill="#1e293b">认</text>
-<text x="950.5" y="2547.5" font-size="14.5" fill="#1e293b">分</text>
-<text x="965.0" y="2547.5" font-size="14.5" fill="#1e293b">衰</text>
-<text x="979.5" y="2547.5" font-size="14.5" fill="#1e293b">减</text>
-<text x="994.0" y="2547.5" font-size="14.5" fill="#1e293b">（</text>
-<text x="1008.5" y="2547.5" font-size="14.5" fill="#1e293b">半</text>
-<text x="1023.0" y="2547.5" font-size="14.5" fill="#1e293b">衰</text>
-<text x="1037.5" y="2547.5" font-size="14.5" fill="#1e293b">期</text>
-<text x="1052.0" y="2547.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="1055.2" y="2547.5" font-size="14.5" fill="#1e293b">τ·ln2</text>
-<text x="1091.5" y="2547.5" font-size="14.5" fill="#1e293b">）</text>
-<text x="829.0" y="2573.0" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2573.0" font-size="14.5" fill="#0f172a" font-weight="700">时</text>
-<text x="863.5" y="2573.0" font-size="14.5" fill="#0f172a" font-weight="700">延</text>
-<text x="878.0" y="2573.0" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="881.3" y="2573.0" font-size="14.5" fill="#0f172a" font-weight="700">EWMA</text>
-<text x="925.2" y="2573.0" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="939.7" y="2573.0" font-size="14.5" fill="#1e293b">上</text>
-<text x="954.2" y="2573.0" font-size="14.5" fill="#1e293b">升</text>
-<text x="968.7" y="2573.0" font-size="14.5" fill="#1e293b">立</text>
-<text x="983.2" y="2573.0" font-size="14.5" fill="#1e293b">即</text>
-<text x="997.7" y="2573.0" font-size="14.5" fill="#1e293b">、</text>
-<text x="1012.2" y="2573.0" font-size="14.5" fill="#1e293b">下</text>
-<text x="1026.7" y="2573.0" font-size="14.5" fill="#1e293b">降</text>
-<text x="1041.2" y="2573.0" font-size="14.5" fill="#1e293b">以</text>
-<text x="1055.7" y="2573.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1058.9" y="2573.0" font-size="14.5" fill="#1e293b">10s</text>
-<text x="1081.8" y="2573.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1085.0" y="2573.0" font-size="14.5" fill="#1e293b">常</text>
-<text x="1099.5" y="2573.0" font-size="14.5" fill="#1e293b">数</text>
-<text x="1114.0" y="2573.0" font-size="14.5" fill="#1e293b">回</text>
-<text x="1128.5" y="2573.0" font-size="14.5" fill="#1e293b">贴</text>
-<text x="1143.0" y="2573.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1146.3" y="2573.0" font-size="14.5" fill="#1e293b">——</text>
-<text x="1170.6" y="2573.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1173.8" y="2573.0" font-size="14.5" fill="#1e293b">P2C</text>
-<text x="1200.3" y="2573.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="1203.5" y="2573.0" font-size="14.5" fill="#1e293b">唯</text>
-<text x="1218.0" y="2573.0" font-size="14.5" fill="#1e293b">一</text>
-<text x="1232.5" y="2573.0" font-size="14.5" fill="#1e293b">能</text>
-<text x="1247.0" y="2573.0" font-size="14.5" fill="#1e293b">看</text>
-<text x="1261.5" y="2573.0" font-size="14.5" fill="#1e293b">到</text>
-<text x="1276.0" y="2573.0" font-size="14.5" fill="#1e293b">的</text>
-<text x="1290.5" y="2573.0" font-size="14.5" fill="#1e293b">「</text>
-<text x="1305.0" y="2573.0" font-size="14.5" fill="#1e293b">慢</text>
-<text x="1319.5" y="2573.0" font-size="14.5" fill="#1e293b">但</text>
-<text x="1334.0" y="2573.0" font-size="14.5" fill="#1e293b">成</text>
-<text x="1348.5" y="2573.0" font-size="14.5" fill="#1e293b">功</text>
-<text x="1363.0" y="2573.0" font-size="14.5" fill="#1e293b">」</text>
-<text x="1377.5" y="2573.0" font-size="14.5" fill="#1e293b">信</text>
-<text x="1392.0" y="2573.0" font-size="14.5" fill="#1e293b">号</text>
-<text x="829.0" y="2598.4" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">t-digest</text>
-<text x="903.4" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="906.7" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
-<text x="921.2" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">位</text>
-<text x="935.7" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">（</text>
-<text x="950.2" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">灰</text>
-<text x="964.7" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">开</text>
-<text x="979.2" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">关</text>
-<text x="993.7" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="997.0" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">digest_enabled</text>
-<text x="1106.7" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">）</text>
-<text x="1121.2" y="2598.4" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="1135.7" y="2598.4" font-size="14.5" fill="#1e293b">窗</text>
-<text x="1150.2" y="2598.4" font-size="14.5" fill="#1e293b">口</text>
-<text x="1164.7" y="2598.4" font-size="14.5" fill="#1e293b">表</text>
-<text x="1179.2" y="2598.4" font-size="14.5" fill="#1e293b">提</text>
-<text x="1193.7" y="2598.4" font-size="14.5" fill="#1e293b">供</text>
-<text x="1208.2" y="2598.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1211.4" y="2598.4" font-size="14.5" fill="#1e293b">p50/p95</text>
-<text x="1267.3" y="2598.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1270.5" y="2598.4" font-size="14.5" fill="#1e293b">+</text>
-<text x="1278.6" y="2598.4" font-size="14.5" fill="#1e293b"> </text>
-<text x="1281.8" y="2598.4" font-size="14.5" fill="#1e293b">权</text>
-<text x="1296.3" y="2598.4" font-size="14.5" fill="#1e293b">重</text>
-<text x="1310.8" y="2598.4" font-size="14.5" fill="#1e293b">，</text>
-<text x="1325.3" y="2598.4" font-size="14.5" fill="#1e293b">替</text>
-<text x="1339.8" y="2598.4" font-size="14.5" fill="#1e293b">换</text>
-<text x="1354.3" y="2598.4" font-size="14.5" fill="#1e293b">而</text>
-<text x="1368.8" y="2598.4" font-size="14.5" fill="#1e293b">非</text>
-<text x="1383.3" y="2598.4" font-size="14.5" fill="#1e293b">乘</text>
-<text x="1397.8" y="2598.4" font-size="14.5" fill="#1e293b">进</text>
-<text x="1412.3" y="2598.4" font-size="14.5" fill="#1e293b">时</text>
-<text x="1426.8" y="2598.4" font-size="14.5" fill="#1e293b">延</text>
-<text x="1441.3" y="2598.4" font-size="14.5" fill="#1e293b">因</text>
-<text x="1455.8" y="2598.4" font-size="14.5" fill="#1e293b">子</text>
-<text x="829.0" y="2623.9" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">Fatal</text>
-<text x="884.1" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="887.4" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">冷</text>
-<text x="901.9" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">却</text>
-<text x="916.4" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">阶</text>
-<text x="930.9" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">梯</text>
-<text x="945.4" y="2623.9" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="959.9" y="2623.9" font-size="14.5" fill="#1e293b">立</text>
-<text x="974.4" y="2623.9" font-size="14.5" fill="#1e293b">即</text>
-<text x="988.9" y="2623.9" font-size="14.5" fill="#1e293b">冷</text>
-<text x="1003.4" y="2623.9" font-size="14.5" fill="#1e293b">却</text>
-<text x="1017.9" y="2623.9" font-size="14.5" fill="#1e293b">，</text>
-<text x="1032.4" y="2623.9" font-size="14.5" fill="#1e293b">base→max</text>
-<text x="1107.4" y="2623.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1110.6" y="2623.9" font-size="14.5" fill="#1e293b">按</text>
-<text x="1125.1" y="2623.9" font-size="14.5" fill="#1e293b">连</text>
-<text x="1139.6" y="2623.9" font-size="14.5" fill="#1e293b">击</text>
-<text x="1154.1" y="2623.9" font-size="14.5" fill="#1e293b">幂</text>
-<text x="1168.6" y="2623.9" font-size="14.5" fill="#1e293b">律</text>
-<text x="1183.1" y="2623.9" font-size="14.5" fill="#1e293b">爬</text>
-<text x="1197.6" y="2623.9" font-size="14.5" fill="#1e293b">（</text>
-<text x="1212.1" y="2623.9" font-size="14.5" fill="#1e293b">300ms→8s</text>
-<text x="1285.8" y="2623.9" font-size="14.5" fill="#1e293b">，</text>
-<text x="1300.3" y="2623.9" font-size="14.5" fill="#1e293b">N=12</text>
-<text x="1334.9" y="2623.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1338.2" y="2623.9" font-size="14.5" fill="#1e293b">步</text>
-<text x="1352.7" y="2623.9" font-size="14.5" fill="#1e293b">）</text>
-<text x="1367.2" y="2623.9" font-size="14.5" fill="#1e293b">；</text>
-<text x="1381.7" y="2623.9" font-size="14.5" fill="#1e293b">闲</text>
-<text x="1396.2" y="2623.9" font-size="14.5" fill="#1e293b">置</text>
-<text x="1410.7" y="2623.9" font-size="14.5" fill="#1e293b">退</text>
-<text x="1425.2" y="2623.9" font-size="14.5" fill="#1e293b">火</text>
-<text x="1439.7" y="2623.9" font-size="14.5" fill="#1e293b">、</text>
-<text x="1454.2" y="2623.9" font-size="14.5" fill="#1e293b">成</text>
-<text x="829.0" y="2649.4" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2649.4" font-size="14.5" fill="#1e293b">功</text>
-<text x="863.5" y="2649.4" font-size="14.5" fill="#1e293b">后</text>
-<text x="878.0" y="2649.4" font-size="14.5" fill="#1e293b">阶</text>
-<text x="892.5" y="2649.4" font-size="14.5" fill="#1e293b">梯</text>
-<text x="907.0" y="2649.4" font-size="14.5" fill="#1e293b">归</text>
-<text x="921.5" y="2649.4" font-size="14.5" fill="#1e293b">零</text>
-<text x="936.0" y="2649.4" font-size="14.5" fill="#1e293b">重</text>
-<text x="950.5" y="2649.4" font-size="14.5" fill="#1e293b">启</text>
-<text x="829.0" y="2674.9" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">429</text>
-<text x="874.7" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="878.0" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">独</text>
-<text x="892.5" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">立</text>
-<text x="907.0" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="910.3" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">throttle</text>
-<text x="965.4" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="968.7" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">梯</text>
-<text x="983.2" y="2674.9" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="997.7" y="2674.9" font-size="14.5" fill="#1e293b">300ms→1s</text>
-<text x="1071.3" y="2674.9" font-size="14.5" fill="#1e293b">，</text>
-<text x="1085.8" y="2674.9" font-size="14.5" fill="#1e293b">固</text>
-<text x="1100.3" y="2674.9" font-size="14.5" fill="#1e293b">定</text>
-<text x="1114.8" y="2674.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1118.1" y="2674.9" font-size="14.5" fill="#1e293b">4</text>
-<text x="1126.1" y="2674.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1129.4" y="2674.9" font-size="14.5" fill="#1e293b">步</text>
-<text x="1143.9" y="2674.9" font-size="14.5" fill="#1e293b">；</text>
-<text x="1158.4" y="2674.9" font-size="14.5" fill="#1e293b">上</text>
-<text x="1172.9" y="2674.9" font-size="14.5" fill="#1e293b">游</text>
-<text x="1187.4" y="2674.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1190.6" y="2674.9" font-size="14.5" fill="#1e293b">Retry-After</text>
-<text x="1263.9" y="2674.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1267.2" y="2674.9" font-size="14.5" fill="#1e293b">直</text>
-<text x="1281.7" y="2674.9" font-size="14.5" fill="#1e293b">接</text>
-<text x="1296.2" y="2674.9" font-size="14.5" fill="#1e293b">覆</text>
-<text x="1310.7" y="2674.9" font-size="14.5" fill="#1e293b">盖</text>
-<text x="1325.2" y="2674.9" font-size="14.5" fill="#1e293b">并</text>
-<text x="1339.7" y="2674.9" font-size="14.5" fill="#1e293b">被</text>
-<text x="1354.2" y="2674.9" font-size="14.5" fill="#1e293b"> </text>
-<text x="1357.4" y="2674.9" font-size="14.5" fill="#1e293b">cooldown_max</text>
-<text x="829.0" y="2700.3" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2700.3" font-size="14.5" fill="#1e293b">夹</text>
-<text x="863.5" y="2700.3" font-size="14.5" fill="#1e293b">住</text>
-<text x="829.0" y="2725.8" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2725.8" font-size="14.5" fill="#0f172a" font-weight="700">slow-start</text>
-<text x="921.2" y="2725.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
-<text x="924.5" y="2725.8" font-size="14.5" fill="#0f172a" font-weight="700">ramp</text>
-<text x="962.3" y="2725.8" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="976.8" y="2725.8" font-size="14.5" fill="#1e293b">冷</text>
-<text x="991.3" y="2725.8" font-size="14.5" fill="#1e293b">却</text>
-<text x="1005.8" y="2725.8" font-size="14.5" fill="#1e293b">结</text>
-<text x="1020.3" y="2725.8" font-size="14.5" fill="#1e293b">束</text>
-<text x="1034.8" y="2725.8" font-size="14.5" fill="#1e293b">进</text>
-<text x="1049.3" y="2725.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="1052.5" y="2725.8" font-size="14.5" fill="#1e293b">RampPending</text>
-<text x="1147.9" y="2725.8" font-size="14.5" fill="#1e293b">，</text>
-<text x="1162.4" y="2725.8" font-size="14.5" fill="#1e293b">以</text>
-<text x="1176.9" y="2725.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="1180.1" y="2725.8" font-size="14.5" fill="#1e293b">request_count/min_requests</text>
-<text x="1376.5" y="2725.8" font-size="14.5" fill="#1e293b"> </text>
-<text x="1379.7" y="2725.8" font-size="14.5" fill="#1e293b">折</text>
-<text x="1394.2" y="2725.8" font-size="14.5" fill="#1e293b">先</text>
-<text x="1408.7" y="2725.8" font-size="14.5" fill="#1e293b">验</text>
-<text x="1423.2" y="2725.8" font-size="14.5" fill="#1e293b">；</text>
-<text x="1437.7" y="2725.8" font-size="14.5" fill="#1e293b">一</text>
-<text x="1452.2" y="2725.8" font-size="14.5" fill="#1e293b">次</text>
-<text x="829.0" y="2751.3" font-size="14.5" fill="#7c3aed">•</text>
-<text x="849.0" y="2751.3" font-size="14.5" fill="#1e293b">真</text>
-<text x="863.5" y="2751.3" font-size="14.5" fill="#1e293b">实</text>
-<text x="878.0" y="2751.3" font-size="14.5" fill="#1e293b">失</text>
-<text x="892.5" y="2751.3" font-size="14.5" fill="#1e293b">败</text>
-<text x="907.0" y="2751.3" font-size="14.5" fill="#1e293b">立</text>
-<text x="921.5" y="2751.3" font-size="14.5" fill="#1e293b">即</text>
-<text x="936.0" y="2751.3" font-size="14.5" fill="#1e293b"> </text>
-<text x="939.2" y="2751.3" font-size="14.5" fill="#1e293b">RampExited</text>
-<text x="829.0" y="2785.8" font-size="13.5" fill="#64748b">状</text>
-<text x="842.5" y="2785.8" font-size="13.5" fill="#64748b">态</text>
-<text x="856.0" y="2785.8" font-size="13.5" fill="#64748b">全</text>
-<text x="869.5" y="2785.8" font-size="13.5" fill="#64748b">在</text>
-<text x="883.0" y="2785.8" font-size="13.5" fill="#64748b">进</text>
-<text x="896.5" y="2785.8" font-size="13.5" fill="#64748b">程</text>
-<text x="910.0" y="2785.8" font-size="13.5" fill="#64748b">内</text>
-<text x="923.5" y="2785.8" font-size="13.5" fill="#64748b">（</text>
-<text x="937.0" y="2785.8" font-size="13.5" fill="#64748b">Mutex&lt;HashMap&gt;</text>
-<text x="1049.0" y="2785.8" font-size="13.5" fill="#64748b">）</text>
-<text x="1062.5" y="2785.8" font-size="13.5" fill="#64748b">，</text>
-<text x="1076.0" y="2785.8" font-size="13.5" fill="#64748b">不</text>
-<text x="1089.5" y="2785.8" font-size="13.5" fill="#64748b">跨</text>
-<text x="1103.0" y="2785.8" font-size="13.5" fill="#64748b">节</text>
-<text x="1116.5" y="2785.8" font-size="13.5" fill="#64748b">点</text>
-<text x="1130.0" y="2785.8" font-size="13.5" fill="#64748b">同</text>
-<text x="1143.5" y="2785.8" font-size="13.5" fill="#64748b">步</text>
-<text x="1157.0" y="2785.8" font-size="13.5" fill="#64748b">；</text>
-<text x="1170.5" y="2785.8" font-size="13.5" fill="#64748b">key</text>
-<text x="1192.3" y="2785.8" font-size="13.5" fill="#64748b"> </text>
-<text x="1195.3" y="2785.8" font-size="13.5" fill="#64748b">=</text>
-<text x="1202.8" y="2785.8" font-size="13.5" fill="#64748b"> </text>
-<text x="1205.8" y="2785.8" font-size="13.5" fill="#64748b">route</text>
-<text x="1239.7" y="2785.8" font-size="13.5" fill="#64748b"> </text>
-<text x="1242.7" y="2785.8" font-size="13.5" fill="#64748b">unit</text>
-<text x="1267.9" y="2785.8" font-size="13.5" fill="#64748b"> </text>
-<text x="1271.0" y="2785.8" font-size="13.5" fill="#64748b">meta.key</text>
-<text x="1328.7" y="2785.8" font-size="13.5" fill="#64748b">（</text>
-<text x="1342.2" y="2785.8" font-size="13.5" fill="#64748b">非</text>
-<text x="1355.7" y="2785.8" font-size="13.5" fill="#64748b"> </text>
-<text x="1358.7" y="2785.8" font-size="13.5" fill="#64748b">channel</text>
-<text x="1409.1" y="2785.8" font-size="13.5" fill="#64748b">）</text>
-<rect x="48" y="2835.4" width="1464" height="151.0" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="1.7"/>
-<text x="68.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">消</text>
-<text x="85.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">费</text>
-<text x="103.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">者</text>
-<text x="120.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">（</text>
-<text x="138.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">产</text>
-<text x="155.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">品</text>
-<text x="173.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">）</text>
-<text x="190.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">注</text>
-<text x="208.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">入</text>
-<text x="225.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">面</text>
-<text x="243.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="247.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">——</text>
-<text x="276.8" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="280.7" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">daemon</text>
-<text x="351.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="355.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">化</text>
-<text x="373.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">的</text>
-<text x="390.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">接</text>
-<text x="408.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">缝</text>
-<text x="425.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">就</text>
-<text x="443.0" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">在</text>
-<text x="460.5" y="2869.8" font-size="17.5" fill="#0f172a" font-weight="700">这</text>
-<text x="68.0" y="2906.0" font-size="15" fill="#64748b">•</text>
-<text x="88.0" y="2906.0" font-size="15" fill="#0f172a" font-weight="700">Context</text>
-<text x="145.6" y="2906.0" font-size="15" fill="#0f172a" font-weight="700"> </text>
-<text x="149.0" y="2906.0" font-size="15" fill="#0f172a" font-weight="700">注</text>
-<text x="164.0" y="2906.0" font-size="15" fill="#0f172a" font-weight="700">入</text>
-<text x="179.0" y="2906.0" font-size="15" fill="#0f172a" font-weight="700">物</text>
-<text x="194.0" y="2906.0" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="209.0" y="2906.0" font-size="15" fill="#1e293b">egress</text>
-<text x="253.6" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="257.0" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="265.4" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="268.8" y="2906.0" font-size="15" fill="#1e293b">ProxyManager</text>
-<text x="368.6" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="371.9" y="2906.0" font-size="15" fill="#1e293b">+</text>
-<text x="380.3" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="383.6" y="2906.0" font-size="15" fill="#1e293b">快</text>
-<text x="398.6" y="2906.0" font-size="15" fill="#1e293b">照</text>
-<text x="413.6" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="417.0" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="425.4" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="428.8" y="2906.0" font-size="15" fill="#1e293b">词</text>
-<text x="443.8" y="2906.0" font-size="15" fill="#1e293b">表</text>
-<text x="458.8" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="462.1" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="470.5" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="473.9" y="2906.0" font-size="15" fill="#1e293b">目</text>
-<text x="488.9" y="2906.0" font-size="15" fill="#1e293b">录</text>
-<text x="503.9" y="2906.0" font-size="15" fill="#1e293b">快</text>
-<text x="518.9" y="2906.0" font-size="15" fill="#1e293b">照</text>
-<text x="533.9" y="2906.0" font-size="15" fill="#1e293b">（</text>
-<text x="548.9" y="2906.0" font-size="15" fill="#1e293b">token/user/group</text>
-<text x="671.4" y="2906.0" font-size="15" fill="#1e293b">）</text>
-<text x="686.4" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="694.8" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="698.2" y="2906.0" font-size="15" fill="#1e293b">knobs</text>
-<text x="741.0" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="744.4" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="752.8" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="756.2" y="2906.0" font-size="15" fill="#1e293b">quota_gate</text>
-<text x="835.7" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="839.0" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="847.4" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="850.8" y="2906.0" font-size="15" fill="#1e293b">settle</text>
-<text x="889.5" y="2906.0" font-size="15" fill="#1e293b">（</text>
-<text x="904.5" y="2906.0" font-size="15" fill="#1e293b">价</text>
-<text x="919.5" y="2906.0" font-size="15" fill="#1e293b">格</text>
-<text x="934.5" y="2906.0" font-size="15" fill="#1e293b">表</text>
-<text x="949.5" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="952.9" y="2906.0" font-size="15" fill="#1e293b">+</text>
-<text x="961.2" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="964.6" y="2906.0" font-size="15" fill="#1e293b">SettleSink</text>
-<text x="1035.4" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="1038.7" y="2906.0" font-size="15" fill="#1e293b">成</text>
-<text x="1053.7" y="2906.0" font-size="15" fill="#1e293b">对</text>
-<text x="1068.7" y="2906.0" font-size="15" fill="#1e293b">）</text>
-<text x="1083.7" y="2906.0" font-size="15" fill="#1e293b">·</text>
-<text x="1092.2" y="2906.0" font-size="15" fill="#1e293b"> </text>
-<text x="1095.5" y="2906.0" font-size="15" fill="#1e293b">ledger</text>
-<text x="68.0" y="2932.2" font-size="15" fill="#64748b">•</text>
-<text x="88.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">管</text>
-<text x="103.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">理</text>
-<text x="118.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">面</text>
-<text x="133.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">端</text>
-<text x="148.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">口</text>
-<text x="163.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">只</text>
-<text x="178.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">有</text>
-<text x="193.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">三</text>
-<text x="208.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">个</text>
-<text x="223.0" y="2932.2" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="238.0" y="2932.2" font-size="15" fill="#1e293b">DispatcherHandle</text>
-<text x="363.5" y="2932.2" font-size="15" fill="#1e293b">（</text>
-<text x="378.5" y="2932.2" font-size="15" fill="#1e293b">set_snapshot</text>
-<text x="472.2" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="475.5" y="2932.2" font-size="15" fill="#1e293b">/</text>
-<text x="481.4" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="484.8" y="2932.2" font-size="15" fill="#1e293b">读</text>
-<text x="499.8" y="2932.2" font-size="15" fill="#1e293b">快</text>
-<text x="514.8" y="2932.2" font-size="15" fill="#1e293b">照</text>
-<text x="529.8" y="2932.2" font-size="15" fill="#1e293b">）</text>
-<text x="544.8" y="2932.2" font-size="15" fill="#1e293b">·</text>
-<text x="553.2" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="556.5" y="2932.2" font-size="15" fill="#1e293b">HealthHandle</text>
-<text x="653.4" y="2932.2" font-size="15" fill="#1e293b">（</text>
-<text x="668.4" y="2932.2" font-size="15" fill="#1e293b">读</text>
-<text x="683.4" y="2932.2" font-size="15" fill="#1e293b">/</text>
-<text x="689.3" y="2932.2" font-size="15" fill="#1e293b">装</text>
-<text x="704.3" y="2932.2" font-size="15" fill="#1e293b">健</text>
-<text x="719.3" y="2932.2" font-size="15" fill="#1e293b">康</text>
-<text x="734.3" y="2932.2" font-size="15" fill="#1e293b">）</text>
-<text x="749.3" y="2932.2" font-size="15" fill="#1e293b">·</text>
-<text x="757.7" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="761.0" y="2932.2" font-size="15" fill="#1e293b">retry_handle</text>
-<text x="851.5" y="2932.2" font-size="15" fill="#1e293b">（</text>
-<text x="866.5" y="2932.2" font-size="15" fill="#1e293b">ArcSwap</text>
-<text x="927.5" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="930.8" y="2932.2" font-size="15" fill="#1e293b">热</text>
-<text x="945.8" y="2932.2" font-size="15" fill="#1e293b">替</text>
-<text x="960.8" y="2932.2" font-size="15" fill="#1e293b">换</text>
-<text x="975.8" y="2932.2" font-size="15" fill="#1e293b">）</text>
-<text x="990.8" y="2932.2" font-size="15" fill="#1e293b">；</text>
-<text x="1005.8" y="2932.2" font-size="15" fill="#1e293b">其</text>
-<text x="1020.8" y="2932.2" font-size="15" fill="#1e293b">余</text>
-<text x="1035.8" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="1039.2" y="2932.2" font-size="15" fill="#1e293b">admin</text>
-<text x="1084.1" y="2932.2" font-size="15" fill="#1e293b"> </text>
-<text x="1087.5" y="2932.2" font-size="15" fill="#1e293b">交</text>
-<text x="1102.5" y="2932.2" font-size="15" fill="#1e293b">互</text>
-<text x="1117.5" y="2932.2" font-size="15" fill="#1e293b">都</text>
-<text x="1132.5" y="2932.2" font-size="15" fill="#1e293b">经</text>
-<text x="1147.5" y="2932.2" font-size="15" fill="#1e293b">过</text>
-<text x="1162.5" y="2932.2" font-size="15" fill="#1e293b">它</text>
-<text x="1177.5" y="2932.2" font-size="15" fill="#1e293b">们</text>
-<text x="68.0" y="2958.5" font-size="15" fill="#64748b">•</text>
-<text x="88.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">多</text>
-<text x="103.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">实</text>
-<text x="118.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">例</text>
-<text x="133.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">注</text>
-<text x="148.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">意</text>
-<text x="163.0" y="2958.5" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="178.0" y="2958.5" font-size="15" fill="#1e293b">health/</text>
-<text x="228.5" y="2958.5" font-size="15" fill="#1e293b">冷</text>
-<text x="243.5" y="2958.5" font-size="15" fill="#1e293b">却</text>
-<text x="258.5" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="273.5" y="2958.5" font-size="15" fill="#1e293b">sticky</text>
-<text x="313.8" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="328.8" y="2958.5" font-size="15" fill="#1e293b">response</text>
-<text x="392.6" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="396.0" y="2958.5" font-size="15" fill="#1e293b">cache</text>
-<text x="437.0" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="452.0" y="2958.5" font-size="15" fill="#1e293b">限</text>
-<text x="467.0" y="2958.5" font-size="15" fill="#1e293b">流</text>
-<text x="482.0" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="497.0" y="2958.5" font-size="15" fill="#1e293b">全</text>
-<text x="512.0" y="2958.5" font-size="15" fill="#1e293b">局</text>
-<text x="527.0" y="2958.5" font-size="15" fill="#1e293b">+</text>
-<text x="535.3" y="2958.5" font-size="15" fill="#1e293b">每</text>
-<text x="550.3" y="2958.5" font-size="15" fill="#1e293b">渠</text>
-<text x="565.3" y="2958.5" font-size="15" fill="#1e293b">道</text>
-<text x="580.3" y="2958.5" font-size="15" fill="#1e293b">并</text>
-<text x="595.3" y="2958.5" font-size="15" fill="#1e293b">发</text>
-<text x="610.3" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="625.3" y="2958.5" font-size="15" fill="#1e293b">TPM</text>
-<text x="656.0" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="671.0" y="2958.5" font-size="15" fill="#1e293b">ledger</text>
-<text x="715.2" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="718.5" y="2958.5" font-size="15" fill="#1e293b">预</text>
-<text x="733.5" y="2958.5" font-size="15" fill="#1e293b">扣</text>
-<text x="748.5" y="2958.5" font-size="15" fill="#1e293b">、</text>
-<text x="763.5" y="2958.5" font-size="15" fill="#1e293b">灰</text>
-<text x="778.5" y="2958.5" font-size="15" fill="#1e293b">度</text>
-<text x="793.5" y="2958.5" font-size="15" fill="#1e293b">名</text>
-<text x="808.5" y="2958.5" font-size="15" fill="#1e293b">单</text>
-<text x="823.5" y="2958.5" font-size="15" fill="#1e293b">全</text>
-<text x="838.5" y="2958.5" font-size="15" fill="#1e293b">是</text>
-<text x="853.5" y="2958.5" font-size="15" fill="#1e293b">进</text>
-<text x="868.5" y="2958.5" font-size="15" fill="#1e293b">程</text>
-<text x="883.5" y="2958.5" font-size="15" fill="#1e293b">内</text>
-<text x="898.5" y="2958.5" font-size="15" fill="#1e293b">内</text>
-<text x="913.5" y="2958.5" font-size="15" fill="#1e293b">存</text>
-<text x="928.5" y="2958.5" font-size="15" fill="#1e293b">态</text>
-<text x="943.5" y="2958.5" font-size="15" fill="#1e293b">（</text>
-<text x="958.5" y="2958.5" font-size="15" fill="#1e293b">源</text>
-<text x="973.5" y="2958.5" font-size="15" fill="#1e293b">码</text>
-<text x="988.5" y="2958.5" font-size="15" fill="#1e293b">原</text>
-<text x="1003.5" y="2958.5" font-size="15" fill="#1e293b">话</text>
-<text x="1018.5" y="2958.5" font-size="15" fill="#1e293b">：</text>
-<text x="1033.5" y="2958.5" font-size="15" fill="#1e293b">not</text>
-<text x="1057.2" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="1060.5" y="2958.5" font-size="15" fill="#1e293b">synchronized</text>
-<text x="1153.9" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="1157.2" y="2958.5" font-size="15" fill="#1e293b">across</text>
-<text x="1202.1" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="1205.4" y="2958.5" font-size="15" fill="#1e293b">nodes</text>
-<text x="1248.3" y="2958.5" font-size="15" fill="#1e293b">）</text>
-<text x="1263.3" y="2958.5" font-size="15" fill="#1e293b">——</text>
-<text x="1288.5" y="2958.5" font-size="15" fill="#1e293b"> </text>
-<text x="1291.8" y="2958.5" font-size="15" fill="#1e293b">横</text>
-<text x="1306.8" y="2958.5" font-size="15" fill="#1e293b">向</text>
-<text x="1321.8" y="2958.5" font-size="15" fill="#1e293b">扩</text>
-<text x="1336.8" y="2958.5" font-size="15" fill="#1e293b">之</text>
-<text x="1351.8" y="2958.5" font-size="15" fill="#1e293b">前</text>
-<text x="1366.8" y="2958.5" font-size="15" fill="#1e293b">必</text>
-<text x="1381.8" y="2958.5" font-size="15" fill="#1e293b">须</text>
-<text x="1396.8" y="2958.5" font-size="15" fill="#1e293b">外</text>
-<text x="1411.8" y="2958.5" font-size="15" fill="#1e293b">部</text>
-<text x="1426.8" y="2958.5" font-size="15" fill="#1e293b">化</text>
-<text x="1441.8" y="2958.5" font-size="15" fill="#1e293b">或</text>
-<text x="1456.8" y="2958.5" font-size="15" fill="#1e293b">分</text>
-<text x="1471.8" y="2958.5" font-size="15" fill="#1e293b">片</text>
-<rect x="48" y="3002.4" width="1464" height="170.4" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.7"/>
-<text x="68.0" y="3035.5" font-size="13.5" fill="#64748b">12 crate 职责一览（11 库 crate + 根包 gateway-daemon）</text>
-<text x="68.0" y="3069.5" font-size="13.5" fill="#64748b">•进程入口与装配：gateway-daemon 根包（actix 传输 + config/catalog，bin gatewayd）· gateway-facade 装配 · gateway-pipeline Stage/管道（axum Router 嵌入出口 + from_parts 供 actix 传输）· gateway-gate 门禁 · gateway-dispatch 调度 · gateway-forward 转发 · gateway-protocol-bridge 协议方言</text>
-<text x="68.0" y="3095.0" font-size="14.5" fill="#94a3b8">•</text>
-<text x="88.0" y="3095.0" font-size="14.5" fill="#0f172a" font-weight="700">外</text>
-<text x="102.5" y="3095.0" font-size="14.5" fill="#0f172a" font-weight="700">设</text>
-<text x="117.0" y="3095.0" font-size="14.5" fill="#0f172a" font-weight="700">能</text>
-<text x="131.5" y="3095.0" font-size="14.5" fill="#0f172a" font-weight="700">力</text>
-<text x="146.0" y="3095.0" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="160.5" y="3095.0" font-size="14.5" fill="#1e293b">gateway-proxy</text>
-<text x="259.6" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="262.9" y="3095.0" font-size="14.5" fill="#1e293b">出</text>
-<text x="277.4" y="3095.0" font-size="14.5" fill="#1e293b">口</text>
-<text x="291.9" y="3095.0" font-size="14.5" fill="#1e293b">代</text>
-<text x="306.4" y="3095.0" font-size="14.5" fill="#1e293b">理</text>
-<text x="320.9" y="3095.0" font-size="14.5" fill="#1e293b">池</text>
-<text x="335.4" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="338.6" y="3095.0" font-size="14.5" fill="#1e293b">·</text>
-<text x="346.8" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="350.0" y="3095.0" font-size="14.5" fill="#1e293b">gateway-cache</text>
-<text x="451.0" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="454.3" y="3095.0" font-size="14.5" fill="#1e293b">缓</text>
-<text x="468.8" y="3095.0" font-size="14.5" fill="#1e293b">存</text>
-<text x="483.3" y="3095.0" font-size="14.5" fill="#1e293b">与</text>
-<text x="497.8" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="501.0" y="3095.0" font-size="14.5" fill="#1e293b">moka</text>
-<text x="539.2" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="542.5" y="3095.0" font-size="14.5" fill="#1e293b">基</text>
-<text x="557.0" y="3095.0" font-size="14.5" fill="#1e293b">元</text>
-<text x="571.5" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="574.7" y="3095.0" font-size="14.5" fill="#1e293b">·</text>
-<text x="582.9" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="586.1" y="3095.0" font-size="14.5" fill="#1e293b">gateway-security</text>
-<text x="701.2" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="704.4" y="3095.0" font-size="14.5" fill="#1e293b">敏</text>
-<text x="718.9" y="3095.0" font-size="14.5" fill="#1e293b">感</text>
-<text x="733.4" y="3095.0" font-size="14.5" fill="#1e293b">词</text>
-<text x="747.9" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="751.2" y="3095.0" font-size="14.5" fill="#1e293b">·</text>
-<text x="759.3" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="762.5" y="3095.0" font-size="14.5" fill="#1e293b">gateway-metering</text>
-<text x="885.2" y="3095.0" font-size="14.5" fill="#1e293b"> </text>
-<text x="888.4" y="3095.0" font-size="14.5" fill="#1e293b">计</text>
-<text x="902.9" y="3095.0" font-size="14.5" fill="#1e293b">量</text>
-<text x="68.0" y="3120.5" font-size="14.5" fill="#94a3b8">•</text>
-<text x="88.0" y="3120.5" font-size="14.5" fill="#0f172a" font-weight="700">契</text>
-<text x="102.5" y="3120.5" font-size="14.5" fill="#0f172a" font-weight="700">约</text>
-<text x="117.0" y="3120.5" font-size="14.5" fill="#0f172a" font-weight="700">底</text>
-<text x="131.5" y="3120.5" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
-<text x="146.0" y="3120.5" font-size="14.5" fill="#1e293b">gateway-core</text>
-<text x="236.7" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="240.0" y="3120.5" font-size="14.5" fill="#1e293b">——</text>
-<text x="264.3" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="267.5" y="3120.5" font-size="14.5" fill="#1e293b">词</text>
-<text x="282.0" y="3120.5" font-size="14.5" fill="#1e293b">汇</text>
-<text x="296.5" y="3120.5" font-size="14.5" fill="#1e293b">（</text>
-<text x="311.0" y="3120.5" font-size="14.5" fill="#1e293b">records/snapshots/health/metering/proxy/protocol/error</text>
-<text x="697.2" y="3120.5" font-size="14.5" fill="#1e293b">）</text>
-<text x="711.7" y="3120.5" font-size="14.5" fill="#1e293b">+</text>
-<text x="719.8" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="723.0" y="3120.5" font-size="14.5" fill="#1e293b">端</text>
-<text x="737.5" y="3120.5" font-size="14.5" fill="#1e293b">口</text>
-<text x="752.0" y="3120.5" font-size="14.5" fill="#1e293b">（</text>
-<text x="766.5" y="3120.5" font-size="14.5" fill="#1e293b">Ledger</text>
-<text x="812.8" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="816.1" y="3120.5" font-size="14.5" fill="#1e293b">/</text>
-<text x="821.8" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="825.0" y="3120.5" font-size="14.5" fill="#1e293b">SettleSink</text>
-<text x="893.5" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="896.7" y="3120.5" font-size="14.5" fill="#1e293b">/</text>
-<text x="902.4" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="905.7" y="3120.5" font-size="14.5" fill="#1e293b">PriceTable</text>
-<text x="975.9" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="979.2" y="3120.5" font-size="14.5" fill="#1e293b">/</text>
-<text x="984.9" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="988.1" y="3120.5" font-size="14.5" fill="#1e293b">DispatcherHandle</text>
-<text x="1109.3" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="1112.6" y="3120.5" font-size="14.5" fill="#1e293b">/</text>
-<text x="1118.3" y="3120.5" font-size="14.5" fill="#1e293b"> </text>
-<text x="1121.5" y="3120.5" font-size="14.5" fill="#1e293b">HealthHandle</text>
-<text x="1215.1" y="3120.5" font-size="14.5" fill="#1e293b">）</text>
-<text x="1229.6" y="3120.5" font-size="14.5" fill="#1e293b">，</text>
-<text x="1244.1" y="3120.5" font-size="14.5" fill="#1e293b">无</text>
-<text x="1258.6" y="3120.5" font-size="14.5" fill="#1e293b">内</text>
-<text x="1273.1" y="3120.5" font-size="14.5" fill="#1e293b">部</text>
-<text x="1287.6" y="3120.5" font-size="14.5" fill="#1e293b">依</text>
-<text x="1302.1" y="3120.5" font-size="14.5" fill="#1e293b">赖</text>
-<text x="68.0" y="3145.9" font-size="13.5" fill="#64748b">依赖方向（硬规则）：gateway-daemon → gateway-facade（+actix/toml 等传输类 crate，不触引擎）→ 全部引擎 → gateway-core →（无）；引擎之间只许向下或横向，词汇面不得长回实现；嵌入消费方除 facade 外不命名任何 crate</text>
+<rect x="48.0" y="2358.0" width="1464.0" height="427.8" rx="12" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.7" />
+<text x="68.0" y="2394.1" font-size="17.5" fill="#5b21b6" font-weight="700">调度内部 —— 被 ForwardStage 每轮调用</text>
+<text x="1492.0" y="2394.1" font-size="14" fill="#7c3aed" font-weight="700" text-anchor="end">crate gateway-dispatch</text>
+<rect x="68.0" y="2410.1" width="700.0" height="351.2" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="1.7" />
+<text x="84.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">P2C</text>
+<text x="112.7" y="2438.4" font-size="15" fill="#0f172a" font-weight="700"> </text>
+<text x="116.1" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">选</text>
+<text x="131.1" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">择</text>
+<text x="146.1" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">器</text>
+<text x="161.1" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">（</text>
+<text x="176.1" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">selector.rs</text>
+<text x="252.7" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">）</text>
+<text x="84.0" y="2470.9" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">候</text>
+<text x="118.5" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">选</text>
+<text x="133.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">来</text>
+<text x="147.5" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">源</text>
+<text x="162.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="176.5" y="2470.9" font-size="14.5" fill="#1e293b">Snapshot</text>
+<text x="240.7" y="2470.9" font-size="14.5" fill="#1e293b">（</text>
+<text x="255.2" y="2470.9" font-size="14.5" fill="#1e293b">Arc&lt;ArcSwap&gt;</text>
+<text x="351.9" y="2470.9" font-size="14.5" fill="#1e293b">）</text>
+<text x="366.4" y="2470.9" font-size="14.5" fill="#1e293b">按</text>
+<text x="380.9" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="384.1" y="2470.9" font-size="14.5" fill="#1e293b">group+model</text>
+<text x="475.7" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="479.0" y="2470.9" font-size="14.5" fill="#1e293b">命</text>
+<text x="493.5" y="2470.9" font-size="14.5" fill="#1e293b">中</text>
+<text x="508.0" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="511.2" y="2470.9" font-size="14.5" fill="#1e293b">route</text>
+<text x="547.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="550.8" y="2470.9" font-size="14.5" fill="#1e293b">units</text>
+<text x="584.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="587.8" y="2470.9" font-size="14.5" fill="#1e293b">→</text>
+<text x="602.2" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="605.5" y="2470.9" font-size="14.5" fill="#1e293b">空</text>
+<text x="620.0" y="2470.9" font-size="14.5" fill="#1e293b">则</text>
+<text x="634.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="637.8" y="2470.9" font-size="14.5" fill="#1e293b">fallback</text>
+<text x="690.8" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="694.1" y="2470.9" font-size="14.5" fill="#1e293b">渠</text>
+<text x="708.6" y="2470.9" font-size="14.5" fill="#1e293b">道</text>
+<text x="84.0" y="2496.3" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2496.3" font-size="14.5" fill="#1e293b">→</text>
+<text x="118.5" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="121.8" y="2496.3" font-size="14.5" fill="#1e293b">渠</text>
+<text x="136.2" y="2496.3" font-size="14.5" fill="#1e293b">道</text>
+<text x="150.8" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="154.0" y="2496.3" font-size="14.5" fill="#1e293b">status</text>
+<text x="194.6" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="197.8" y="2496.3" font-size="14.5" fill="#1e293b">过</text>
+<text x="212.3" y="2496.3" font-size="14.5" fill="#1e293b">滤</text>
+<text x="226.8" y="2496.3" font-size="14.5" fill="#1e293b">；</text>
+<text x="241.3" y="2496.3" font-size="14.5" fill="#1e293b">set_snapshot</text>
+<text x="331.9" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="335.1" y="2496.3" font-size="14.5" fill="#1e293b">热</text>
+<text x="349.6" y="2496.3" font-size="14.5" fill="#1e293b">替</text>
+<text x="364.1" y="2496.3" font-size="14.5" fill="#1e293b">换</text>
+<text x="84.0" y="2521.8" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">prior</text>
+<text x="139.5" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="142.8" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
+<text x="151.3" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="154.6" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">权</text>
+<text x="169.1" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">重</text>
+<text x="183.6" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="186.9" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="201.4" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="204.7" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">slow-start</text>
+<text x="276.9" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="280.2" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">ramp</text>
+<text x="318.0" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="321.3" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="335.8" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="339.1" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">sticky</text>
+<text x="381.2" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="384.5" y="2521.8" font-size="14.5" fill="#0f172a" font-weight="700">boost</text>
+<text x="424.9" y="2521.8" font-size="14.5" fill="#1e293b">，</text>
+<text x="439.4" y="2521.8" font-size="14.5" fill="#1e293b">归</text>
+<text x="453.9" y="2521.8" font-size="14.5" fill="#1e293b">一</text>
+<text x="468.4" y="2521.8" font-size="14.5" fill="#1e293b">化</text>
+<text x="482.9" y="2521.8" font-size="14.5" fill="#1e293b">（</text>
+<text x="497.4" y="2521.8" font-size="14.5" fill="#1e293b">Σprior=1</text>
+<text x="555.2" y="2521.8" font-size="14.5" fill="#1e293b">）</text>
+<text x="569.7" y="2521.8" font-size="14.5" fill="#1e293b">——</text>
+<text x="594.0" y="2521.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="597.2" y="2521.8" font-size="14.5" fill="#1e293b">只</text>
+<text x="611.7" y="2521.8" font-size="14.5" fill="#1e293b">决</text>
+<text x="626.2" y="2521.8" font-size="14.5" fill="#1e293b">定</text>
+<text x="640.7" y="2521.8" font-size="14.5" fill="#1e293b">谁</text>
+<text x="655.2" y="2521.8" font-size="14.5" fill="#1e293b">被</text>
+<text x="669.7" y="2521.8" font-size="14.5" fill="#1e293b">抽</text>
+<text x="684.2" y="2521.8" font-size="14.5" fill="#1e293b">中</text>
+<text x="698.7" y="2521.8" font-size="14.5" fill="#1e293b">，</text>
+<text x="713.2" y="2521.8" font-size="14.5" fill="#1e293b">不</text>
+<text x="84.0" y="2547.3" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2547.3" font-size="14.5" fill="#1e293b">进</text>
+<text x="118.5" y="2547.3" font-size="14.5" fill="#1e293b">决</text>
+<text x="133.0" y="2547.3" font-size="14.5" fill="#1e293b">策</text>
+<text x="147.5" y="2547.3" font-size="14.5" fill="#1e293b">分</text>
+<text x="84.0" y="2572.7" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">likelihood</text>
+<text x="175.5" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="178.8" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
+<text x="187.3" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="190.6" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">时</text>
+<text x="205.1" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">延</text>
+<text x="219.6" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="222.9" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="237.4" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="240.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">健</text>
+<text x="255.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">康</text>
+<text x="269.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
+<text x="284.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="287.5" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="302.0" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="305.3" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">并</text>
+<text x="319.8" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">发</text>
+<text x="334.3" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">余</text>
+<text x="348.8" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">量</text>
+<text x="363.3" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="366.6" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="381.1" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="384.4" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">TPM</text>
+<text x="415.5" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="418.8" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">余</text>
+<text x="433.3" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">量</text>
+<text x="447.8" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="451.1" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">×</text>
+<text x="465.6" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="468.9" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">吞</text>
+<text x="483.4" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">吐</text>
+<text x="497.9" y="2572.7" font-size="14.5" fill="#1e293b">，</text>
+<text x="512.4" y="2572.7" font-size="14.5" fill="#1e293b">clamp</text>
+<text x="554.5" y="2572.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="557.8" y="2572.7" font-size="14.5" fill="#1e293b">到</text>
+<text x="572.2" y="2572.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="575.5" y="2572.7" font-size="14.5" fill="#1e293b">[LIKELIHOOD_FLOOR,</text>
+<text x="84.0" y="2598.2" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2598.2" font-size="14.5" fill="#1e293b">1.0]</text>
+<text x="84.0" y="2623.7" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2623.7" font-size="14.5" fill="#0f172a" font-weight="700">P2C</text>
+<text x="131.8" y="2623.7" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="146.2" y="2623.7" font-size="14.5" fill="#1e293b">按</text>
+<text x="160.8" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="164.0" y="2623.7" font-size="14.5" fill="#1e293b">prior</text>
+<text x="197.0" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="200.2" y="2623.7" font-size="14.5" fill="#1e293b">抽</text>
+<text x="214.8" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="218.0" y="2623.7" font-size="14.5" fill="#1e293b">2</text>
+<text x="226.0" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="229.3" y="2623.7" font-size="14.5" fill="#1e293b">个</text>
+<text x="243.8" y="2623.7" font-size="14.5" fill="#1e293b">候</text>
+<text x="258.3" y="2623.7" font-size="14.5" fill="#1e293b">选</text>
+<text x="272.8" y="2623.7" font-size="14.5" fill="#1e293b">比</text>
+<text x="287.3" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="290.5" y="2623.7" font-size="14.5" fill="#1e293b">likelihood</text>
+<text x="357.8" y="2623.7" font-size="14.5" fill="#1e293b">，</text>
+<text x="372.3" y="2623.7" font-size="14.5" fill="#1e293b">加</text>
+<text x="386.8" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="390.1" y="2623.7" font-size="14.5" fill="#1e293b">explore</text>
+<text x="440.6" y="2623.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="443.9" y="2623.7" font-size="14.5" fill="#1e293b">随</text>
+<text x="458.4" y="2623.7" font-size="14.5" fill="#1e293b">机</text>
+<text x="472.9" y="2623.7" font-size="14.5" fill="#1e293b">探</text>
+<text x="487.4" y="2623.7" font-size="14.5" fill="#1e293b">索</text>
+<text x="501.9" y="2623.7" font-size="14.5" fill="#1e293b">（</text>
+<text x="516.4" y="2623.7" font-size="14.5" fill="#1e293b">防</text>
+<text x="530.9" y="2623.7" font-size="14.5" fill="#1e293b">冷</text>
+<text x="545.4" y="2623.7" font-size="14.5" fill="#1e293b">启</text>
+<text x="559.9" y="2623.7" font-size="14.5" fill="#1e293b">动</text>
+<text x="574.4" y="2623.7" font-size="14.5" fill="#1e293b">饿</text>
+<text x="588.9" y="2623.7" font-size="14.5" fill="#1e293b">死</text>
+<text x="603.4" y="2623.7" font-size="14.5" fill="#1e293b">新</text>
+<text x="617.9" y="2623.7" font-size="14.5" fill="#1e293b">渠</text>
+<text x="632.4" y="2623.7" font-size="14.5" fill="#1e293b">道</text>
+<text x="646.9" y="2623.7" font-size="14.5" fill="#1e293b">）</text>
+<text x="84.0" y="2649.2" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">兜</text>
+<text x="118.5" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">底</text>
+<text x="133.0" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="147.5" y="2649.2" font-size="14.5" fill="#1e293b">池</text>
+<text x="162.0" y="2649.2" font-size="14.5" fill="#1e293b">空</text>
+<text x="176.5" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="179.8" y="2649.2" font-size="14.5" fill="#1e293b">→</text>
+<text x="194.2" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="197.5" y="2649.2" font-size="14.5" fill="#1e293b">recall_fainted</text>
+<text x="290.4" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="293.7" y="2649.2" font-size="14.5" fill="#1e293b">忽</text>
+<text x="308.2" y="2649.2" font-size="14.5" fill="#1e293b">略</text>
+<text x="322.7" y="2649.2" font-size="14.5" fill="#1e293b">部</text>
+<text x="337.2" y="2649.2" font-size="14.5" fill="#1e293b">分</text>
+<text x="351.7" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="354.9" y="2649.2" font-size="14.5" fill="#1e293b">filter</text>
+<text x="386.6" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="389.9" y="2649.2" font-size="14.5" fill="#1e293b">召</text>
+<text x="404.4" y="2649.2" font-size="14.5" fill="#1e293b">回</text>
+<text x="418.9" y="2649.2" font-size="14.5" fill="#1e293b">；</text>
+<text x="433.4" y="2649.2" font-size="14.5" fill="#1e293b">再</text>
+<text x="447.9" y="2649.2" font-size="14.5" fill="#1e293b">空</text>
+<text x="462.4" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="465.6" y="2649.2" font-size="14.5" fill="#1e293b">→</text>
+<text x="480.1" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="483.4" y="2649.2" font-size="14.5" fill="#1e293b">ModelUnknown</text>
+<text x="590.4" y="2649.2" font-size="14.5" fill="#1e293b">（</text>
+<text x="604.9" y="2649.2" font-size="14.5" fill="#1e293b">终</text>
+<text x="619.4" y="2649.2" font-size="14.5" fill="#1e293b">端</text>
+<text x="633.9" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="637.2" y="2649.2" font-size="14.5" fill="#1e293b">404</text>
+<text x="661.3" y="2649.2" font-size="14.5" fill="#1e293b">，</text>
+<text x="675.8" y="2649.2" font-size="14.5" fill="#1e293b">客</text>
+<text x="690.3" y="2649.2" font-size="14.5" fill="#1e293b">户</text>
+<text x="704.8" y="2649.2" font-size="14.5" fill="#1e293b">端</text>
+<text x="84.0" y="2674.6" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2674.6" font-size="14.5" fill="#1e293b">不</text>
+<text x="118.5" y="2674.6" font-size="14.5" fill="#1e293b">该</text>
+<text x="133.0" y="2674.6" font-size="14.5" fill="#1e293b">重</text>
+<text x="147.5" y="2674.6" font-size="14.5" fill="#1e293b">试</text>
+<text x="162.0" y="2674.6" font-size="14.5" fill="#1e293b">）</text>
+<text x="84.0" y="2700.1" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">调</text>
+<text x="118.5" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">度</text>
+<text x="133.0" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">侧</text>
+<text x="147.5" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">限</text>
+<text x="162.0" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">流</text>
+<text x="176.5" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="191.0" y="2700.1" font-size="14.5" fill="#1e293b">limits</text>
+<text x="228.6" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="231.9" y="2700.1" font-size="14.5" fill="#1e293b">非</text>
+<text x="246.4" y="2700.1" font-size="14.5" fill="#1e293b">空</text>
+<text x="260.9" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="264.1" y="2700.1" font-size="14.5" fill="#1e293b">→</text>
+<text x="278.6" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="281.9" y="2700.1" font-size="14.5" fill="#1e293b">pick_within_limits</text>
+<text x="406.8" y="2700.1" font-size="14.5" fill="#1e293b">；</text>
+<text x="421.2" y="2700.1" font-size="14.5" fill="#1e293b">被</text>
+<text x="435.8" y="2700.1" font-size="14.5" fill="#1e293b">限</text>
+<text x="450.2" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="453.5" y="2700.1" font-size="14.5" fill="#1e293b">→</text>
+<text x="468.0" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="471.2" y="2700.1" font-size="14.5" fill="#1e293b">RateLimited</text>
+<text x="553.1" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="556.4" y="2700.1" font-size="14.5" fill="#1e293b">→</text>
+<text x="570.9" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="574.1" y="2700.1" font-size="14.5" fill="#1e293b">429</text>
+<text x="84.0" y="2725.6" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2725.6" font-size="14.5" fill="#0f172a" font-weight="700">共</text>
+<text x="118.5" y="2725.6" font-size="14.5" fill="#0f172a" font-weight="700">享</text>
+<text x="133.0" y="2725.6" font-size="14.5" fill="#0f172a" font-weight="700">状</text>
+<text x="147.5" y="2725.6" font-size="14.5" fill="#0f172a" font-weight="700">态</text>
+<text x="162.0" y="2725.6" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="176.5" y="2725.6" font-size="14.5" fill="#1e293b">并</text>
+<text x="191.0" y="2725.6" font-size="14.5" fill="#1e293b">发</text>
+<text x="205.5" y="2725.6" font-size="14.5" fill="#1e293b">信</text>
+<text x="220.0" y="2725.6" font-size="14.5" fill="#1e293b">号</text>
+<text x="234.5" y="2725.6" font-size="14.5" fill="#1e293b">量</text>
+<text x="249.0" y="2725.6" font-size="14.5" fill="#1e293b">与</text>
+<text x="263.5" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="266.8" y="2725.6" font-size="14.5" fill="#1e293b">token</text>
+<text x="305.4" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="308.6" y="2725.6" font-size="14.5" fill="#1e293b">预</text>
+<text x="323.1" y="2725.6" font-size="14.5" fill="#1e293b">算</text>
+<text x="337.6" y="2725.6" font-size="14.5" fill="#1e293b">和</text>
+<text x="352.1" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="355.4" y="2725.6" font-size="14.5" fill="#1e293b">ForwardStage</text>
+<text x="449.4" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="452.7" y="2725.6" font-size="14.5" fill="#1e293b">是</text>
+<text x="467.2" y="2725.6" font-size="14.5" fill="#1e293b">同</text>
+<text x="481.7" y="2725.6" font-size="14.5" fill="#1e293b">一</text>
+<text x="496.2" y="2725.6" font-size="14.5" fill="#1e293b">实</text>
+<text x="510.7" y="2725.6" font-size="14.5" fill="#1e293b">例</text>
+<text x="525.2" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="528.4" y="2725.6" font-size="14.5" fill="#1e293b">——</text>
+<text x="552.7" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="556.0" y="2725.6" font-size="14.5" fill="#1e293b">P2C</text>
+<text x="582.5" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="585.7" y="2725.6" font-size="14.5" fill="#1e293b">读</text>
+<text x="600.2" y="2725.6" font-size="14.5" fill="#1e293b">到</text>
+<text x="614.7" y="2725.6" font-size="14.5" fill="#1e293b">的</text>
+<text x="629.2" y="2725.6" font-size="14.5" fill="#1e293b">余</text>
+<text x="643.7" y="2725.6" font-size="14.5" fill="#1e293b">量</text>
+<text x="658.2" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="661.5" y="2725.6" font-size="14.5" fill="#1e293b">=</text>
+<text x="669.5" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="672.8" y="2725.6" font-size="14.5" fill="#1e293b">真</text>
+<text x="687.2" y="2725.6" font-size="14.5" fill="#1e293b">实</text>
+<text x="701.8" y="2725.6" font-size="14.5" fill="#1e293b">占</text>
+<text x="84.0" y="2751.1" font-size="14.5" fill="#7c3aed">•</text>
+<text x="104.0" y="2751.1" font-size="14.5" fill="#1e293b">用</text>
+<rect x="792.0" y="2410.1" width="700.0" height="361.6" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="1.7" />
+<text x="808.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">健</text>
+<text x="823.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">康</text>
+<text x="838.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">度</text>
+<text x="853.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">状</text>
+<text x="868.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">态</text>
+<text x="883.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">机</text>
+<text x="898.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">（</text>
+<text x="913.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">health.rs</text>
+<text x="979.3" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">，</text>
+<text x="994.3" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">移</text>
+<text x="1009.3" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">植</text>
+<text x="1024.3" y="2438.4" font-size="15" fill="#0f172a" font-weight="700"> </text>
+<text x="1027.7" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">new-api</text>
+<text x="1087.5" y="2438.4" font-size="15" fill="#0f172a" font-weight="700"> </text>
+<text x="1091.0" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">track_health.go</text>
+<text x="1208.2" y="2438.4" font-size="15" fill="#0f172a" font-weight="700">）</text>
+<text x="808.0" y="2470.9" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">五</text>
+<text x="842.5" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">类</text>
+<text x="857.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">结</text>
+<text x="871.5" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">果</text>
+<text x="886.0" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="889.3" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">→</text>
+<text x="903.8" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="907.1" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">观</text>
+<text x="921.6" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">测</text>
+<text x="936.1" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">值</text>
+<text x="950.6" y="2470.9" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="965.1" y="2470.9" font-size="14.5" fill="#1e293b">Success</text>
+<text x="1018.2" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1021.5" y="2470.9" font-size="14.5" fill="#1e293b">1.0</text>
+<text x="1041.6" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1044.8" y="2470.9" font-size="14.5" fill="#1e293b">/</text>
+<text x="1050.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1053.8" y="2470.9" font-size="14.5" fill="#1e293b">429</text>
+<text x="1077.9" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1081.2" y="2470.9" font-size="14.5" fill="#1e293b">0.7</text>
+<text x="1101.3" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1104.5" y="2470.9" font-size="14.5" fill="#1e293b">/</text>
+<text x="1110.2" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1113.5" y="2470.9" font-size="14.5" fill="#1e293b">Fatal</text>
+<text x="1146.3" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1149.5" y="2470.9" font-size="14.5" fill="#1e293b">0</text>
+<text x="1157.6" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1160.8" y="2470.9" font-size="14.5" fill="#1e293b">/</text>
+<text x="1166.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1169.8" y="2470.9" font-size="14.5" fill="#1e293b">Neutral</text>
+<text x="1220.1" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1223.3" y="2470.9" font-size="14.5" fill="#1e293b">不</text>
+<text x="1237.8" y="2470.9" font-size="14.5" fill="#1e293b">计</text>
+<text x="1252.3" y="2470.9" font-size="14.5" fill="#1e293b">分</text>
+<text x="1266.8" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1270.1" y="2470.9" font-size="14.5" fill="#1e293b">/</text>
+<text x="1275.8" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1279.0" y="2470.9" font-size="14.5" fill="#1e293b">401·403</text>
+<text x="1335.4" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1338.7" y="2470.9" font-size="14.5" fill="#1e293b">连</text>
+<text x="1353.2" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1356.4" y="2470.9" font-size="14.5" fill="#1e293b">3</text>
+<text x="1364.5" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1367.7" y="2470.9" font-size="14.5" fill="#1e293b">次</text>
+<text x="1382.2" y="2470.9" font-size="14.5" fill="#1e293b">升</text>
+<text x="1396.7" y="2470.9" font-size="14.5" fill="#1e293b">级</text>
+<text x="1411.2" y="2470.9" font-size="14.5" fill="#1e293b"> </text>
+<text x="1414.5" y="2470.9" font-size="14.5" fill="#1e293b">Fatal</text>
+<text x="808.0" y="2496.3" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">EWMA</text>
+<text x="871.9" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="875.2" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">评</text>
+<text x="889.7" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
+<text x="904.2" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="907.5" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">score</text>
+<text x="945.5" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="948.8" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">=</text>
+<text x="957.3" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="960.6" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">α·obs</text>
+<text x="1004.3" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="1007.6" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">+</text>
+<text x="1016.2" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="1019.5" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">(1−α)·score</text>
+<text x="1103.8" y="2496.3" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="1118.3" y="2496.3" font-size="14.5" fill="#1e293b">未</text>
+<text x="1132.8" y="2496.3" font-size="14.5" fill="#1e293b">到</text>
+<text x="1147.3" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1150.6" y="2496.3" font-size="14.5" fill="#1e293b">MinRequests</text>
+<text x="1236.6" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1239.9" y="2496.3" font-size="14.5" fill="#1e293b">不</text>
+<text x="1254.4" y="2496.3" font-size="14.5" fill="#1e293b">更</text>
+<text x="1268.9" y="2496.3" font-size="14.5" fill="#1e293b">新</text>
+<text x="1283.4" y="2496.3" font-size="14.5" fill="#1e293b">；</text>
+<text x="1297.9" y="2496.3" font-size="14.5" fill="#1e293b">下</text>
+<text x="1312.4" y="2496.3" font-size="14.5" fill="#1e293b">限</text>
+<text x="1326.9" y="2496.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1330.1" y="2496.3" font-size="14.5" fill="#1e293b">MinScore</text>
+<text x="1392.7" y="2496.3" font-size="14.5" fill="#1e293b">；</text>
+<text x="1407.2" y="2496.3" font-size="14.5" fill="#1e293b">15min</text>
+<text x="808.0" y="2521.8" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2521.8" font-size="14.5" fill="#1e293b">时</text>
+<text x="842.5" y="2521.8" font-size="14.5" fill="#1e293b">间</text>
+<text x="857.0" y="2521.8" font-size="14.5" fill="#1e293b">常</text>
+<text x="871.5" y="2521.8" font-size="14.5" fill="#1e293b">数</text>
+<text x="886.0" y="2521.8" font-size="14.5" fill="#1e293b">向</text>
+<text x="900.5" y="2521.8" font-size="14.5" fill="#1e293b">默</text>
+<text x="915.0" y="2521.8" font-size="14.5" fill="#1e293b">认</text>
+<text x="929.5" y="2521.8" font-size="14.5" fill="#1e293b">分</text>
+<text x="944.0" y="2521.8" font-size="14.5" fill="#1e293b">衰</text>
+<text x="958.5" y="2521.8" font-size="14.5" fill="#1e293b">减</text>
+<text x="973.0" y="2521.8" font-size="14.5" fill="#1e293b">（</text>
+<text x="987.5" y="2521.8" font-size="14.5" fill="#1e293b">半</text>
+<text x="1002.0" y="2521.8" font-size="14.5" fill="#1e293b">衰</text>
+<text x="1016.5" y="2521.8" font-size="14.5" fill="#1e293b">期</text>
+<text x="1031.0" y="2521.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="1034.2" y="2521.8" font-size="14.5" fill="#1e293b">τ·ln2</text>
+<text x="1070.5" y="2521.8" font-size="14.5" fill="#1e293b">）</text>
+<text x="808.0" y="2547.3" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2547.3" font-size="14.5" fill="#0f172a" font-weight="700">时</text>
+<text x="842.5" y="2547.3" font-size="14.5" fill="#0f172a" font-weight="700">延</text>
+<text x="857.0" y="2547.3" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="860.3" y="2547.3" font-size="14.5" fill="#0f172a" font-weight="700">EWMA</text>
+<text x="904.2" y="2547.3" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="918.7" y="2547.3" font-size="14.5" fill="#1e293b">上</text>
+<text x="933.2" y="2547.3" font-size="14.5" fill="#1e293b">升</text>
+<text x="947.7" y="2547.3" font-size="14.5" fill="#1e293b">立</text>
+<text x="962.2" y="2547.3" font-size="14.5" fill="#1e293b">即</text>
+<text x="976.7" y="2547.3" font-size="14.5" fill="#1e293b">、</text>
+<text x="991.2" y="2547.3" font-size="14.5" fill="#1e293b">下</text>
+<text x="1005.7" y="2547.3" font-size="14.5" fill="#1e293b">降</text>
+<text x="1020.2" y="2547.3" font-size="14.5" fill="#1e293b">以</text>
+<text x="1034.7" y="2547.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1037.9" y="2547.3" font-size="14.5" fill="#1e293b">10s</text>
+<text x="1060.8" y="2547.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1064.0" y="2547.3" font-size="14.5" fill="#1e293b">常</text>
+<text x="1078.5" y="2547.3" font-size="14.5" fill="#1e293b">数</text>
+<text x="1093.0" y="2547.3" font-size="14.5" fill="#1e293b">回</text>
+<text x="1107.5" y="2547.3" font-size="14.5" fill="#1e293b">贴</text>
+<text x="1122.0" y="2547.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1125.3" y="2547.3" font-size="14.5" fill="#1e293b">——</text>
+<text x="1149.6" y="2547.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1152.8" y="2547.3" font-size="14.5" fill="#1e293b">P2C</text>
+<text x="1179.3" y="2547.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="1182.5" y="2547.3" font-size="14.5" fill="#1e293b">唯</text>
+<text x="1197.0" y="2547.3" font-size="14.5" fill="#1e293b">一</text>
+<text x="1211.5" y="2547.3" font-size="14.5" fill="#1e293b">能</text>
+<text x="1226.0" y="2547.3" font-size="14.5" fill="#1e293b">看</text>
+<text x="1240.5" y="2547.3" font-size="14.5" fill="#1e293b">到</text>
+<text x="1255.0" y="2547.3" font-size="14.5" fill="#1e293b">的</text>
+<text x="1269.5" y="2547.3" font-size="14.5" fill="#1e293b">「</text>
+<text x="1284.0" y="2547.3" font-size="14.5" fill="#1e293b">慢</text>
+<text x="1298.5" y="2547.3" font-size="14.5" fill="#1e293b">但</text>
+<text x="1313.0" y="2547.3" font-size="14.5" fill="#1e293b">成</text>
+<text x="1327.5" y="2547.3" font-size="14.5" fill="#1e293b">功</text>
+<text x="1342.0" y="2547.3" font-size="14.5" fill="#1e293b">」</text>
+<text x="1356.5" y="2547.3" font-size="14.5" fill="#1e293b">信</text>
+<text x="1371.0" y="2547.3" font-size="14.5" fill="#1e293b">号</text>
+<text x="808.0" y="2572.7" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">t-digest</text>
+<text x="882.4" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="885.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">分</text>
+<text x="900.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">位</text>
+<text x="914.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">（</text>
+<text x="929.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">灰</text>
+<text x="943.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">开</text>
+<text x="958.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">关</text>
+<text x="972.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="976.0" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">digest_enabled</text>
+<text x="1085.7" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">）</text>
+<text x="1100.2" y="2572.7" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="1114.7" y="2572.7" font-size="14.5" fill="#1e293b">窗</text>
+<text x="1129.2" y="2572.7" font-size="14.5" fill="#1e293b">口</text>
+<text x="1143.7" y="2572.7" font-size="14.5" fill="#1e293b">表</text>
+<text x="1158.2" y="2572.7" font-size="14.5" fill="#1e293b">提</text>
+<text x="1172.7" y="2572.7" font-size="14.5" fill="#1e293b">供</text>
+<text x="1187.2" y="2572.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="1190.4" y="2572.7" font-size="14.5" fill="#1e293b">p50/p95</text>
+<text x="1246.3" y="2572.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="1249.5" y="2572.7" font-size="14.5" fill="#1e293b">+</text>
+<text x="1257.6" y="2572.7" font-size="14.5" fill="#1e293b"> </text>
+<text x="1260.8" y="2572.7" font-size="14.5" fill="#1e293b">权</text>
+<text x="1275.3" y="2572.7" font-size="14.5" fill="#1e293b">重</text>
+<text x="1289.8" y="2572.7" font-size="14.5" fill="#1e293b">，</text>
+<text x="1304.3" y="2572.7" font-size="14.5" fill="#1e293b">替</text>
+<text x="1318.8" y="2572.7" font-size="14.5" fill="#1e293b">换</text>
+<text x="1333.3" y="2572.7" font-size="14.5" fill="#1e293b">而</text>
+<text x="1347.8" y="2572.7" font-size="14.5" fill="#1e293b">非</text>
+<text x="1362.3" y="2572.7" font-size="14.5" fill="#1e293b">乘</text>
+<text x="1376.8" y="2572.7" font-size="14.5" fill="#1e293b">进</text>
+<text x="1391.3" y="2572.7" font-size="14.5" fill="#1e293b">时</text>
+<text x="1405.8" y="2572.7" font-size="14.5" fill="#1e293b">延</text>
+<text x="1420.3" y="2572.7" font-size="14.5" fill="#1e293b">因</text>
+<text x="1434.8" y="2572.7" font-size="14.5" fill="#1e293b">子</text>
+<text x="808.0" y="2598.2" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">Fatal</text>
+<text x="863.1" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="866.4" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">冷</text>
+<text x="880.9" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">却</text>
+<text x="895.4" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">阶</text>
+<text x="909.9" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">梯</text>
+<text x="924.4" y="2598.2" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="938.9" y="2598.2" font-size="14.5" fill="#1e293b">立</text>
+<text x="953.4" y="2598.2" font-size="14.5" fill="#1e293b">即</text>
+<text x="967.9" y="2598.2" font-size="14.5" fill="#1e293b">冷</text>
+<text x="982.4" y="2598.2" font-size="14.5" fill="#1e293b">却</text>
+<text x="996.9" y="2598.2" font-size="14.5" fill="#1e293b">，</text>
+<text x="1011.4" y="2598.2" font-size="14.5" fill="#1e293b">base→max</text>
+<text x="1086.4" y="2598.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1089.6" y="2598.2" font-size="14.5" fill="#1e293b">按</text>
+<text x="1104.1" y="2598.2" font-size="14.5" fill="#1e293b">连</text>
+<text x="1118.6" y="2598.2" font-size="14.5" fill="#1e293b">击</text>
+<text x="1133.1" y="2598.2" font-size="14.5" fill="#1e293b">幂</text>
+<text x="1147.6" y="2598.2" font-size="14.5" fill="#1e293b">律</text>
+<text x="1162.1" y="2598.2" font-size="14.5" fill="#1e293b">爬</text>
+<text x="1176.6" y="2598.2" font-size="14.5" fill="#1e293b">（</text>
+<text x="1191.1" y="2598.2" font-size="14.5" fill="#1e293b">300ms→8s</text>
+<text x="1264.8" y="2598.2" font-size="14.5" fill="#1e293b">，</text>
+<text x="1279.3" y="2598.2" font-size="14.5" fill="#1e293b">N=12</text>
+<text x="1313.9" y="2598.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1317.2" y="2598.2" font-size="14.5" fill="#1e293b">步</text>
+<text x="1331.7" y="2598.2" font-size="14.5" fill="#1e293b">）</text>
+<text x="1346.2" y="2598.2" font-size="14.5" fill="#1e293b">；</text>
+<text x="1360.7" y="2598.2" font-size="14.5" fill="#1e293b">闲</text>
+<text x="1375.2" y="2598.2" font-size="14.5" fill="#1e293b">置</text>
+<text x="1389.7" y="2598.2" font-size="14.5" fill="#1e293b">退</text>
+<text x="1404.2" y="2598.2" font-size="14.5" fill="#1e293b">火</text>
+<text x="1418.7" y="2598.2" font-size="14.5" fill="#1e293b">、</text>
+<text x="1433.2" y="2598.2" font-size="14.5" fill="#1e293b">成</text>
+<text x="808.0" y="2623.7" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2623.7" font-size="14.5" fill="#1e293b">功</text>
+<text x="842.5" y="2623.7" font-size="14.5" fill="#1e293b">后</text>
+<text x="857.0" y="2623.7" font-size="14.5" fill="#1e293b">阶</text>
+<text x="871.5" y="2623.7" font-size="14.5" fill="#1e293b">梯</text>
+<text x="886.0" y="2623.7" font-size="14.5" fill="#1e293b">归</text>
+<text x="900.5" y="2623.7" font-size="14.5" fill="#1e293b">零</text>
+<text x="915.0" y="2623.7" font-size="14.5" fill="#1e293b">重</text>
+<text x="929.5" y="2623.7" font-size="14.5" fill="#1e293b">启</text>
+<text x="808.0" y="2649.2" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">429</text>
+<text x="853.7" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="857.0" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">独</text>
+<text x="871.5" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">立</text>
+<text x="886.0" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="889.3" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">throttle</text>
+<text x="944.4" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="947.7" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">梯</text>
+<text x="962.2" y="2649.2" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="976.7" y="2649.2" font-size="14.5" fill="#1e293b">300ms→1s</text>
+<text x="1050.3" y="2649.2" font-size="14.5" fill="#1e293b">，</text>
+<text x="1064.8" y="2649.2" font-size="14.5" fill="#1e293b">固</text>
+<text x="1079.3" y="2649.2" font-size="14.5" fill="#1e293b">定</text>
+<text x="1093.8" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1097.1" y="2649.2" font-size="14.5" fill="#1e293b">4</text>
+<text x="1105.1" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1108.4" y="2649.2" font-size="14.5" fill="#1e293b">步</text>
+<text x="1122.9" y="2649.2" font-size="14.5" fill="#1e293b">；</text>
+<text x="1137.4" y="2649.2" font-size="14.5" fill="#1e293b">上</text>
+<text x="1151.9" y="2649.2" font-size="14.5" fill="#1e293b">游</text>
+<text x="1166.4" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1169.6" y="2649.2" font-size="14.5" fill="#1e293b">Retry-After</text>
+<text x="1242.9" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1246.2" y="2649.2" font-size="14.5" fill="#1e293b">直</text>
+<text x="1260.7" y="2649.2" font-size="14.5" fill="#1e293b">接</text>
+<text x="1275.2" y="2649.2" font-size="14.5" fill="#1e293b">覆</text>
+<text x="1289.7" y="2649.2" font-size="14.5" fill="#1e293b">盖</text>
+<text x="1304.2" y="2649.2" font-size="14.5" fill="#1e293b">并</text>
+<text x="1318.7" y="2649.2" font-size="14.5" fill="#1e293b">被</text>
+<text x="1333.2" y="2649.2" font-size="14.5" fill="#1e293b"> </text>
+<text x="1336.4" y="2649.2" font-size="14.5" fill="#1e293b">cooldown_max</text>
+<text x="808.0" y="2674.6" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2674.6" font-size="14.5" fill="#1e293b">夹</text>
+<text x="842.5" y="2674.6" font-size="14.5" fill="#1e293b">住</text>
+<text x="808.0" y="2700.1" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">slow-start</text>
+<text x="900.2" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700"> </text>
+<text x="903.5" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">ramp</text>
+<text x="941.3" y="2700.1" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="955.8" y="2700.1" font-size="14.5" fill="#1e293b">冷</text>
+<text x="970.3" y="2700.1" font-size="14.5" fill="#1e293b">却</text>
+<text x="984.8" y="2700.1" font-size="14.5" fill="#1e293b">结</text>
+<text x="999.3" y="2700.1" font-size="14.5" fill="#1e293b">束</text>
+<text x="1013.8" y="2700.1" font-size="14.5" fill="#1e293b">进</text>
+<text x="1028.3" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="1031.5" y="2700.1" font-size="14.5" fill="#1e293b">RampPending</text>
+<text x="1126.9" y="2700.1" font-size="14.5" fill="#1e293b">，</text>
+<text x="1141.4" y="2700.1" font-size="14.5" fill="#1e293b">以</text>
+<text x="1155.9" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="1159.1" y="2700.1" font-size="14.5" fill="#1e293b">request_count/min_requests</text>
+<text x="1355.5" y="2700.1" font-size="14.5" fill="#1e293b"> </text>
+<text x="1358.7" y="2700.1" font-size="14.5" fill="#1e293b">折</text>
+<text x="1373.2" y="2700.1" font-size="14.5" fill="#1e293b">先</text>
+<text x="1387.7" y="2700.1" font-size="14.5" fill="#1e293b">验</text>
+<text x="1402.2" y="2700.1" font-size="14.5" fill="#1e293b">；</text>
+<text x="1416.7" y="2700.1" font-size="14.5" fill="#1e293b">一</text>
+<text x="1431.2" y="2700.1" font-size="14.5" fill="#1e293b">次</text>
+<text x="808.0" y="2725.6" font-size="14.5" fill="#7c3aed">•</text>
+<text x="828.0" y="2725.6" font-size="14.5" fill="#1e293b">真</text>
+<text x="842.5" y="2725.6" font-size="14.5" fill="#1e293b">实</text>
+<text x="857.0" y="2725.6" font-size="14.5" fill="#1e293b">失</text>
+<text x="871.5" y="2725.6" font-size="14.5" fill="#1e293b">败</text>
+<text x="886.0" y="2725.6" font-size="14.5" fill="#1e293b">立</text>
+<text x="900.5" y="2725.6" font-size="14.5" fill="#1e293b">即</text>
+<text x="915.0" y="2725.6" font-size="14.5" fill="#1e293b"> </text>
+<text x="918.2" y="2725.6" font-size="14.5" fill="#1e293b">RampExited</text>
+<text x="808.0" y="2760.1" font-size="13.5" fill="#64748b">状</text>
+<text x="821.5" y="2760.1" font-size="13.5" fill="#64748b">态</text>
+<text x="835.0" y="2760.1" font-size="13.5" fill="#64748b">全</text>
+<text x="848.5" y="2760.1" font-size="13.5" fill="#64748b">在</text>
+<text x="862.0" y="2760.1" font-size="13.5" fill="#64748b">进</text>
+<text x="875.5" y="2760.1" font-size="13.5" fill="#64748b">程</text>
+<text x="889.0" y="2760.1" font-size="13.5" fill="#64748b">内</text>
+<text x="902.5" y="2760.1" font-size="13.5" fill="#64748b">（</text>
+<text x="916.0" y="2760.1" font-size="13.5" fill="#64748b">Mutex&lt;HashMap&gt;</text>
+<text x="1028.0" y="2760.1" font-size="13.5" fill="#64748b">）</text>
+<text x="1041.5" y="2760.1" font-size="13.5" fill="#64748b">，</text>
+<text x="1055.0" y="2760.1" font-size="13.5" fill="#64748b">不</text>
+<text x="1068.5" y="2760.1" font-size="13.5" fill="#64748b">跨</text>
+<text x="1082.0" y="2760.1" font-size="13.5" fill="#64748b">节</text>
+<text x="1095.5" y="2760.1" font-size="13.5" fill="#64748b">点</text>
+<text x="1109.0" y="2760.1" font-size="13.5" fill="#64748b">同</text>
+<text x="1122.5" y="2760.1" font-size="13.5" fill="#64748b">步</text>
+<text x="1136.0" y="2760.1" font-size="13.5" fill="#64748b">；</text>
+<text x="1149.5" y="2760.1" font-size="13.5" fill="#64748b">key</text>
+<text x="1171.3" y="2760.1" font-size="13.5" fill="#64748b"> </text>
+<text x="1174.3" y="2760.1" font-size="13.5" fill="#64748b">=</text>
+<text x="1181.8" y="2760.1" font-size="13.5" fill="#64748b"> </text>
+<text x="1184.8" y="2760.1" font-size="13.5" fill="#64748b">route</text>
+<text x="1218.7" y="2760.1" font-size="13.5" fill="#64748b"> </text>
+<text x="1221.7" y="2760.1" font-size="13.5" fill="#64748b">unit</text>
+<text x="1246.9" y="2760.1" font-size="13.5" fill="#64748b"> </text>
+<text x="1250.0" y="2760.1" font-size="13.5" fill="#64748b">meta.key</text>
+<text x="1307.7" y="2760.1" font-size="13.5" fill="#64748b">（</text>
+<text x="1321.2" y="2760.1" font-size="13.5" fill="#64748b">非</text>
+<text x="1334.7" y="2760.1" font-size="13.5" fill="#64748b"> </text>
+<text x="1337.7" y="2760.1" font-size="13.5" fill="#64748b">channel</text>
+<text x="1388.1" y="2760.1" font-size="13.5" fill="#64748b">）</text>
+<rect x="48" y="2809.7" width="1464" height="151.0" rx="12" fill="#f1f5f9" stroke="#64748b" stroke-width="1.7" />
+<text x="68.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">消</text>
+<text x="85.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">费</text>
+<text x="103.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">者</text>
+<text x="120.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">（</text>
+<text x="138.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">产</text>
+<text x="155.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">品</text>
+<text x="173.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">）</text>
+<text x="190.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">注</text>
+<text x="208.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">入</text>
+<text x="225.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">面</text>
+<text x="243.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
+<text x="247.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">——</text>
+<text x="276.8" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
+<text x="280.7" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">daemon</text>
+<text x="351.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
+<text x="355.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">化</text>
+<text x="373.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">的</text>
+<text x="390.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">接</text>
+<text x="408.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">缝</text>
+<text x="425.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">就</text>
+<text x="443.0" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">在</text>
+<text x="460.5" y="2844.1" font-size="17.5" fill="#0f172a" font-weight="700">这</text>
+<text x="68.0" y="2880.3" font-size="15" fill="#64748b">•</text>
+<text x="88.0" y="2880.3" font-size="15" fill="#0f172a" font-weight="700">Context</text>
+<text x="145.6" y="2880.3" font-size="15" fill="#0f172a" font-weight="700"> </text>
+<text x="149.0" y="2880.3" font-size="15" fill="#0f172a" font-weight="700">注</text>
+<text x="164.0" y="2880.3" font-size="15" fill="#0f172a" font-weight="700">入</text>
+<text x="179.0" y="2880.3" font-size="15" fill="#0f172a" font-weight="700">物</text>
+<text x="194.0" y="2880.3" font-size="15" fill="#0f172a" font-weight="700">：</text>
+<text x="209.0" y="2880.3" font-size="15" fill="#1e293b">egress</text>
+<text x="253.6" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="257.0" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="265.4" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="268.8" y="2880.3" font-size="15" fill="#1e293b">ProxyManager</text>
+<text x="368.6" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="371.9" y="2880.3" font-size="15" fill="#1e293b">+</text>
+<text x="380.3" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="383.6" y="2880.3" font-size="15" fill="#1e293b">快</text>
+<text x="398.6" y="2880.3" font-size="15" fill="#1e293b">照</text>
+<text x="413.6" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="417.0" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="425.4" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="428.8" y="2880.3" font-size="15" fill="#1e293b">词</text>
+<text x="443.8" y="2880.3" font-size="15" fill="#1e293b">表</text>
+<text x="458.8" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="462.1" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="470.5" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="473.9" y="2880.3" font-size="15" fill="#1e293b">目</text>
+<text x="488.9" y="2880.3" font-size="15" fill="#1e293b">录</text>
+<text x="503.9" y="2880.3" font-size="15" fill="#1e293b">快</text>
+<text x="518.9" y="2880.3" font-size="15" fill="#1e293b">照</text>
+<text x="533.9" y="2880.3" font-size="15" fill="#1e293b">（</text>
+<text x="548.9" y="2880.3" font-size="15" fill="#1e293b">token/user/group</text>
+<text x="671.4" y="2880.3" font-size="15" fill="#1e293b">）</text>
+<text x="686.4" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="694.8" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="698.2" y="2880.3" font-size="15" fill="#1e293b">knobs</text>
+<text x="741.0" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="744.4" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="752.8" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="756.2" y="2880.3" font-size="15" fill="#1e293b">quota_gate</text>
+<text x="835.7" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="839.0" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="847.4" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="850.8" y="2880.3" font-size="15" fill="#1e293b">settle</text>
+<text x="889.5" y="2880.3" font-size="15" fill="#1e293b">（</text>
+<text x="904.5" y="2880.3" font-size="15" fill="#1e293b">价</text>
+<text x="919.5" y="2880.3" font-size="15" fill="#1e293b">格</text>
+<text x="934.5" y="2880.3" font-size="15" fill="#1e293b">表</text>
+<text x="949.5" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="952.9" y="2880.3" font-size="15" fill="#1e293b">+</text>
+<text x="961.2" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="964.6" y="2880.3" font-size="15" fill="#1e293b">SettleSink</text>
+<text x="1035.4" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="1038.7" y="2880.3" font-size="15" fill="#1e293b">成</text>
+<text x="1053.7" y="2880.3" font-size="15" fill="#1e293b">对</text>
+<text x="1068.7" y="2880.3" font-size="15" fill="#1e293b">）</text>
+<text x="1083.7" y="2880.3" font-size="15" fill="#1e293b">·</text>
+<text x="1092.2" y="2880.3" font-size="15" fill="#1e293b"> </text>
+<text x="1095.5" y="2880.3" font-size="15" fill="#1e293b">ledger</text>
+<text x="68.0" y="2906.5" font-size="15" fill="#64748b">•</text>
+<text x="88.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">管</text>
+<text x="103.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">理</text>
+<text x="118.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">面</text>
+<text x="133.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">端</text>
+<text x="148.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">口</text>
+<text x="163.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">只</text>
+<text x="178.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">有</text>
+<text x="193.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">三</text>
+<text x="208.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">个</text>
+<text x="223.0" y="2906.5" font-size="15" fill="#0f172a" font-weight="700">：</text>
+<text x="238.0" y="2906.5" font-size="15" fill="#1e293b">DispatcherHandle</text>
+<text x="363.5" y="2906.5" font-size="15" fill="#1e293b">（</text>
+<text x="378.5" y="2906.5" font-size="15" fill="#1e293b">set_snapshot</text>
+<text x="472.2" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="475.5" y="2906.5" font-size="15" fill="#1e293b">/</text>
+<text x="481.4" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="484.8" y="2906.5" font-size="15" fill="#1e293b">读</text>
+<text x="499.8" y="2906.5" font-size="15" fill="#1e293b">快</text>
+<text x="514.8" y="2906.5" font-size="15" fill="#1e293b">照</text>
+<text x="529.8" y="2906.5" font-size="15" fill="#1e293b">）</text>
+<text x="544.8" y="2906.5" font-size="15" fill="#1e293b">·</text>
+<text x="553.2" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="556.5" y="2906.5" font-size="15" fill="#1e293b">HealthHandle</text>
+<text x="653.4" y="2906.5" font-size="15" fill="#1e293b">（</text>
+<text x="668.4" y="2906.5" font-size="15" fill="#1e293b">读</text>
+<text x="683.4" y="2906.5" font-size="15" fill="#1e293b">/</text>
+<text x="689.3" y="2906.5" font-size="15" fill="#1e293b">装</text>
+<text x="704.3" y="2906.5" font-size="15" fill="#1e293b">健</text>
+<text x="719.3" y="2906.5" font-size="15" fill="#1e293b">康</text>
+<text x="734.3" y="2906.5" font-size="15" fill="#1e293b">）</text>
+<text x="749.3" y="2906.5" font-size="15" fill="#1e293b">·</text>
+<text x="757.7" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="761.0" y="2906.5" font-size="15" fill="#1e293b">retry_handle</text>
+<text x="851.5" y="2906.5" font-size="15" fill="#1e293b">（</text>
+<text x="866.5" y="2906.5" font-size="15" fill="#1e293b">ArcSwap</text>
+<text x="927.5" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="930.8" y="2906.5" font-size="15" fill="#1e293b">热</text>
+<text x="945.8" y="2906.5" font-size="15" fill="#1e293b">替</text>
+<text x="960.8" y="2906.5" font-size="15" fill="#1e293b">换</text>
+<text x="975.8" y="2906.5" font-size="15" fill="#1e293b">）</text>
+<text x="990.8" y="2906.5" font-size="15" fill="#1e293b">；</text>
+<text x="1005.8" y="2906.5" font-size="15" fill="#1e293b">其</text>
+<text x="1020.8" y="2906.5" font-size="15" fill="#1e293b">余</text>
+<text x="1035.8" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="1039.2" y="2906.5" font-size="15" fill="#1e293b">admin</text>
+<text x="1084.1" y="2906.5" font-size="15" fill="#1e293b"> </text>
+<text x="1087.5" y="2906.5" font-size="15" fill="#1e293b">交</text>
+<text x="1102.5" y="2906.5" font-size="15" fill="#1e293b">互</text>
+<text x="1117.5" y="2906.5" font-size="15" fill="#1e293b">都</text>
+<text x="1132.5" y="2906.5" font-size="15" fill="#1e293b">经</text>
+<text x="1147.5" y="2906.5" font-size="15" fill="#1e293b">过</text>
+<text x="1162.5" y="2906.5" font-size="15" fill="#1e293b">它</text>
+<text x="1177.5" y="2906.5" font-size="15" fill="#1e293b">们</text>
+<text x="68.0" y="2932.8" font-size="15" fill="#64748b">•</text>
+<text x="88.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">多</text>
+<text x="103.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">实</text>
+<text x="118.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">例</text>
+<text x="133.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">注</text>
+<text x="148.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">意</text>
+<text x="163.0" y="2932.8" font-size="15" fill="#0f172a" font-weight="700">：</text>
+<text x="178.0" y="2932.8" font-size="15" fill="#1e293b">health/</text>
+<text x="228.5" y="2932.8" font-size="15" fill="#1e293b">冷</text>
+<text x="243.5" y="2932.8" font-size="15" fill="#1e293b">却</text>
+<text x="258.5" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="273.5" y="2932.8" font-size="15" fill="#1e293b">sticky</text>
+<text x="313.8" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="328.8" y="2932.8" font-size="15" fill="#1e293b">response</text>
+<text x="392.6" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="396.0" y="2932.8" font-size="15" fill="#1e293b">cache</text>
+<text x="437.0" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="452.0" y="2932.8" font-size="15" fill="#1e293b">限</text>
+<text x="467.0" y="2932.8" font-size="15" fill="#1e293b">流</text>
+<text x="482.0" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="497.0" y="2932.8" font-size="15" fill="#1e293b">全</text>
+<text x="512.0" y="2932.8" font-size="15" fill="#1e293b">局</text>
+<text x="527.0" y="2932.8" font-size="15" fill="#1e293b">+</text>
+<text x="535.3" y="2932.8" font-size="15" fill="#1e293b">每</text>
+<text x="550.3" y="2932.8" font-size="15" fill="#1e293b">渠</text>
+<text x="565.3" y="2932.8" font-size="15" fill="#1e293b">道</text>
+<text x="580.3" y="2932.8" font-size="15" fill="#1e293b">并</text>
+<text x="595.3" y="2932.8" font-size="15" fill="#1e293b">发</text>
+<text x="610.3" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="625.3" y="2932.8" font-size="15" fill="#1e293b">TPM</text>
+<text x="656.0" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="671.0" y="2932.8" font-size="15" fill="#1e293b">ledger</text>
+<text x="715.2" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="718.5" y="2932.8" font-size="15" fill="#1e293b">预</text>
+<text x="733.5" y="2932.8" font-size="15" fill="#1e293b">扣</text>
+<text x="748.5" y="2932.8" font-size="15" fill="#1e293b">、</text>
+<text x="763.5" y="2932.8" font-size="15" fill="#1e293b">灰</text>
+<text x="778.5" y="2932.8" font-size="15" fill="#1e293b">度</text>
+<text x="793.5" y="2932.8" font-size="15" fill="#1e293b">名</text>
+<text x="808.5" y="2932.8" font-size="15" fill="#1e293b">单</text>
+<text x="823.5" y="2932.8" font-size="15" fill="#1e293b">全</text>
+<text x="838.5" y="2932.8" font-size="15" fill="#1e293b">是</text>
+<text x="853.5" y="2932.8" font-size="15" fill="#1e293b">进</text>
+<text x="868.5" y="2932.8" font-size="15" fill="#1e293b">程</text>
+<text x="883.5" y="2932.8" font-size="15" fill="#1e293b">内</text>
+<text x="898.5" y="2932.8" font-size="15" fill="#1e293b">内</text>
+<text x="913.5" y="2932.8" font-size="15" fill="#1e293b">存</text>
+<text x="928.5" y="2932.8" font-size="15" fill="#1e293b">态</text>
+<text x="943.5" y="2932.8" font-size="15" fill="#1e293b">（</text>
+<text x="958.5" y="2932.8" font-size="15" fill="#1e293b">源</text>
+<text x="973.5" y="2932.8" font-size="15" fill="#1e293b">码</text>
+<text x="988.5" y="2932.8" font-size="15" fill="#1e293b">原</text>
+<text x="1003.5" y="2932.8" font-size="15" fill="#1e293b">话</text>
+<text x="1018.5" y="2932.8" font-size="15" fill="#1e293b">：</text>
+<text x="1033.5" y="2932.8" font-size="15" fill="#1e293b">not</text>
+<text x="1057.2" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="1060.5" y="2932.8" font-size="15" fill="#1e293b">synchronized</text>
+<text x="1153.9" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="1157.2" y="2932.8" font-size="15" fill="#1e293b">across</text>
+<text x="1202.1" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="1205.4" y="2932.8" font-size="15" fill="#1e293b">nodes</text>
+<text x="1248.3" y="2932.8" font-size="15" fill="#1e293b">）</text>
+<text x="1263.3" y="2932.8" font-size="15" fill="#1e293b">——</text>
+<text x="1288.5" y="2932.8" font-size="15" fill="#1e293b"> </text>
+<text x="1291.8" y="2932.8" font-size="15" fill="#1e293b">横</text>
+<text x="1306.8" y="2932.8" font-size="15" fill="#1e293b">向</text>
+<text x="1321.8" y="2932.8" font-size="15" fill="#1e293b">扩</text>
+<text x="1336.8" y="2932.8" font-size="15" fill="#1e293b">之</text>
+<text x="1351.8" y="2932.8" font-size="15" fill="#1e293b">前</text>
+<text x="1366.8" y="2932.8" font-size="15" fill="#1e293b">必</text>
+<text x="1381.8" y="2932.8" font-size="15" fill="#1e293b">须</text>
+<text x="1396.8" y="2932.8" font-size="15" fill="#1e293b">外</text>
+<text x="1411.8" y="2932.8" font-size="15" fill="#1e293b">部</text>
+<text x="1426.8" y="2932.8" font-size="15" fill="#1e293b">化</text>
+<text x="1441.8" y="2932.8" font-size="15" fill="#1e293b">或</text>
+<text x="1456.8" y="2932.8" font-size="15" fill="#1e293b">分</text>
+<text x="1471.8" y="2932.8" font-size="15" fill="#1e293b">片</text>
+<rect x="48" y="2976.7" width="1464" height="170.4" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.7" />
+<text x="68.0" y="3009.8" font-size="13.5" fill="#64748b">12 crate 职责一览（11 库 crate + 根包 gateway-daemon）</text>
+<text x="68.0" y="3043.8" font-size="13.5" fill="#64748b">•进程入口与装配：gateway-daemon 根包（actix 传输 + config/catalog，bin gatewayd）· gateway-facade 装配 · gateway-pipeline Stage/管道（axum Router 嵌入出口 + from_parts 供 actix 传输）· gateway-gate 门禁 · gateway-dispatch 调度 · gateway-forward 转发 · gateway-protocol-bridge 协议方言</text>
+<text x="68.0" y="3069.3" font-size="14.5" fill="#94a3b8">•</text>
+<text x="88.0" y="3069.3" font-size="14.5" fill="#0f172a" font-weight="700">外</text>
+<text x="102.5" y="3069.3" font-size="14.5" fill="#0f172a" font-weight="700">设</text>
+<text x="117.0" y="3069.3" font-size="14.5" fill="#0f172a" font-weight="700">能</text>
+<text x="131.5" y="3069.3" font-size="14.5" fill="#0f172a" font-weight="700">力</text>
+<text x="146.0" y="3069.3" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="160.5" y="3069.3" font-size="14.5" fill="#1e293b">gateway-proxy</text>
+<text x="259.6" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="262.9" y="3069.3" font-size="14.5" fill="#1e293b">出</text>
+<text x="277.4" y="3069.3" font-size="14.5" fill="#1e293b">口</text>
+<text x="291.9" y="3069.3" font-size="14.5" fill="#1e293b">代</text>
+<text x="306.4" y="3069.3" font-size="14.5" fill="#1e293b">理</text>
+<text x="320.9" y="3069.3" font-size="14.5" fill="#1e293b">池</text>
+<text x="335.4" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="338.6" y="3069.3" font-size="14.5" fill="#1e293b">·</text>
+<text x="346.8" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="350.0" y="3069.3" font-size="14.5" fill="#1e293b">gateway-cache</text>
+<text x="451.0" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="454.3" y="3069.3" font-size="14.5" fill="#1e293b">缓</text>
+<text x="468.8" y="3069.3" font-size="14.5" fill="#1e293b">存</text>
+<text x="483.3" y="3069.3" font-size="14.5" fill="#1e293b">与</text>
+<text x="497.8" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="501.0" y="3069.3" font-size="14.5" fill="#1e293b">moka</text>
+<text x="539.2" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="542.5" y="3069.3" font-size="14.5" fill="#1e293b">基</text>
+<text x="557.0" y="3069.3" font-size="14.5" fill="#1e293b">元</text>
+<text x="571.5" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="574.7" y="3069.3" font-size="14.5" fill="#1e293b">·</text>
+<text x="582.9" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="586.1" y="3069.3" font-size="14.5" fill="#1e293b">gateway-security</text>
+<text x="701.2" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="704.4" y="3069.3" font-size="14.5" fill="#1e293b">敏</text>
+<text x="718.9" y="3069.3" font-size="14.5" fill="#1e293b">感</text>
+<text x="733.4" y="3069.3" font-size="14.5" fill="#1e293b">词</text>
+<text x="747.9" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="751.2" y="3069.3" font-size="14.5" fill="#1e293b">·</text>
+<text x="759.3" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="762.5" y="3069.3" font-size="14.5" fill="#1e293b">gateway-metering</text>
+<text x="885.2" y="3069.3" font-size="14.5" fill="#1e293b"> </text>
+<text x="888.4" y="3069.3" font-size="14.5" fill="#1e293b">计</text>
+<text x="902.9" y="3069.3" font-size="14.5" fill="#1e293b">量</text>
+<text x="68.0" y="3094.8" font-size="14.5" fill="#94a3b8">•</text>
+<text x="88.0" y="3094.8" font-size="14.5" fill="#0f172a" font-weight="700">契</text>
+<text x="102.5" y="3094.8" font-size="14.5" fill="#0f172a" font-weight="700">约</text>
+<text x="117.0" y="3094.8" font-size="14.5" fill="#0f172a" font-weight="700">底</text>
+<text x="131.5" y="3094.8" font-size="14.5" fill="#0f172a" font-weight="700">：</text>
+<text x="146.0" y="3094.8" font-size="14.5" fill="#1e293b">gateway-core</text>
+<text x="236.7" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="240.0" y="3094.8" font-size="14.5" fill="#1e293b">——</text>
+<text x="264.3" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="267.5" y="3094.8" font-size="14.5" fill="#1e293b">词</text>
+<text x="282.0" y="3094.8" font-size="14.5" fill="#1e293b">汇</text>
+<text x="296.5" y="3094.8" font-size="14.5" fill="#1e293b">（</text>
+<text x="311.0" y="3094.8" font-size="14.5" fill="#1e293b">records/snapshots/health/metering/proxy/protocol/error</text>
+<text x="697.2" y="3094.8" font-size="14.5" fill="#1e293b">）</text>
+<text x="711.7" y="3094.8" font-size="14.5" fill="#1e293b">+</text>
+<text x="719.8" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="723.0" y="3094.8" font-size="14.5" fill="#1e293b">端</text>
+<text x="737.5" y="3094.8" font-size="14.5" fill="#1e293b">口</text>
+<text x="752.0" y="3094.8" font-size="14.5" fill="#1e293b">（</text>
+<text x="766.5" y="3094.8" font-size="14.5" fill="#1e293b">Ledger</text>
+<text x="812.8" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="816.1" y="3094.8" font-size="14.5" fill="#1e293b">/</text>
+<text x="821.8" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="825.0" y="3094.8" font-size="14.5" fill="#1e293b">SettleSink</text>
+<text x="893.5" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="896.7" y="3094.8" font-size="14.5" fill="#1e293b">/</text>
+<text x="902.4" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="905.7" y="3094.8" font-size="14.5" fill="#1e293b">PriceTable</text>
+<text x="975.9" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="979.2" y="3094.8" font-size="14.5" fill="#1e293b">/</text>
+<text x="984.9" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="988.1" y="3094.8" font-size="14.5" fill="#1e293b">DispatcherHandle</text>
+<text x="1109.3" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="1112.6" y="3094.8" font-size="14.5" fill="#1e293b">/</text>
+<text x="1118.3" y="3094.8" font-size="14.5" fill="#1e293b"> </text>
+<text x="1121.5" y="3094.8" font-size="14.5" fill="#1e293b">HealthHandle</text>
+<text x="1215.1" y="3094.8" font-size="14.5" fill="#1e293b">）</text>
+<text x="1229.6" y="3094.8" font-size="14.5" fill="#1e293b">，</text>
+<text x="1244.1" y="3094.8" font-size="14.5" fill="#1e293b">无</text>
+<text x="1258.6" y="3094.8" font-size="14.5" fill="#1e293b">内</text>
+<text x="1273.1" y="3094.8" font-size="14.5" fill="#1e293b">部</text>
+<text x="1287.6" y="3094.8" font-size="14.5" fill="#1e293b">依</text>
+<text x="1302.1" y="3094.8" font-size="14.5" fill="#1e293b">赖</text>
+<text x="68.0" y="3120.2" font-size="13.5" fill="#64748b">依赖方向（硬规则）：gateway-daemon → gateway-facade（+actix/toml 等传输类 crate，不触引擎）→ 全部引擎 → gateway-core →（无）；引擎之间只许向下或横向，词汇面不得长回实现；嵌入消费方除 facade 外不命名任何 crate</text>
 </svg>
