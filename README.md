@@ -81,9 +81,16 @@ admission logic. Build and run:
 
 ```bash
 cargo run --bin gatewayd -- --config gateway.toml
-# load the config + catalog, print the summary, exit without binding
+# load the config + catalog, log the summary, exit without binding
 cargo run --bin gatewayd -- --config gateway.toml --check
+# CLI surface: --help / --version are clap-provided; unknown flags exit 2
+cargo run --bin gatewayd -- --help
 ```
+
+Reference files with every option commented live under
+[`config/`](./config): [`config/gateway.toml.example`](./config/gateway.toml.example)
+(process settings) and [`config/catalog.toml.example`](./config/catalog.toml.example)
+(catalog schema).
 
 `gateway.toml` describes the transport; the catalog it points at describes the
 data plane. Paths are resolved relative to the config file.

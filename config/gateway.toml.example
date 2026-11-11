@@ -1,0 +1,37 @@
+# gatewayd — process configuration example.
+#
+# Copy next to your deployment and edit. Every key below is a `DaemonConfig` field in
+# src/config.rs; unknown keys fail at load (deny_unknown_fields), and `catalog` is the
+# only required key. A relative `catalog` path resolves against THIS file's directory,
+# so the two files can move together.
+
+# TCP listener. Default: 127.0.0.1:8080 (DEFAULT_LISTEN_HOST / DEFAULT_LISTEN_PORT).
+# Keep it loopback and let a reverse proxy terminate TLS for a public deployment.
+listen = "127.0.0.1:8080"
+
+# Optional Unix-domain listener for co-located clients: the same pipeline on a second
+# listener. Comment out to disable; a stale socket file is removed at startup.
+# uds_path = "/run/gatewayd.sock"
+
+# Catalog file (required): channels, groups, users, tokens and prices.
+# Schema: config/catalog.toml.example.
+catalog = "catalog.toml"
+
+# Request body ceiling in bytes. The body is read into memory before the pipeline runs,
+# so this is the process's memory guard: oversized requests get a 413 and no stage ever
+# sees them. Default: 32 MiB.
+max_request_bytes = 33554432
+
+# Peers whose `x-forwarded-for` header is trusted. Empty (or omitted) = never trust the
+# header, and the socket peer address is used instead. List the reverse proxy's
+# address, not the client's. When a peer is trusted, the chain is walked right-to-left
+# and the first non-trusted address wins, so a client-supplied leftmost entry cannot
+# forge the address the gates see.
+trusted_proxies = ["127.0.0.1"]
+
+# Actix worker count. `0` (default) = actix default (available parallelism).
+workers = 0
+
+# Graceful-shutdown drain budget in seconds: after SIGINT/SIGTERM, in-flight requests
+# (SSE streams included) get this long to finish before the process exits. Default: 30.
+shutdown_timeout_secs = 30

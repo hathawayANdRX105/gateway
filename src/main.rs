@@ -1,11 +1,13 @@
 //! `gatewayd` — standalone gateway process entry.
 //!
-//! Argument parsing stays dependency-free: one `--config` path and one `--check` switch.
-//! Everything else (listeners, limits, catalog) is in the config file.
+//! CLI arguments are parsed with `clap` (derive): `--config <path>` and `--check`, plus
+//! the built-in `--help` / `--version`. Everything else (listeners, limits, catalog)
+//! lives in the config file.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use clap::Parser;
 use gateway_daemon::{RunArgs, run};
 
 fn main() -> ExitCode {
@@ -16,17 +18,13 @@ fn main() -> ExitCode {
         )
         .init();
 
-    let args = match parse_args(std::env::args().skip(1)) {
-        Ok(args) => args,
-        Err(message) => {
-            eprintln!("gatewayd: {message}");
-            eprintln!("usage: gatewayd --config <path> [--check]");
-            return ExitCode::from(2);
-        }
-    };
+    let args = Args::parse();
 
     let system = actix_web::rt::System::new();
-    match system.block_on(run(args)) {
+    match system.block_on(run(RunArgs {
+        config_path: args.config,
+        check: args.check,
+    })) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("gatewayd: {err:#}");
@@ -35,18 +33,21 @@ fn main() -> ExitCode {
     }
 }
 
-fn parse_args(mut args: impl Iterator<Item = String>) -> Result<RunArgs, String> {
-    let mut config_path = PathBuf::from("gateway.toml");
-    let mut check = false;
-    while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--config" => {
-                let value = args.next().ok_or("--config requires a path")?;
-                config_path = PathBuf::from(value);
-            }
-            "--check" => check = true,
-            other => return Err(format!("unknown argument {other}")),
-        }
-    }
-    Ok(RunArgs { config_path, check })
+/// Command line interface, as shown by `--help`.
+#[derive(Debug, Parser)]
+#[command(
+    name = "gatewayd",
+    version,
+    about = "Standalone gateway process: actix-web transport over the gateway data plane"
+)]
+struct Args {
+    /// Path to the TOML process config (listeners, limits, catalog, proxy trust).
+    ///
+    /// Relative `catalog` paths inside resolve against this file's directory.
+    #[arg(long, value_name = "PATH", default_value = "gateway.toml")]
+    config: PathBuf,
+
+    /// Load the config and catalog, log the summary, and exit without binding.
+    #[arg(long)]
+    check: bool,
 }

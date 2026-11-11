@@ -16,6 +16,16 @@ use serde::Deserialize;
 /// the process's memory guard: without it a single client can exhaust the heap.
 pub const DEFAULT_MAX_REQUEST_BYTES: usize = 32 * 1024 * 1024;
 
+/// Default TCP bind host. Loopback only: the standalone shape is fronted by a reverse
+/// proxy that terminates TLS, and binding a public interface is a deliberate act.
+pub const DEFAULT_LISTEN_HOST: &str = "127.0.0.1";
+
+/// Default TCP bind port.
+pub const DEFAULT_LISTEN_PORT: u16 = 8080;
+
+/// Default graceful-shutdown drain budget, in seconds.
+pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
+
 /// Listener and process settings.
 ///
 /// `catalog` is required — a process with no catalog has no routes and no keys — and is
@@ -51,7 +61,7 @@ pub struct DaemonConfig {
 }
 
 fn default_listen() -> String {
-    "127.0.0.1:8080".to_string()
+    format!("{DEFAULT_LISTEN_HOST}:{DEFAULT_LISTEN_PORT}")
 }
 
 const fn default_max_request_bytes() -> usize {
@@ -59,7 +69,7 @@ const fn default_max_request_bytes() -> usize {
 }
 
 const fn default_shutdown_timeout_secs() -> u64 {
-    30
+    DEFAULT_SHUTDOWN_TIMEOUT_SECS
 }
 
 impl DaemonConfig {
