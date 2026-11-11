@@ -553,6 +553,7 @@ impl gateway_dispatch::Dispatch for RateLimitedDispatch {
         public_model: &str,
         exclude: &[String],
         _sticky_channel_key: Option<&str>,
+        _min_context: Option<u64>,
     ) -> Result<gateway_dispatch::Candidate, gateway_dispatch::DispatchError> {
         self.cands
             .iter()

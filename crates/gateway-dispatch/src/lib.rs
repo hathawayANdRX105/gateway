@@ -12,6 +12,7 @@ pub mod token_budget;
 
 pub use candidate::{Candidate, STATUS_ENABLED, resolve_candidate};
 pub use failure_scope::{FailureScope, classify_channel_scope};
+use gateway_core::ChannelRecord;
 /// Channel / route-unit catalog snapshot — defined on the injection surface so the
 /// admin plane can build and read it without depending on this engine.
 pub use gateway_core::dispatch::Snapshot;
@@ -24,7 +25,10 @@ pub use retry::{
     Attempt, AttemptOutcome, Failover, FakeTimeControl, ModelRetryPolicies, RealTimeControl,
     RetryLoop, RetryPolicy, TimeControl, run_retry_loop,
 };
-pub use selector::{DEFAULT_EXPLORE_RATE, DEFAULT_STICKY_BOOST, P2CSelector, Selector};
+pub use selector::{
+    DEFAULT_EXPLORE_RATE, DEFAULT_STICKY_BOOST, P2CSelector, Selector, WeightedRandom,
+    clamp_sticky_boost,
+};
 pub use stage::DispatchStage;
 pub use sticky::{StickyEntry, StickyKey, StickyTable};
 pub use token_budget::{COMPLETION_EMA_INIT, TokenBudgetState, TokenHandle};
@@ -53,6 +57,14 @@ pub trait Dispatch: Send + Sync {
     /// When it hits and is inside the candidate pool, only its **prior** is raised (P2C boost);
     /// it does not bypass `exclude` / cooldown vetoes.
     ///
+    /// `min_context`: the minimum context window (tokens) a candidate's channel must
+    /// provide — the request's prompt estimate plus the requested output budget, or a
+    /// higher floor raised by context-overflow escalation. `None` = no constraint.
+    /// Channels without a `context_window` in their settings are unlimited and always
+    /// fit. The window check is feasibility (runs before priority tiers); overflow
+    /// errors raised by the forward layer are escalated by **raising** this floor, so
+    /// the next selection can only land on strictly larger windows.
+    ///
     /// # Errors
     ///
     /// [`DispatchError::SnapshotNotReady`] — the catalog snapshot has not loaded yet;
@@ -66,6 +78,7 @@ pub trait Dispatch: Send + Sync {
         public_model: &str,
         exclude: &[String],
         sticky_channel_key: Option<&str>,
+        min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError>;
     /// Report one attempt result to the health table. The payload is bundled in the
     /// [`AttemptReport`] struct (constructor `AttemptReport::new` + `with_tps` builder):
@@ -185,12 +198,62 @@ fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<Route
 pub struct Dispatcher {
     snapshot: ArcSwap<Option<Arc<Snapshot>>>,
     health: Arc<MemoryHealthTable>,
-    selector: P2CSelector,
+    selector: SelectorSlot,
     concurrency: Arc<ConcurrencyState>,
     now_ms: Box<dyn Fn() -> u64 + Send + Sync>,
     limits: ArcSwap<HashMap<String, RateLimitSpec>>,
     rl: Arc<SlidingWindow>,
     token: Option<Arc<TokenBudgetState>>,
+}
+
+/// The dispatcher's selection layer: the built-in P2C (which the historical knob
+/// builders mutate) or a custom [`Selector`] installed via
+/// [`Dispatcher::with_selector`].
+///
+/// The split exists because the P2C knobs (`with_token_budget` /
+/// `with_latency_digest` / `with_sticky_boost`) are `P2CSelector`-specific and
+/// cannot travel through `dyn Selector`. Contract: install a custom selector
+/// **last** — knob builders called after `with_selector` only affect the built-in
+/// P2C and are inert for the custom one; a custom selector receives the shared
+/// state it needs (concurrency / token budget / digest) at its own construction.
+enum SelectorSlot {
+    P2c(P2CSelector),
+    Custom(Box<dyn Selector>),
+}
+
+/// One selection round's inputs, as consumed by the rate-limit-aware extraction
+/// loop: the fit- and tier-filtered candidate pool (with its parallel priority
+/// vector), the caller's exclusion set, the sticky key, and the clock sample.
+/// Bundled so the loop can re-run the tier filter per iteration without the
+/// parameter list growing past the workspace's argument-count lint.
+#[derive(Clone, Copy)]
+struct SelectionRound<'a> {
+    candidates: &'a [&'a RouteUnitRecord],
+    priorities: &'a [i64],
+    exclude: &'a [String],
+    sticky_channel_key: Option<&'a str>,
+    now: u64,
+}
+
+impl SelectorSlot {
+    fn pick<'a>(
+        &self,
+        units: &[&'a RouteUnitRecord],
+        health: &dyn HealthTable,
+        exclude: &[String],
+        sticky_channel_key: Option<&str>,
+        now_ms: u64,
+        rng: &mut dyn rand::RngCore,
+    ) -> Option<&'a RouteUnitRecord> {
+        match self {
+            Self::P2c(selector) => {
+                selector.pick(units, health, exclude, sticky_channel_key, now_ms, rng)
+            }
+            Self::Custom(selector) => {
+                selector.pick(units, health, exclude, sticky_channel_key, now_ms, rng)
+            }
+        }
+    }
 }
 
 /// Failure surface of rate-limit-aware extraction, used by
@@ -243,7 +306,11 @@ impl Dispatcher {
         let dispatcher = Self {
             snapshot: ArcSwap::new(Arc::new(snapshot)),
             health,
-            selector: P2CSelector::new(concurrency.clone(), 2, DEFAULT_EXPLORE_RATE),
+            selector: SelectorSlot::P2c(P2CSelector::new(
+                concurrency.clone(),
+                2,
+                DEFAULT_EXPLORE_RATE,
+            )),
             concurrency,
             now_ms: Box::new(now_ms),
             limits: ArcSwap::new(limits),
@@ -266,7 +333,9 @@ impl Dispatcher {
         if let Some(snap) = loaded.as_ref() {
             register_token_budgets(&token, snap);
         }
-        self.selector = self.selector.with_token(Arc::clone(&token));
+        if let SelectorSlot::P2c(selector) = &mut self.selector {
+            *selector = selector.clone().with_token(Arc::clone(&token));
+        }
         self.token = Some(token);
         self
     }
@@ -279,7 +348,9 @@ impl Dispatcher {
     /// `latency_factor` follows the existing EWMA path byte-for-byte (regression invariant).
     #[must_use]
     pub fn with_latency_digest(mut self, t: Arc<LatencyDigestTable>) -> Self {
-        self.selector = self.selector.with_latency_digest(t);
+        if let SelectorSlot::P2c(selector) = &mut self.selector {
+            *selector = selector.clone().with_latency_digest(t);
+        }
         self
     }
 
@@ -298,7 +369,31 @@ impl Dispatcher {
     /// selector keeps [`DEFAULT_STICKY_BOOST`].
     #[must_use]
     pub fn with_sticky_boost(mut self, boost: f64) -> Self {
-        self.selector = self.selector.with_sticky_boost(boost);
+        if let SelectorSlot::P2c(selector) = &mut self.selector {
+            *selector = selector.clone().with_sticky_boost(boost);
+        }
+        self
+    }
+
+    /// Install a custom selection strategy, replacing the built-in P2C selector.
+    ///
+    /// The selector receives the shared state it consumes (concurrency slots,
+    /// token budget, latency digest) at its own construction — the assembly hands
+    /// out the same `Arc`s the forward stage holds, so a custom strategy reads the
+    /// same signals the built-in one does.
+    ///
+    /// Ordering contract: the knob builders ([`Self::with_token_budget`],
+    /// [`Self::with_latency_digest`], [`Self::with_sticky_boost`]) configure the
+    /// **built-in P2C** selector; called after `with_selector` they are inert.
+    /// Call them first (default shape), or fold the equivalent configuration into
+    /// the custom selector's own constructor.
+    ///
+    /// Registration side effects are selector-independent and stay on the
+    /// dispatcher: per-channel concurrency caps and token budgets are registered
+    /// from the snapshot at boot and on every reload, whichever selector runs.
+    #[must_use]
+    pub fn with_selector(mut self, selector: Box<dyn Selector>) -> Self {
+        self.selector = SelectorSlot::Custom(selector);
         self
     }
 
@@ -387,21 +482,27 @@ impl Dispatcher {
     /// separately.
     fn pick_within_limits<'a>(
         &self,
-        cands: &[&'a RouteUnitRecord],
-        exclude: &[String],
-        sticky_channel_key: Option<&str>,
-        now: u64,
+        round: SelectionRound<'a>,
         limits: &HashMap<String, RateLimitSpec>,
         rng: &mut dyn rand::RngCore,
     ) -> Result<&'a RouteUnitRecord, LimitedPickError> {
-        let mut refused: Vec<String> = Vec::with_capacity(cands.len() + exclude.len());
-        refused.extend_from_slice(exclude);
+        let mut refused: Vec<String> =
+            Vec::with_capacity(round.candidates.len() + round.exclude.len());
+        refused.extend_from_slice(round.exclude);
         let mut refused_by_limit = false;
         loop {
-            let Some(picked) =
-                self.selector
-                    .pick(cands, &*self.health, &refused, sticky_channel_key, now, rng)
-            else {
+            // Priority tiers re-evaluate on every round: when the top tier is exhausted
+            // by rate-limit refusals, the next tier becomes reachable without leaving
+            // the loop (a refused candidate is excluded exactly like a tried one).
+            let tiered = self.highest_tier(round.candidates, round.priorities, &refused, round.now);
+            let Some(picked) = self.selector.pick(
+                &tiered,
+                &*self.health,
+                &refused,
+                round.sticky_channel_key,
+                round.now,
+                rng,
+            ) else {
                 return Err(if refused_by_limit {
                     LimitedPickError::RateLimited
                 } else {
@@ -410,7 +511,7 @@ impl Dispatcher {
             };
             let admitted = limits
                 .get(&picked.meta.key)
-                .is_none_or(|spec| self.rl.admits(&picked.meta.key, Some(spec), now));
+                .is_none_or(|spec| self.rl.admits(&picked.meta.key, Some(spec), round.now));
             if admitted {
                 return Ok(picked);
             }
@@ -421,6 +522,52 @@ impl Dispatcher {
 
     pub fn set_limits(&self, limits: HashMap<String, RateLimitSpec>) {
         self.limits.store(Arc::new(limits));
+    }
+
+    /// Priority-tier filter (data-driven via channel `settings.priority`): keep
+    /// only the candidates of the highest-priority tier that still has an
+    /// **eligible** one (enabled, not in `exclude`, not cooling). Lower tiers
+    /// become reachable automatically when every higher-tier candidate is
+    /// excluded or cooling — tier descent is this filter re-running, not a
+    /// dedicated code path.
+    ///
+    /// Nothing eligible anywhere (the urgent-recall situation) → the full pool
+    /// is returned untouched, so the selector's shortest-cooldown recall keeps
+    /// working across tiers. Sticky does not cross tiers: a bound channel in a
+    /// lower tier is dropped like any other lower-tier candidate (priority
+    /// dominates stickiness; within a tier the boost applies as usual).
+    ///
+    /// Eligibility mirrors the selector's own hard gates so a tier counts as
+    /// available only when at least one of its candidates would actually be
+    /// selectable.
+    fn highest_tier<'a>(
+        &self,
+        cands: &[&'a RouteUnitRecord],
+        priorities: &[i64],
+        exclude: &[String],
+        now: u64,
+    ) -> Vec<&'a RouteUnitRecord> {
+        let eligible = |unit: &&'a RouteUnitRecord| {
+            unit.status == STATUS_ENABLED
+                && !exclude.iter().any(|key| key == &unit.meta.key)
+                && self.health.is_selectable(&unit.meta.key, now)
+        };
+        let Some(ceiling) = cands
+            .iter()
+            .zip(priorities)
+            .filter(|(unit, _)| eligible(unit))
+            .map(|(_, priority)| *priority)
+            .max()
+        else {
+            return cands.to_vec();
+        };
+        cands
+            .iter()
+            .copied()
+            .zip(priorities)
+            .filter(|(unit, priority)| eligible(unit) && **priority == ceiling)
+            .map(|(unit, _)| unit)
+            .collect()
     }
 }
 
@@ -458,6 +605,31 @@ fn register_token_budgets(token: &TokenBudgetState, snapshot: &Snapshot) {
     }
 }
 
+/// Priority-tier and context-window caps read from the channel `settings` bag
+/// (the strategy inputs are data, not schema: `settings` is an already-parsed
+/// in-memory `serde_json::Value`, so a read is a map lookup — no per-request
+/// JSON parsing).
+///
+/// - `priority` (i64, default 0): higher = preferred. Only the highest-priority
+///   tier with an eligible candidate competes; lower tiers become reachable when
+///   every higher-tier candidate is excluded or cooling (new-api semantics).
+/// - `context_window` (u64, default 0): request-fit ceiling in tokens; `0` /
+///   missing = unlimited (neutral, always fits).
+fn channel_caps(channel: Option<&ChannelRecord>) -> (i64, u64) {
+    channel.map_or((0, 0), |c| {
+        (
+            c.settings
+                .get("priority")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(0),
+            c.settings
+                .get("context_window")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0),
+        )
+    })
+}
+
 fn model_unknown(group: &str, model: &str) -> DispatchError {
     DispatchError::ModelUnknown {
         group: group.to_string(),
@@ -472,6 +644,7 @@ impl Dispatch for Dispatcher {
         public_model: &str,
         exclude: &[String],
         sticky_channel_key: Option<&str>,
+        min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         let loaded = self.snapshot.load();
         let Some(snap) = loaded.as_ref() else {
@@ -502,6 +675,20 @@ impl Dispatch for Dispatcher {
                     .get(&u.channel_key)
                     .is_some_and(|c| c.status == STATUS_ENABLED)
             })
+            // Context fit (data-driven via channel settings.context_window): a window
+            // that cannot hold the request is dropped before tiers — feasibility
+            // precedes preference. Missing / zero = unlimited (neutral, always fits).
+            .filter(|u| {
+                let (_, window) = channel_caps(snap.channels.get(&u.channel_key));
+                min_context.is_none_or(|need| window == 0 || window >= need)
+            })
+            .collect();
+        // Priority lookup, hoisted once per select call (parallel to `cands`): the
+        // tier filter and the rate-limit loop read it without touching the settings
+        // bag again.
+        let priorities: Vec<i64> = cands
+            .iter()
+            .map(|u| channel_caps(snap.channels.get(&u.channel_key)).0)
             .collect();
         let now = (self.now_ms)();
         let limits = self.limits.load();
@@ -512,9 +699,15 @@ impl Dispatch for Dispatcher {
         // injected through the Selector trait.
         let mut rng = rand::thread_rng();
         let unit = if limits.is_empty() {
+            // Priority tiers (new-api semantics, data-driven via channel
+            // settings.priority): only the highest-priority tier with an eligible
+            // candidate competes; lower tiers become reachable when every higher-tier
+            // candidate is excluded or cooling — tier descent is the filter re-running,
+            // not a dedicated code path.
+            let tiered = self.highest_tier(&cands, &priorities, exclude, now);
             self.selector
                 .pick(
-                    &cands,
+                    &tiered,
                     &*self.health,
                     exclude,
                     sticky_channel_key,
@@ -523,14 +716,14 @@ impl Dispatch for Dispatcher {
                 )
                 .ok_or_else(|| self.all_unavailable(&cands, group, public_model, now))?
         } else {
-            match self.pick_within_limits(
-                &cands,
+            let round = SelectionRound {
+                candidates: &cands,
+                priorities: &priorities,
                 exclude,
                 sticky_channel_key,
                 now,
-                &limits,
-                &mut rng,
-            ) {
+            };
+            match self.pick_within_limits(round, &limits, &mut rng) {
                 Ok(unit) => unit,
                 Err(LimitedPickError::RateLimited) => {
                     return Err(DispatchError::RateLimited {

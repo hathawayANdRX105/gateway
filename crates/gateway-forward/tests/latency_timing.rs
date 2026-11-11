@@ -184,6 +184,7 @@ impl Dispatch for LatencyRecordingDispatch {
         model: &str,
         exclude: &[String],
         _sticky_channel_key: Option<&str>,
+        _min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         self.candidates
             .iter()

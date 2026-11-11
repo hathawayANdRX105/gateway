@@ -35,6 +35,30 @@ pub struct Snapshot {
     pub channels: HashMap<String, ChannelRecord>,
 }
 
+/// Which scheduling strategy the dispatcher's selection layer runs.
+///
+/// Configuration data (serde), resolved by the assembly into a `Selector`
+/// implementation at construction. The strategies share the hard gates
+/// (enable bit, per-request exclusion, cooldown) and the sticky prior-boost
+/// contract; they differ in how they choose among the eligible pool:
+///
+/// - [`SelectorKind::P2c`] — power-of-two-choices by effective prior
+///   (weight × slow-start ramp × sticky boost), posterior likelihood
+///   comparison (latency × health × concurrency × token × throughput);
+///   the default.
+/// - [`SelectorKind::WeightedRandom`] — weighted random by static weight
+///   alone (new-api same-tier semantics): no posterior adjustment, decay and
+///   recovery live entirely in the cooldown / health layer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SelectorKind {
+    /// Power-of-two-choices (the historical default).
+    #[default]
+    P2c,
+    /// Weighted random by static weight across the eligible pool.
+    WeightedRandom,
+}
+
 /// Retry policy parameters.
 ///
 /// Controls only the attempt budget; "which status codes are retryable" is decided

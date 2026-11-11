@@ -80,6 +80,7 @@ impl Dispatch for SingleDispatch {
         _model: &str,
         _exclude: &[String],
         _sticky_channel_key: Option<&str>,
+        _min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         Ok(self.candidate.clone())
     }
@@ -165,6 +166,7 @@ fn ctx_with_route(route: Candidate) -> gateway_pipeline::RequestCtx {
             auth_version: 1,
         }),
         requested_model: Some("m".to_string()),
+        requested_max_tokens: None,
         route: Some(route),
         selected_channel_key: None,
         selected_channel_name: None,

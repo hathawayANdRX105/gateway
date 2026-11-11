@@ -86,7 +86,7 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let gateway = assemble(catalog);
+    let gateway = assemble(catalog, config.dispatch.selector);
     let pipeline = gateway.pipeline();
     let state = web::Data::new(AppState {
         pipeline,
@@ -135,7 +135,7 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
 
 /// Build the gateway once: one ledger seeded from the catalog, one quota gate, one
 /// settlement pair. Nothing here is per-request.
-fn assemble(catalog: Catalog) -> gateway_facade::Gateway {
+fn assemble(catalog: Catalog, selector: gateway_facade::SelectorKind) -> gateway_facade::Gateway {
     let ledger = Arc::new(MemoryLedger::new());
     ledger.reseed(&catalog.quota_snapshot);
 
@@ -143,7 +143,10 @@ fn assemble(catalog: Catalog) -> gateway_facade::Gateway {
     let pricing = Arc::new(arc_swap::ArcSwap::from_pointee(catalog.pricing_snapshot));
 
     GatewayBuilder::relay(Context {
-        config: Config::default(),
+        config: Config {
+            selector,
+            ..Config::default()
+        },
         components: Components {
             egress: Arc::new(ReqwestEgress::new()),
             // The standalone shape never leases from the proxy pool: no node rows exist

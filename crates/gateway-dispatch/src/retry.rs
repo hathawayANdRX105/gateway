@@ -114,6 +114,14 @@ pub enum AttemptOutcome {
         /// Upstream `Retry-After` hint (ms); `None` = absent or unparseable.
         retry_after_ms: Option<u64>,
     },
+    /// Upstream rejected the request because it does not fit the model's context
+    /// window (context-window-exceeded family, detected by
+    /// `failure_scope::is_context_overflow`). The retry loop answers by
+    /// **raising the dispatch floor** to the failed candidate's window, so the
+    /// next selection can only land on strictly larger windows; when the failed
+    /// channel has no window bound (unlimited), the loop passes the stashed
+    /// error through instead — escalation has no direction to grow in.
+    WindowOverflow,
 }
 
 impl AttemptOutcome {
@@ -130,6 +138,7 @@ impl AttemptOutcome {
             AttemptOutcome::Retryable(_, latency)
             | AttemptOutcome::Fatal(_, latency)
             | AttemptOutcome::FatalButSwitchable(_, latency) => *latency,
+            AttemptOutcome::WindowOverflow => None,
         }
     }
 
@@ -157,6 +166,11 @@ impl AttemptOutcome {
             | AttemptOutcome::Fatal(class, _)
             | AttemptOutcome::FatalButSwitchable(class, _) => Err(*class),
             AttemptOutcome::Throttled { .. } => Ok(429),
+            // Context overflow: the request does not fit the model — the channel is not
+            // broken and the client did nothing wrong. Health stays untouched (Neutral
+            // semantics): the fit failure says nothing about the channel's quality, and
+            // escalation is driven by the retry loop's floor, not by health scoring.
+            AttemptOutcome::WindowOverflow => Ok(400),
         }
     }
 }
@@ -225,15 +239,21 @@ pub struct Failover {
     tried: Vec<String>,
     /// Completed attempt count.
     attempts: u32,
+    /// Minimum context window (tokens) the next selection must provide. Raised by
+    /// `raise_floor` when an attempt fails with a context-window overflow; `None` =
+    /// unconstrained (the request fit estimate was not computed, or nothing has
+    /// overflowed yet).
+    min_context: Option<u64>,
 }
 
 impl Failover {
     #[must_use]
-    pub fn new(policy: RetryPolicy) -> Self {
+    pub fn new(policy: RetryPolicy, min_context: Option<u64>) -> Self {
         Self {
             policy,
             tried: Vec::new(),
             attempts: 0,
+            min_context,
         }
     }
 
@@ -241,6 +261,23 @@ impl Failover {
     #[must_use]
     pub fn exclude(&self) -> &[String] {
         &self.tried
+    }
+
+    /// Current context-window floor (lent to `Dispatch::select`; `None` =
+    /// unconstrained).
+    #[must_use]
+    pub fn min_context(&self) -> Option<u64> {
+        self.min_context
+    }
+
+    /// Escalate past a context-window overflow: the next selection may only land
+    /// on channels with a **strictly larger** window than the one that just
+    /// overflowed (the fit estimate undershot; going smaller cannot help). The
+    /// floor never lowers — a request that already needed `n` tokens does not
+    /// become smaller by retrying.
+    pub fn raise_floor(&mut self, overflowed_window: u64) {
+        let next = overflowed_window.saturating_add(1);
+        self.min_context = Some(self.min_context.map_or(next, |current| current.max(next)));
     }
 
     /// Advance to the next attempt; attempt budget exhausted → None (the upper layer returns 502).
@@ -334,13 +371,23 @@ pub async fn run_retry_loop<Sel, Attempt, Fut>(
     // exclude, the selector naturally stops boosting it (stickiness never hard-pins a channel,
     // design §4).
     sticky_channel_key: Option<&str>,
+    // Initial context-window floor for every selection round (the request's prompt
+    // estimate + output budget); raised by the loop when an attempt overflows the
+    // selected channel's window. `None` = unconstrained.
+    min_context: Option<u64>,
     mut select: Sel,
     mut attempt: Attempt,
     mut report: impl FnMut(&str, AttemptReport),
     time: &dyn TimeControl,
 ) -> Result<(crate::Attempt, AttemptOutcome), crate::DispatchError>
 where
-    Sel: FnMut(&str, &str, &[String], Option<&str>) -> Result<Candidate, crate::DispatchError>,
+    Sel: FnMut(
+        &str,
+        &str,
+        &[String],
+        Option<&str>,
+        Option<u64>,
+    ) -> Result<Candidate, crate::DispatchError>,
     // The attempt closure performs one forward only (pure IO): it uses the **normal** egress
     // timeout, not clamped to the remaining budget.
     // S2 semantics: a successful connection is not cut by the failover time budget, and its
@@ -348,7 +395,7 @@ where
     Attempt: FnMut(&Candidate) -> Fut,
     Fut: Future<Output = AttemptOutcome>,
 {
-    let mut failover = Failover::new(*policy);
+    let mut failover = Failover::new(*policy, min_context);
     // Most recent channel-scoped 4xx (FatalButSwitchable): preferred for passthrough when the
     // count/time budget is exhausted (the client gets the upstream's real 4xx rather than it
     // being masked by 503/504; P1-B passthrough).
@@ -407,6 +454,7 @@ where
                     model,
                     failover.exclude(),
                     sticky_channel_key,
+                    failover.min_context(),
                 )
             });
         };
@@ -437,6 +485,7 @@ where
                     model,
                     failover.exclude(),
                     sticky_channel_key,
+                    failover.min_context(),
                 )
             });
         }
@@ -486,6 +535,31 @@ fn settle_attempt(
             },
             outcome,
         )),
+        // Context-window overflow: exclude the failed candidate and **raise the
+        // dispatch floor** past its window, so the next selection can only land on
+        // strictly larger windows (the fit estimate undershot). A channel without a
+        // window bound (unlimited) has no escalation direction — the overflow passes
+        // through to the client as terminal.
+        AttemptOutcome::WindowOverflow => {
+            failover.mark_tried(candidate.unit.meta.key.clone());
+            let window = candidate
+                .settings
+                .get("context_window")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0);
+            if window > 0 {
+                failover.raise_floor(window);
+                None
+            } else {
+                Some((
+                    crate::Attempt {
+                        candidate,
+                        attempt_no,
+                    },
+                    outcome,
+                ))
+            }
+        }
         AttemptOutcome::Retryable(_, _) | AttemptOutcome::Throttled { .. } => {
             // A final failure that is no longer a channel-scoped 4xx → clear the stash and pass
             // through the "last" candidate only.
@@ -562,12 +636,26 @@ async fn select_candidate<Sel>(
     time: &dyn TimeControl,
 ) -> Result<Candidate, SelectError>
 where
-    Sel: FnMut(&str, &str, &[String], Option<&str>) -> Result<Candidate, crate::DispatchError>,
+    Sel: FnMut(
+        &str,
+        &str,
+        &[String],
+        Option<&str>,
+        Option<u64>,
+    ) -> Result<Candidate, crate::DispatchError>,
 {
     loop {
         // The sticky key is passed through verbatim every round: exclude growth and boost are
         // independent, and stickiness does not exempt a channel from the exclusion set.
-        match select(group, model, failover.exclude(), sticky_channel_key) {
+        // The context-window floor travels with it: an overflow raised it before the
+        // round, so the next selection can only land on strictly larger windows.
+        match select(
+            group,
+            model,
+            failover.exclude(),
+            sticky_channel_key,
+            failover.min_context(),
+        ) {
             Ok(candidate) => return Ok(candidate),
             // The model really does not exist (missing configuration) → terminal 404, no wait and
             // no passthrough.
@@ -641,14 +729,28 @@ fn budget_exhausted<Sel>(
     model: &str,
     exclude: &[String],
     sticky_channel_key: Option<&str>,
+    min_context: Option<u64>,
 ) -> crate::DispatchError
 where
-    Sel: FnMut(&str, &str, &[String], Option<&str>) -> Result<Candidate, crate::DispatchError>,
+    Sel: FnMut(
+        &str,
+        &str,
+        &[String],
+        Option<&str>,
+        Option<u64>,
+    ) -> Result<Candidate, crate::DispatchError>,
 {
     crate::DispatchError::BudgetExhausted {
         group: group.to_string(),
         model: model.to_string(),
-        retry_after_ms: probe_retry_after(select, group, model, exclude, sticky_channel_key),
+        retry_after_ms: probe_retry_after(
+            select,
+            group,
+            model,
+            exclude,
+            sticky_channel_key,
+            min_context,
+        ),
     }
 }
 
@@ -662,11 +764,18 @@ fn probe_retry_after<Sel>(
     model: &str,
     exclude: &[String],
     sticky_channel_key: Option<&str>,
+    min_context: Option<u64>,
 ) -> u64
 where
-    Sel: FnMut(&str, &str, &[String], Option<&str>) -> Result<Candidate, crate::DispatchError>,
+    Sel: FnMut(
+        &str,
+        &str,
+        &[String],
+        Option<&str>,
+        Option<u64>,
+    ) -> Result<Candidate, crate::DispatchError>,
 {
-    match select(group, model, exclude, sticky_channel_key) {
+    match select(group, model, exclude, sticky_channel_key, min_context) {
         Err(crate::DispatchError::AllUnavailable { retry_after_ms, .. }) => retry_after_ms,
         _ => 0,
     }

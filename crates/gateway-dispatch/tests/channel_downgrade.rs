@@ -101,7 +101,9 @@ impl Harness {
             &RetryPolicy::default(),
             // Sticky key (None = not sticky): byte-for-byte equivalent to the status quo.
             None,
-            |g, m, exclude, _sticky| {
+            // Context-window floor (None = unconstrained; this harness pins routing only).
+            None,
+            |g, m, exclude, _sticky, _floor| {
                 self.selects.push(exclude.to_vec());
                 self.pool
                     .iter()

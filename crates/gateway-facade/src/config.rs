@@ -21,6 +21,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use arc_swap::ArcSwap;
 
 use gateway_core::dispatch::RetryPolicy;
+use gateway_core::dispatch::SelectorKind;
 use gateway_core::egress::Timeouts;
 use gateway_core::gate::{SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot};
 use gateway_core::health::{HealthHandle, HealthSetting};
@@ -86,6 +87,11 @@ pub struct Config {
     /// Windowed t-digest latency signal gray switch. **Boot-fixed**: mounting the
     /// digest table is structural, so toggling it rebuilds the data plane.
     pub digest_enabled: bool,
+    /// Selection strategy for the dispatch stage. **Boot-fixed**: the selector is
+    /// built once at assembly (P2C by default; `weighted_random` is the new-api
+    /// same-tier policy — static weight only, decay/recovery lives in the
+    /// cooldown/health layer).
+    pub selector: SelectorKind,
     /// Prefix-cache sticky routing switch. **Boot-fixed** (same reason).
     pub sticky_enabled: bool,
     /// Sticky routing boost. **Boot-fixed**: the selector takes it at construction.
@@ -114,6 +120,7 @@ impl Default for Config {
             timeouts: Timeouts::default(),
             retry_policy: RetryPolicy::default(),
             health: HealthSetting::default(),
+            selector: SelectorKind::default(),
             digest_enabled: false,
             sticky_enabled: true,
             sticky_boost: 1.0,

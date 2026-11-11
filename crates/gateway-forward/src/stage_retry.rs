@@ -85,6 +85,7 @@ impl ForwardStage {
             inbound_format,
             sticky_channel_key,
             cache_key,
+            min_context,
         } = self.retry_inputs(ctx, &body, stream)?;
 
         // The winning attempt's Forwarded and the most recent failure; short critical section
@@ -128,7 +129,12 @@ impl ForwardStage {
             // Sticky channel key (`None` = not sticky): passed verbatim to select's prior layer
             // by the loop every round.
             sticky_channel_key.as_deref(),
-            move |g, m, exclude, sticky| dsel.select(g, m, exclude, sticky),
+            // Initial context-window floor (prompt estimate + output budget): raised by
+            // the loop when an attempt overflows the selected channel's window.
+            min_context,
+            move |g, m, exclude, sticky, min_context| {
+                dsel.select(g, m, exclude, sticky, min_context)
+            },
             move |candidate| {
                 let task = runner.build_task(candidate);
                 let runner = Arc::clone(&runner);
@@ -195,6 +201,17 @@ impl ForwardStage {
         } else {
             self.response_cache_key(ctx, body)
         };
+        // Context fit (data-driven via channel settings.context_window): required
+        // tokens = prompt estimate (O(n) body walk on the client body, which predates
+        // the protocol bridge) + the requested output budget. A spilled body skips
+        // the estimate — reactive escalation still covers it.
+        let min_context = match &ctx.request.body {
+            gateway_pipeline::BodySource::InMemory(bytes) => {
+                let prompt = gateway_metering::estimate::estimate_prompt_tokens(bytes);
+                Some(prompt.saturating_add(u64::from(ctx.requested_max_tokens.unwrap_or(4096))))
+            }
+            gateway_pipeline::BodySource::OnDisk { .. } => None,
+        };
         Ok(RetryInputs {
             started,
             group,
@@ -205,6 +222,7 @@ impl ForwardStage {
             inbound_format: ctx.request.inbound_protocol,
             sticky_channel_key,
             cache_key,
+            min_context,
         })
     }
 
@@ -670,6 +688,10 @@ struct RetryInputs {
     /// Response-cache key (None = streaming / not cacheable / cache not mounted);
     /// consumed by the winning attempt's commit point.
     cache_key: Option<gateway_cache::CacheKey>,
+    /// Initial context-window floor: prompt estimate + requested output budget.
+    /// `None` = the body was spilled to disk and could not be estimated (reactive
+    /// escalation still applies; only the pre-dispatch fit filter is skipped).
+    min_context: Option<u64>,
 }
 
 /// Commit inputs for the winning attempt (`finish_retry` →

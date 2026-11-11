@@ -91,10 +91,26 @@ impl Stage for DispatchStage {
         // should stick to, as select's prior boost; None = table not mounted / no key
         // source / no hit, and route selection degrades byte for byte to the status quo.
         let sticky_channel_key = self.sticky_channel_for(ctx);
-        match self
-            .dispatch
-            .select(&group, &public_model, &[], sticky_channel_key.as_deref())
-        {
+        // Context fit (data-driven via channel settings.context_window): required
+        // tokens = prompt estimate (O(n) body walk on the client body, which predates
+        // the protocol bridge; OpenAI / Claude shapes are recognized) + the requested
+        // output budget. A spilled body skips the estimate — reactive escalation still
+        // covers it. Channels without a window are unlimited.
+        let min_context = match &ctx.request.body {
+            BodySource::InMemory(bytes) => {
+                let prompt = gateway_metering::estimate::estimate_prompt_tokens(bytes);
+                let max_tokens = u64::from(ctx.requested_max_tokens.unwrap_or(4096));
+                Some(prompt.saturating_add(max_tokens))
+            }
+            BodySource::OnDisk { .. } => None,
+        };
+        match self.dispatch.select(
+            &group,
+            &public_model,
+            &[],
+            sticky_channel_key.as_deref(),
+            min_context,
+        ) {
             Ok(candidate) => {
                 // The candidate itself is a SelectedRoute: secret / upstream_model /
                 // provider_type / settings all enter ctx with it, and forward no longer

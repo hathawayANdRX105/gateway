@@ -20,6 +20,9 @@ chrono   = { workspace = true }
 tracing  = { workspace = true }
 gateway-gate = { path = "../gateway-gate" }
 gateway-cache = { path = "../gateway-cache" }
+# Context-fit estimation runs at the dispatch stage: the prompt-token estimator is
+# metering's (single source of truth for token arithmetic).
+gateway-metering = { path = "../gateway-metering" }
 dashmap = { workspace = true }
 tokio    = { workspace = true, features = ["time"] }
 [dev-dependencies]

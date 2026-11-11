@@ -5,13 +5,15 @@ use std::time::Duration;
 
 use arc_swap::ArcSwap;
 
-use gateway_core::dispatch::{RetryPolicy, Snapshot};
+use gateway_core::dispatch::{RetryPolicy, SelectorKind, Snapshot};
 use gateway_core::egress::Timeouts;
 use gateway_core::gate::{SharedGroupSnapshot, SharedTokenSnapshot, SharedUserSnapshot};
 use gateway_core::health::HealthSetting;
 use gateway_core::metering::Ledger;
 use gateway_dispatch::token_budget::TokenBudgetState;
-use gateway_dispatch::{Dispatcher, LatencyDigestTable, MemoryHealthTable, StickyTable};
+use gateway_dispatch::{
+    Dispatcher, LatencyDigestTable, MemoryHealthTable, StickyTable, WeightedRandom,
+};
 use gateway_forward::StreamResilience;
 use gateway_forward::egress::Egress;
 use gateway_forward::stage::ForwardStage;
@@ -242,6 +244,7 @@ impl GatewayBuilder {
             timeouts,
             retry_policy,
             health: health_setting,
+            selector: selector_kind,
             digest_enabled,
             sticky_enabled,
             sticky_boost,
@@ -268,9 +271,10 @@ impl GatewayBuilder {
         } = state;
         let signals = Self::wire_signals(
             dispatch,
-            Signals {
+            &Signals {
                 health_setting,
                 retry_policy,
+                selector_kind,
                 digest_enabled,
                 sticky_enabled,
                 sticky_boost,
@@ -387,15 +391,16 @@ impl GatewayBuilder {
     /// **the same instance** for the selector and the forward stage: P2C reads
     /// health, concurrency slots, and token-budget occupancy that the forward
     /// path actually holds.
-    fn wire_signals(dispatch: Snapshot, signals: Signals) -> SignalHub {
+    fn wire_signals(dispatch: Snapshot, signals: &Signals) -> SignalHub {
         let Signals {
             health_setting,
             retry_policy,
+            selector_kind,
             digest_enabled,
             sticky_enabled,
             sticky_boost,
             token_tpm_default,
-        } = signals;
+        } = *signals;
 
         // Windowed t-digest latency signal gray switch: when true the
         // LatencyDigestTable is installed and health records are dual-written to
@@ -421,18 +426,36 @@ impl GatewayBuilder {
         // channel settings on snapshot load.
         let token_budget = TokenBudgetState::new();
         token_budget.set_global_default(token_tpm_default);
+        // Selection strategy: P2C (default) receives the P2C-specific knobs through
+        // the historical dispatcher builders; weighted random (new-api same-tier
+        // semantics) consumes only the static weight + sticky boost and is installed
+        // via `with_selector`. The token budget registration and the shared
+        // concurrency/health state are strategy-independent and stay on the
+        // dispatcher either way.
         let mut dispatcher = Dispatcher::new(
             Some(Arc::new(dispatch)),
             health.clone(),
             concurrency.clone(),
         )
         .with_token_budget(token_budget.clone());
-        if let Some(digest) = &digest_table {
-            dispatcher = dispatcher.with_latency_digest(digest.clone());
-        }
-        if sticky_enabled {
-            dispatcher = dispatcher.with_sticky_boost(sticky_boost);
-        }
+        dispatcher = match selector_kind {
+            SelectorKind::P2c => {
+                if let Some(digest) = &digest_table {
+                    dispatcher = dispatcher.with_latency_digest(digest.clone());
+                }
+                if sticky_enabled {
+                    dispatcher = dispatcher.with_sticky_boost(sticky_boost);
+                }
+                dispatcher
+            }
+            SelectorKind::WeightedRandom => {
+                dispatcher.with_selector(Box::new(WeightedRandom::new(if sticky_enabled {
+                    sticky_boost
+                } else {
+                    1.0
+                })))
+            }
+        };
         let dispatcher = Arc::new(dispatcher);
 
         // Dispatch knob hot handle: the boot value is placed into an ArcSwap, and
@@ -556,10 +579,11 @@ struct SignalHub {
 }
 
 /// The config slice `wire_signals` consumes.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct Signals {
     health_setting: HealthSetting,
     retry_policy: RetryPolicy,
+    selector_kind: SelectorKind,
     digest_enabled: bool,
     sticky_enabled: bool,
     sticky_boost: f64,

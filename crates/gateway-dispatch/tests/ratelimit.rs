@@ -251,7 +251,7 @@ fn dispatcher_without_limits_keeps_legacy_behavior() {
         Arc::new(MemoryHealthTable::new()),
         Arc::new(ConcurrencyState::default()),
     );
-    let c = dispatcher.select("g", "m", &[], None).unwrap();
+    let c = dispatcher.select("g", "m", &[], None, None).unwrap();
     assert_eq!(c.secret, "sk-secret");
 }
 
@@ -289,11 +289,11 @@ fn dispatcher_rate_limited_when_all_candidates_throttled() {
 
     // Consume both keys: each select round consumes exactly the key it picks (a throttled pick is
     // swapped out)
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
 
     // Third call — both keys are over the limit → RateLimited
-    let err = dispatcher.select("g", "m", &[], None).unwrap_err();
+    let err = dispatcher.select("g", "m", &[], None, None).unwrap_err();
     match err {
         gateway_dispatch::DispatchError::RateLimited { group, model } => {
             assert_eq!(group, "g");
@@ -339,8 +339,8 @@ fn dispatcher_only_consumes_picked_unit_quota() {
 
     // Both the first and second calls must succeed — the second switches candidates instead of
     // retrying the same key
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
 }
 
 #[test]
@@ -370,9 +370,9 @@ fn dispatcher_rate_limited_with_per_unit_limits() {
     );
 
     // First call: either one may be selected — a or b is fine
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
     // Second call: a is over the limit but b can still pass → it must succeed
-    let _ = dispatcher.select("g", "m", &[], None).unwrap();
+    let _ = dispatcher.select("g", "m", &[], None, None).unwrap();
 }
 
 #[test]
@@ -396,7 +396,7 @@ fn dispatcher_no_candidate_when_snapshot_empty_unchanged() {
         Arc::new(SlidingWindow::new()),
     );
     assert!(matches!(
-        dispatcher.select("g", "m", &[], None),
+        dispatcher.select("g", "m", &[], None, None),
         Err(gateway_dispatch::DispatchError::ModelUnknown { .. })
     ));
 }

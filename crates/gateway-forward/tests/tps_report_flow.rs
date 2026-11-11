@@ -89,9 +89,15 @@ impl Dispatch for RecordingDispatch {
         public_model: &str,
         exclude: &[String],
         sticky_channel_key: Option<&str>,
+        min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
-        self.inner
-            .select(group, public_model, exclude, sticky_channel_key)
+        self.inner.select(
+            group,
+            public_model,
+            exclude,
+            sticky_channel_key,
+            min_context,
+        )
     }
 
     fn report(&self, unit_key: &str, report: AttemptReport) {

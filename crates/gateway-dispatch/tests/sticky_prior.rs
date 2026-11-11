@@ -350,7 +350,8 @@ fn retry_switches_candidate_despite_sticky() {
                 total_budget_ms: 0,
             },
             Some("a"),
-            |_: &str, _: &str, exclude: &[String], sticky: Option<&str>| {
+            None,
+            |_: &str, _: &str, exclude: &[String], sticky: Option<&str>, _: Option<u64>| {
                 assert_eq!(
                     sticky,
                     Some("a"),

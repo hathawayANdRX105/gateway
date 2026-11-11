@@ -81,6 +81,7 @@ pub fn ctx_with_body(body: &'static [u8], route: Candidate) -> RequestCtx {
             auth_version: 1,
         }),
         requested_model: Some("m".to_string()),
+        requested_max_tokens: None,
         route: Some(route),
         hold: None,
         upstream: None,
@@ -277,6 +278,7 @@ impl Dispatch for MockDispatch {
         model: &str,
         exclude: &[String],
         _sticky_channel_key: Option<&str>,
+        _min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         self.selects.lock().unwrap().push(exclude.to_vec());
         self.candidates

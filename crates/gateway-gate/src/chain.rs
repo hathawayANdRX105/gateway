@@ -197,6 +197,9 @@ impl Stage for GateChain {
         if let Some(model) = gate_ctx.requested_model.take() {
             ctx.requested_model = Some(model);
         }
+        if let Some(max_tokens) = gate_ctx.requested_max_tokens.take() {
+            ctx.requested_max_tokens = Some(max_tokens);
+        }
         if let Some(token) = gate_ctx.token {
             // Use the effective group computed by StateGate (token.group wins, falling back
             // to user.group when empty). Using token.group directly would send an empty group

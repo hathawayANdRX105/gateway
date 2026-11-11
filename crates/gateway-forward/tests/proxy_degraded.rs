@@ -204,6 +204,7 @@ fn mk_ctx() -> RequestCtx {
             auth_version: 1,
         }),
         requested_model: Some("m".to_string()),
+        requested_max_tokens: None,
         route: None,
         selected_channel_key: None,
         selected_channel_name: None,
@@ -235,6 +236,7 @@ impl Dispatch for U1FirstAttempt {
         public_model: &str,
         exclude: &[String],
         sticky_channel_key: Option<&str>,
+        min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         let now_ms = chrono::Utc::now().timestamp_millis().max(0).cast_unsigned();
         let exclude: Vec<String> = if exclude.is_empty() && self.health.is_selectable("u1", now_ms)
@@ -243,8 +245,13 @@ impl Dispatch for U1FirstAttempt {
         } else {
             exclude.to_vec()
         };
-        self.inner
-            .select(group, public_model, &exclude, sticky_channel_key)
+        self.inner.select(
+            group,
+            public_model,
+            &exclude,
+            sticky_channel_key,
+            min_context,
+        )
     }
 
     fn report(&self, unit_key: &str, report: AttemptReport) {
