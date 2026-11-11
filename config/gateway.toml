@@ -1,9 +1,10 @@
-# gatewayd — process configuration example.
+# gatewayd — default process configuration (deploy uses this file).
 #
-# Copy next to your deployment and edit. Every key below is a `DaemonConfig` field in
-# src/config.rs; unknown keys fail at load (deny_unknown_fields), and `catalog` is the
-# only required key. A relative `catalog` path resolves against THIS file's directory,
-# so the two files can move together.
+# Every key below is a `DaemonConfig` field in src/config.rs; unknown keys fail at load
+# (deny_unknown_fields), and `catalog` is the only required key. A relative `catalog`
+# path resolves against THIS file's directory, so the two files deploy together:
+#   gatewayd --config config/gateway.toml
+# Override per environment by editing values here or by pointing `--config` at a copy.
 
 # TCP listener. Default: 127.0.0.1:8080 (DEFAULT_LISTEN_HOST / DEFAULT_LISTEN_PORT).
 # Keep it loopback and let a reverse proxy terminate TLS for a public deployment.
@@ -14,7 +15,7 @@ listen = "127.0.0.1:8080"
 # uds_path = "/run/gatewayd.sock"
 
 # Catalog file (required): channels, groups, users, tokens and prices.
-# Schema: config/catalog.toml.example.
+# Schema: config/catalog.toml.
 catalog = "catalog.toml"
 
 # Request body ceiling in bytes. The body is read into memory before the pipeline runs,

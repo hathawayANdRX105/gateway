@@ -87,16 +87,17 @@ cargo run --bin gatewayd -- --config gateway.toml --check
 cargo run --bin gatewayd -- --help
 ```
 
-Reference files with every option commented live under
-[`config/`](./config): [`config/gateway.toml.example`](./config/gateway.toml.example)
-(process settings) and [`config/catalog.toml.example`](./config/catalog.toml.example)
-(catalog schema).
+The default deployment config lives under [`config/`](./config):
+[`config/gateway.toml`](./config/gateway.toml) (process settings) and
+[`config/catalog.toml`](./config/catalog.toml) (the catalog itself, placeholder
+credentials). Deploy runs `gatewayd --config config/gateway.toml` and edits values in
+place; every option and its default is commented there.
 
 `gateway.toml` describes the transport; the catalog it points at describes the
 data plane. Paths are resolved relative to the config file.
 
 ```toml
-# gateway.toml
+# gateway.toml (abridged; config/gateway.toml carries the full default)
 listen = "127.0.0.1:8080"
 uds_path = "/run/gatewayd.sock"   # optional; same pipeline on a Unix socket
 catalog = "gateway.catalog.toml"

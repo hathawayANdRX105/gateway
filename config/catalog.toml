@@ -1,7 +1,8 @@
-# gatewayd — file catalog example (data, not settings).
+# gatewayd — default file catalog (data, not settings).
 #
 # The standalone process has no database: this file *is* the catalog. It is read once at
-# boot; a change needs a restart. Duplicate groups / users / channels / tokens /
+# boot; a change needs a restart. Deploy replaces these placeholder credentials and
+# channels with the real ones. Duplicate groups / users / channels / tokens /
 # (model, group) prices fail the load, as do tokens pointing at unknown users, channels
 # with models but no keys or groups, duplicate key indexes or secrets, and negative or
 # non-finite prices.
