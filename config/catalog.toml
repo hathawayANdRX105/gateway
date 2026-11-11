@@ -1,0 +1,68 @@
+# gatewayd — default file catalog (data, not settings).
+#
+# The standalone process has no database: this file *is* the catalog. It is read once at
+# boot; a change needs a restart. Deploy replaces these placeholder credentials and
+# channels with the real ones. Duplicate groups / users / channels / tokens /
+# (model, group) prices fail the load, as do tokens pointing at unknown users, channels
+# with models but no keys or groups, duplicate key indexes or secrets, and negative or
+# non-finite prices.
+
+# One group: model allowlist + billing multiplier + enable bit.
+[[groups]]
+name = "default"
+allowed_models = ["gpt-4o*"]   # trailing-`*` wildcards; empty = no restriction
+multiplier = 1.0               # billing multiplier; default 1.0
+enabled = true                 # false rejects the whole group at the gate
+
+# One user. A token must point at one of these by `key`.
+[[users]]
+key = "user-1"
+username = "alice"
+display_name = "Alice"         # optional, default empty
+email = ""                     # optional, default empty
+group = "default"              # default group "default"
+status = 1                     # 1 enabled / 2 disabled; default enabled
+role = 1                       # 1 user / 10 admin / 100 root; default 1
+
+# One token. The plaintext key lives here: this file is the credential store for the
+# standalone shape, and only its SHA-256 reaches the snapshot.
+[[tokens]]
+key = "sk-replace-me"          # required, unique; empty keys are rejected
+user = "user-1"                # must reference a [[users]] key
+name = "main"                  # optional, default empty
+# group = "vip"                # optional; absent = follow the user's group
+# allowed_models = ["gpt-4o"]  # optional; absent = all models
+quota = 2_000_000              # internal units (500_000 = $1); absent = unlimited
+status = 1                     # default enabled
+
+# One upstream channel. Route units expand as (channel, key, group, public model): the
+# channel below with one key, one group and one model yields one dispatch unit.
+[[channels]]
+key = "ch-1"                   # unique
+name = "primary"
+provider_type = "openai"       # openai / claude / gemini / passthrough; default openai
+base_url = "https://api.example.com"
+max_concurrency = 32           # channel-wide concurrency cap; default 32
+status = 1                     # default enabled
+groups = ["default"]           # visibility; models require at least one group
+
+[[channels.keys]]
+# index = 0                   # optional; omitted entries are numbered by position
+secret = "sk-upstream"         # unique within the channel
+rpm_limit = 0                  # per-key rate limit (RPM); 0 = unlimited
+
+[[channels.models]]
+name = "gpt-4o"                # public alias the client asks for
+# upstream = "gpt-4o-2024-08-06"  # upstream name; absent = the public alias
+weight = 1                     # sampling prior; default 1
+# groups = ["vip"]            # restrict to a subset of the channel's groups
+
+# Price of one (model, group) pair, in dollars per million tokens. Converted to the
+# internal unit (500_000 = $1) at load; admission estimation and settlement read the
+# same value.
+[[prices]]
+model = "gpt-4o"
+group = "default"              # default group "default"; lookups fall back to it
+input = 2.5                    # $/M input tokens
+output = 10.0                  # $/M output tokens
+cache = 1.25                   # $/M cached-read tokens; default 0

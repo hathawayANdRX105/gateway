@@ -262,19 +262,39 @@ impl RequestCtx {
 
         let client_ip = client_ip(&parts.headers, &parts.extensions);
 
-        let path = parts.uri.path().to_string();
+        Ok(Self::from_parts(
+            &parts.method,
+            parts.uri.path().to_string(),
+            parts.headers,
+            body_bytes,
+            client_ip,
+        ))
+    }
+
+    /// Build from transport-neutral HTTP parts.
+    ///
+    /// Any HTTP server adapter can produce these values: method, path, headers, the
+    /// fully-read body and the peer address. Kept separate from [`Self::from_axum`] so a
+    /// non-axum transport (the standalone actix-web process) assembles the same context
+    /// instead of re-implementing protocol inference.
+    pub fn from_parts(
+        method: &http::Method,
+        path: String,
+        headers: HeaderMap,
+        body: Bytes,
+        client_ip: IpAddr,
+    ) -> Self {
         let inbound_protocol = RequestPath::parse(&path).protocol();
 
-        let request = RequestMeta {
-            method: parts.method.to_string(),
+        Self::new(RequestMeta {
+            method: method.to_string(),
             path,
-            headers: parts.headers,
-            body: BodySource::InMemory(body_bytes),
+            headers,
+            body: BodySource::InMemory(body),
             client_ip,
             request_id: Uuid::now_v7(),
             inbound_protocol,
-        };
-        Ok(Self::new(request))
+        })
     }
 }
 

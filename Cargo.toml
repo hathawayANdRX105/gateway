@@ -2,10 +2,11 @@
 #
 # This is the public home of the gateway: the contract vocabulary shared by
 # the two planes, the engine stages (admission / selection / forwarding /
-# metering / protocol / proxy / security), and the assembly facade a consumer
-# wires up.
+# metering / protocol / proxy / security), the assembly facade a consumer
+# wires up, and the standalone process entry (root `src/`, actix-web).
 #
 # Layout:
+#   src/                         Standalone daemon entry: config + catalog + actix transport.
 #   crates/gateway-facade        The one crate a consumer depends on: config + builder + presets.
 #   crates/gateway-core          Vocabulary + ports (records, snapshots, admin-plane traits).
 #   crates/gateway-pipeline      Stage trait, RequestCtx, Pipeline runner, axum.
@@ -20,7 +21,42 @@
 #
 # Dependency direction is one-way: the facade and the engines depend on
 # gateway-core, never the reverse; the facade depends on the engines, never the
-# other way around. A consumer depends on gateway-facade only.
+# other way around. A consumer depends on gateway-facade only. The daemon
+# depends on the facade plus its own transport crates (actix-web).
+
+[package]
+name = "gateway-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Standalone gateway process: actix-web transport over the gateway-facade data plane"
+
+[[bin]]
+name = "gatewayd"
+path = "src/main.rs"
+
+[dependencies]
+gateway-facade = { path = "crates/gateway-facade" }
+actix-web = "4"
+axum = { workspace = true }
+arc-swap = { workspace = true }
+anyhow = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+futures-util = { workspace = true }
+hex = { workspace = true }
+http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+toml = "0.8"
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints]
+workspace = true
 
 [workspace]
 resolver = "2"
