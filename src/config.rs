@@ -7,6 +7,7 @@
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, ensure};
 use serde::Deserialize;
 
 /// Largest request body accepted by the daemon, in bytes.
@@ -71,9 +72,9 @@ impl DaemonConfig {
     /// fall back to a default).
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let text = std::fs::read_to_string(path)
-            .map_err(|err| anyhow::anyhow!("read config {}: {err}", path.display()))?;
-        let config: Self = toml::from_str(&text)
-            .map_err(|err| anyhow::anyhow!("parse config {}: {err}", path.display()))?;
+            .with_context(|| format!("read config {}", path.display()))?;
+        let config: Self =
+            toml::from_str(&text).with_context(|| format!("parse config {}", path.display()))?;
         config.validate()?;
         Ok(config)
     }
@@ -91,18 +92,22 @@ impl DaemonConfig {
     }
 
     fn validate(&self) -> anyhow::Result<()> {
-        if self.listen.trim().is_empty() {
-            anyhow::bail!("config: listen must not be empty (uds_path is additional)");
-        }
-        if self.catalog.as_os_str().is_empty() {
-            anyhow::bail!("config: catalog path must not be empty");
-        }
-        if self.max_request_bytes == 0 {
-            anyhow::bail!("config: max_request_bytes must be greater than zero");
-        }
-        if self.shutdown_timeout_secs == 0 {
-            anyhow::bail!("config: shutdown_timeout_secs must be greater than zero");
-        }
+        ensure!(
+            !self.listen.trim().is_empty(),
+            "config: listen must not be empty (uds_path is additional)"
+        );
+        ensure!(
+            !self.catalog.as_os_str().is_empty(),
+            "config: catalog path must not be empty"
+        );
+        ensure!(
+            self.max_request_bytes > 0,
+            "config: max_request_bytes must be greater than zero"
+        );
+        ensure!(
+            self.shutdown_timeout_secs > 0,
+            "config: shutdown_timeout_secs must be greater than zero"
+        );
         Ok(())
     }
 }

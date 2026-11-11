@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3480" viewBox="0 0 1560 3480" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="3213" viewBox="0 0 1560 3213" font-family="Noto Sans CJK SC, Noto Sans SC, system-ui, sans-serif">
 <defs>
 <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
 </defs>
-<rect width="1560" height="3480" fill="#ffffff"/>
+<rect width="1560" height="3213" fill="#ffffff"/>
 <rect x="0" y="0" width="1560" height="122" fill="#0f172a"/>
 <text x="780.0" y="54" font-size="30" fill="#f8fafc" font-weight="700" text-anchor="middle">gateway 数据面心智模型 —— LLM 网关的装配、调度与转发</text>
-<text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">库 + 独立进程（12 crate）：gateway-core 承载词汇与端口，引擎 stage 负责请求路径，gateway-facade 是装配面，根 src/ 的 gatewayd 用 actix-web 承载传输</text>
+<text x="780.0" y="88" font-size="15.5" fill="#94a3b8" text-anchor="middle">库 + 独立进程（12 crate）：gatewayd（根 src/）以 actix-web 承载传输，向下进入 gateway-pipeline；gateway-core 承载词汇与端口，gateway-facade 是装配面</text>
 <rect x="48.0" y="152.0" width="346.5" height="86.7" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="1.7"/>
 <text x="64.0" y="181.1" font-size="16" fill="#0f172a" font-weight="700">OpenAI</text>
 <text x="121.7" y="181.1" font-size="16" fill="#0f172a" font-weight="700"> </text>
@@ -63,160 +63,14 @@
 <line x1="593.75" y1="242.7" x2="593.75" y2="254.7" stroke="#475569" stroke-width="1.8" marker-end="url(#arr)"/>
 <line x1="966.25" y1="242.7" x2="966.25" y2="254.7" stroke="#475569" stroke-width="1.8" marker-end="url(#arr)"/>
 <line x1="1338.75" y1="242.7" x2="1338.75" y2="254.7" stroke="#475569" stroke-width="1.8" marker-end="url(#arr)"/>
-<rect x="48" y="258.7" width="1464" height="151.0" rx="12" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.7"/>
-<text x="68.0" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">axum</text>
-<text x="116.2" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="120.2" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">Router</text>
-<text x="178.8" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="182.8" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">＋</text>
-<text x="200.3" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700"> </text>
-<text x="204.3" y="293.1" font-size="17.5" fill="#0f172a" font-weight="700">gateway_path_guard</text>
-<text x="1492.0" y="293.1" font-size="14" fill="#4f46e5" font-weight="700" text-anchor="end">crate gateway-pipeline（嵌入出口）</text>
-<text x="68.0" y="329.3" font-size="15" fill="#4f46e5">•</text>
-<text x="88.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">职</text>
-<text x="103.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">责</text>
-<text x="118.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="133.0" y="329.3" font-size="15" fill="#1e293b">只</text>
-<text x="148.0" y="329.3" font-size="15" fill="#1e293b">放</text>
-<text x="163.0" y="329.3" font-size="15" fill="#1e293b">行</text>
-<text x="178.0" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="181.4" y="329.3" font-size="15" fill="#0f172a" font-weight="700">/v1*</text>
-<text x="212.3" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="215.6" y="329.3" font-size="15" fill="#1e293b">与</text>
-<text x="230.6" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="234.0" y="329.3" font-size="15" fill="#0f172a" font-weight="700">/healthz</text>
-<text x="295.1" y="329.3" font-size="15" fill="#1e293b">；</text>
-<text x="310.1" y="329.3" font-size="15" fill="#1e293b">其</text>
-<text x="325.1" y="329.3" font-size="15" fill="#1e293b">余</text>
-<text x="340.1" y="329.3" font-size="15" fill="#1e293b">未</text>
-<text x="355.1" y="329.3" font-size="15" fill="#1e293b">匹</text>
-<text x="370.1" y="329.3" font-size="15" fill="#1e293b">配</text>
-<text x="385.1" y="329.3" font-size="15" fill="#1e293b">路</text>
-<text x="400.1" y="329.3" font-size="15" fill="#1e293b">径</text>
-<text x="415.1" y="329.3" font-size="15" fill="#1e293b">直</text>
-<text x="430.1" y="329.3" font-size="15" fill="#1e293b">接</text>
-<text x="445.1" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="448.4" y="329.3" font-size="15" fill="#1e293b">404</text>
-<text x="473.4" y="329.3" font-size="15" fill="#1e293b">，</text>
-<text x="488.4" y="329.3" font-size="15" fill="#1e293b">不</text>
-<text x="503.4" y="329.3" font-size="15" fill="#1e293b">落</text>
-<text x="518.4" y="329.3" font-size="15" fill="#1e293b">进</text>
-<text x="533.4" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="536.8" y="329.3" font-size="15" fill="#1e293b">pipeline</text>
-<text x="593.7" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="597.0" y="329.3" font-size="15" fill="#1e293b">被</text>
-<text x="612.0" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="615.4" y="329.3" font-size="15" fill="#1e293b">AuthGate</text>
-<text x="680.6" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="683.9" y="329.3" font-size="15" fill="#1e293b">误</text>
-<text x="698.9" y="329.3" font-size="15" fill="#1e293b">报</text>
-<text x="713.9" y="329.3" font-size="15" fill="#1e293b"> </text>
-<text x="717.3" y="329.3" font-size="15" fill="#1e293b">401</text>
-<text x="68.0" y="355.6" font-size="15" fill="#4f46e5">•</text>
-<text x="88.0" y="355.6" font-size="15" fill="#0f172a" font-weight="700">RequestCtx::from_axum</text>
-<text x="267.2" y="355.6" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="282.2" y="355.6" font-size="15" fill="#1e293b">body</text>
-<text x="317.7" y="355.6" font-size="15" fill="#1e293b">（</text>
-<text x="332.7" y="355.6" font-size="15" fill="#1e293b">InMemory</text>
-<text x="403.8" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="407.2" y="355.6" font-size="15" fill="#1e293b">/</text>
-<text x="413.0" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="416.4" y="355.6" font-size="15" fill="#1e293b">OnDisk</text>
-<text x="466.4" y="355.6" font-size="15" fill="#1e293b">，</text>
-<text x="481.4" y="355.6" font-size="15" fill="#1e293b">可</text>
-<text x="496.4" y="355.6" font-size="15" fill="#1e293b">重</text>
-<text x="511.4" y="355.6" font-size="15" fill="#1e293b">放</text>
-<text x="526.4" y="355.6" font-size="15" fill="#1e293b">，</text>
-<text x="541.4" y="355.6" font-size="15" fill="#1e293b">每</text>
-<text x="556.4" y="355.6" font-size="15" fill="#1e293b">个</text>
-<text x="571.4" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="574.8" y="355.6" font-size="15" fill="#1e293b">attempt</text>
-<text x="630.6" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="634.0" y="355.6" font-size="15" fill="#1e293b">拿</text>
-<text x="649.0" y="355.6" font-size="15" fill="#1e293b">新</text>
-<text x="664.0" y="355.6" font-size="15" fill="#1e293b">游</text>
-<text x="679.0" y="355.6" font-size="15" fill="#1e293b">标</text>
-<text x="694.0" y="355.6" font-size="15" fill="#1e293b">）</text>
-<text x="709.0" y="355.6" font-size="15" fill="#1e293b">·</text>
-<text x="717.4" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="720.8" y="355.6" font-size="15" fill="#1e293b">headers</text>
-<text x="776.8" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="780.1" y="355.6" font-size="15" fill="#1e293b">·</text>
-<text x="788.5" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="791.9" y="355.6" font-size="15" fill="#1e293b">client_ip</text>
-<text x="852.9" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="856.2" y="355.6" font-size="15" fill="#1e293b">·</text>
-<text x="864.7" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="868.0" y="355.6" font-size="15" fill="#1e293b">request_id</text>
-<text x="942.9" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="946.2" y="355.6" font-size="15" fill="#1e293b">·</text>
-<text x="954.6" y="355.6" font-size="15" fill="#1e293b"> </text>
-<text x="958.0" y="355.6" font-size="15" fill="#1e293b">入</text>
-<text x="973.0" y="355.6" font-size="15" fill="#1e293b">站</text>
-<text x="988.0" y="355.6" font-size="15" fill="#1e293b">协</text>
-<text x="1003.0" y="355.6" font-size="15" fill="#1e293b">议</text>
-<text x="1018.0" y="355.6" font-size="15" fill="#1e293b">判</text>
-<text x="1033.0" y="355.6" font-size="15" fill="#1e293b">定</text>
-<text x="68.0" y="381.8" font-size="15" fill="#4f46e5">•</text>
-<text x="88.0" y="381.8" font-size="15" fill="#0f172a" font-weight="700">错</text>
-<text x="103.0" y="381.8" font-size="15" fill="#0f172a" font-weight="700">误</text>
-<text x="118.0" y="381.8" font-size="15" fill="#0f172a" font-weight="700">出</text>
-<text x="133.0" y="381.8" font-size="15" fill="#0f172a" font-weight="700">口</text>
-<text x="148.0" y="381.8" font-size="15" fill="#0f172a" font-weight="700"> </text>
-<text x="151.4" y="381.8" font-size="15" fill="#0f172a" font-weight="700">error_to_response</text>
-<text x="288.7" y="381.8" font-size="15" fill="#0f172a" font-weight="700">：</text>
-<text x="303.7" y="381.8" font-size="15" fill="#1e293b">OpenAI</text>
-<text x="355.1" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="358.5" y="381.8" font-size="15" fill="#1e293b">错</text>
-<text x="373.5" y="381.8" font-size="15" fill="#1e293b">误</text>
-<text x="388.5" y="381.8" font-size="15" fill="#1e293b">体</text>
-<text x="403.5" y="381.8" font-size="15" fill="#1e293b">形</text>
-<text x="418.5" y="381.8" font-size="15" fill="#1e293b">状</text>
-<text x="433.5" y="381.8" font-size="15" fill="#1e293b">；</text>
-<text x="448.5" y="381.8" font-size="15" fill="#1e293b">状</text>
-<text x="463.5" y="381.8" font-size="15" fill="#1e293b">态</text>
-<text x="478.5" y="381.8" font-size="15" fill="#1e293b">码</text>
-<text x="493.5" y="381.8" font-size="15" fill="#1e293b">分</text>
-<text x="508.5" y="381.8" font-size="15" fill="#1e293b">层</text>
-<text x="523.5" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="526.8" y="381.8" font-size="15" fill="#1e293b">——</text>
-<text x="552.0" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="555.3" y="381.8" font-size="15" fill="#1e293b">504+Retry-After</text>
-<text x="664.4" y="381.8" font-size="15" fill="#1e293b">（</text>
-<text x="679.4" y="381.8" font-size="15" fill="#1e293b">全</text>
-<text x="694.4" y="381.8" font-size="15" fill="#1e293b">冷</text>
-<text x="709.4" y="381.8" font-size="15" fill="#1e293b">却</text>
-<text x="724.4" y="381.8" font-size="15" fill="#1e293b">）</text>
-<text x="739.4" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="745.3" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="748.7" y="381.8" font-size="15" fill="#1e293b">503</text>
-<text x="773.7" y="381.8" font-size="15" fill="#1e293b">（</text>
-<text x="788.7" y="381.8" font-size="15" fill="#1e293b">无</text>
-<text x="803.7" y="381.8" font-size="15" fill="#1e293b">冷</text>
-<text x="818.7" y="381.8" font-size="15" fill="#1e293b">却</text>
-<text x="833.7" y="381.8" font-size="15" fill="#1e293b">可</text>
-<text x="848.7" y="381.8" font-size="15" fill="#1e293b">等</text>
-<text x="863.7" y="381.8" font-size="15" fill="#1e293b">）</text>
-<text x="878.7" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="884.5" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="887.9" y="381.8" font-size="15" fill="#1e293b">429</text>
-<text x="912.9" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="916.2" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="922.1" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="925.5" y="381.8" font-size="15" fill="#1e293b">402</text>
-<text x="950.5" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="953.8" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="959.7" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="963.0" y="381.8" font-size="15" fill="#1e293b">404</text>
-<text x="988.0" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="991.4" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="997.3" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="1000.6" y="381.8" font-size="15" fill="#1e293b">502</text>
-<text x="1025.6" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="1029.0" y="381.8" font-size="15" fill="#1e293b">/</text>
-<text x="1034.8" y="381.8" font-size="15" fill="#1e293b"> </text>
-<text x="1038.2" y="381.8" font-size="15" fill="#1e293b">401</text>
-<line x1="780.0" y1="242.7" x2="780.0" y2="262.7" stroke="#475569" stroke-width="1.8" marker-end="url(#arr)"/>
+<rect x="48" y="258.7" width="1464" height="170.0" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.2"/>
+<text x="68.0" y="291.0" font-size="17.5" fill="#15803d" font-weight="700">gatewayd 独立进程 · actix-web Transport —— 新增层（仓库根 src/，bin gatewayd）</text>
+<text x="1492.0" y="291.0" font-size="14" fill="#16a34a" font-weight="700" text-anchor="end">crate gateway-daemon（根包）</text>
+<text x="68.0" y="322.0" font-size="14.5" fill="#166534">• 依赖：只引 gateway-facade + actix-web / toml / http，不触任何引擎 crate；进程壳不含任何判权逻辑</text>
+<text x="68.0" y="347.0" font-size="14.5" fill="#166534">• 装配：TOML config + 文件 catalog（channels × keys × groups × models 展开为 route units）→ 快照 → GatewayBuilder::relay().build()</text>
+<text x="68.0" y="372.0" font-size="14.5" fill="#166534">• 请求：body 先读入内存（超 max_request_bytes 直接 413）→ RequestCtx::from_parts → Pipeline::run → 响应按 chunk 流式回传（SSE 不缓冲），剥离 hop-by-hop 头</text>
+<text x="68.0" y="397.0" font-size="14.5" fill="#166534">• 传输：TCP + UDS 双 listener；仅当 peer ∈ trusted_proxies 才读 X-Forwarded-For（自右向左取首个非受信）；/healthz 与 /readyz 为独立路由</text>
+<text x="68.0" y="420.0" font-size="13" fill="#64748b">嵌入出口（不在 daemon 链路上）：Gateway::router() 仍是 axum Router，仅供 ferrite 等消费方内嵌合并；独立进程整条链路只走 actix</text>
 <rect x="48" y="435.7" width="1464" height="1551" rx="14" fill="#f0f9ff" stroke="#0284c7" stroke-width="2.2" stroke-dasharray="9 6"/>
 <text x="68" y="471.7" font-size="18" fill="#0369a1" font-weight="700">Pipeline（crate gateway-pipeline）：Vec&lt;Arc&lt;dyn Stage&gt;&gt; 顺序执行，StageOutcome = Continue / ShortCircuit / Stream（后两者即终止链）</text>
 <text x="1492" y="471.7" font-size="14.5" fill="#0284c7" font-weight="700" text-anchor="end">装配 = GatewayBuilder::relay(ctx).build() —— preset: Shape::Relay / NoBilling / Open（crate gateway-facade）</text>
@@ -2920,13 +2774,4 @@
 <text x="1016.6" y="3145.9" font-size="13.5" fill="#64748b">何</text>
 <text x="1030.1" y="3145.9" font-size="13.5" fill="#64748b"> </text>
 <text x="1033.2" y="3145.9" font-size="13.5" fill="#64748b">crate</text>
-
-<rect x="48" y="3200.0" width="1464" height="236.0" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.2"/>
-<text x="68" y="3236" font-size="17.5" fill="#15803d" font-weight="700">独立进程（仓库根 src/）：actix-web Transport × 同一 Pipeline</text>
-<text x="68" y="3264" font-size="14.5" fill="#166534">• 入口：src/main.rs → gatewayd --config &lt;toml&gt; [--check]；根包 gateway-daemon 只依赖 gateway-facade + actix-web / toml，不触引擎</text>
-<text x="68" y="3292" font-size="14.5" fill="#166534">• 装配：文件 catalog（channels × keys × groups × models）→ dispatch / token / user / group / quota / pricing 快照 → GatewayBuilder::relay().build()</text>
-<text x="68" y="3320" font-size="14.5" fill="#166534">• 传输：TCP HTTP/1.1 + SSE（按 chunk 转发，不缓冲整包）与 UDS（同一 Router，双 listener）；UDP / WebSocket 不做，TLS 交给反代</text>
-<text x="68" y="3348" font-size="14.5" fill="#166534">• 边界：body 上限（超限 413）· 仅 trusted_proxies 可设 X-Forwarded-For · /healthz + /readyz · 仅 /v1* 进 pipeline，其余 404</text>
-<text x="68" y="3376" font-size="14.5" fill="#166534">• 并发：actix 每 worker 一个 runtime，每请求一个 task；Pipeline 仍是顺序 stage 链，上游延迟主导，框架开销不是瓶颈</text>
-<text x="68" y="3406" font-size="13" fill="#64748b">嵌入路径保留：Gateway::router() 仍是 axum Router，供 ferrite 等消费方与 admin 面合并；actix 只替换独立进程的传输实现</text>
 </svg>

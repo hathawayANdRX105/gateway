@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use actix_web::http::header::{HeaderName, HeaderValue};
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
-use anyhow::Context as _;
+use anyhow::{Context as _, ensure};
 use futures_util::StreamExt;
 
 use gateway_facade::{
@@ -126,7 +126,10 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         workers = config.workers,
         "gatewayd serving"
     );
-    server.run().await?;
+    server
+        .run()
+        .await
+        .context("gatewayd server exited with an error")?;
     Ok(())
 }
 
@@ -187,14 +190,14 @@ impl SettleSink for LogSettleSink {
 }
 
 fn remove_stale_socket(path: &std::path::Path) -> anyhow::Result<()> {
-    match std::fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(err) => Err(anyhow::anyhow!(
+    if let Err(err) = std::fs::remove_file(path) {
+        ensure!(
+            err.kind() == io::ErrorKind::NotFound,
             "remove stale socket {}: {err}",
             path.display()
-        )),
+        );
     }
+    Ok(())
 }
 
 pub async fn healthz() -> HttpResponse {

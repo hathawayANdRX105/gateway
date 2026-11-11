@@ -13,6 +13,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use anyhow::{Context, ensure};
 use chrono::Utc;
 use gateway_facade::{
     ChannelKey, ChannelRecord, GroupEntry, GroupSnapshot, ModelPrice, PriceRow, PriceTable,
@@ -28,6 +29,20 @@ const UNITS_PER_DOLLAR: f64 = 500_000.0;
 /// Balance used for a token declared `unlimited`. Large enough never to bind, small enough
 /// that settlement arithmetic cannot overflow.
 const UNLIMITED_BALANCE: i64 = i64::MAX / 2;
+
+/// Documented default values.
+///
+/// `#[serde(default = "…")]` takes a function path, not a constant, so each value lives
+/// here and the serde hooks at the bottom of the file are thin wrappers over them
+/// (`const fn` where the return type allows it — `String` cannot be const-constructed).
+/// The hooks are complete, not placeholders: they change only when the documented
+/// default itself changes.
+const DEFAULT_GROUP_NAME: &str = "default";
+const DEFAULT_PROVIDER_TYPE: &str = "openai";
+const DEFAULT_CHANNEL_MAX_CONCURRENCY: u32 = 32;
+const DEFAULT_USER_ROLE: u16 = 1;
+const DEFAULT_MODEL_WEIGHT: u32 = 1;
+const DEFAULT_GROUP_MULTIPLIER: f64 = 1.0;
 
 /// One catalog document.
 #[derive(Debug, Clone, Deserialize)]
@@ -52,7 +67,7 @@ pub struct GroupSpec {
     pub name: String,
     #[serde(default)]
     pub allowed_models: Vec<String>,
-    #[serde(default = "one_f64")]
+    #[serde(default = "default_group_multiplier")]
     pub multiplier: f64,
     #[serde(default = "enabled")]
     pub enabled: bool,
@@ -138,7 +153,7 @@ pub struct ModelSpec {
     /// Upstream name; absent = the public alias.
     #[serde(default)]
     pub upstream: Option<String>,
-    #[serde(default = "one_u32")]
+    #[serde(default = "model_weight")]
     pub weight: u32,
     /// Group restriction; empty = every group the channel is visible in.
     #[serde(default)]
@@ -209,8 +224,8 @@ impl Catalog {
     /// group set, a negative price).
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let text = std::fs::read_to_string(path)
-            .map_err(|err| anyhow::anyhow!("read catalog {}: {err}", path.display()))?;
-        Self::from_toml(&text).map_err(|err| anyhow::anyhow!("catalog {}: {err}", path.display()))
+            .with_context(|| format!("read catalog {}", path.display()))?;
+        Self::from_toml(&text).with_context(|| format!("catalog {}", path.display()))
     }
 
     /// Build from a TOML document (also the test entry point).
@@ -291,11 +306,17 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
     let mut seen_units = HashSet::new();
 
     for channel in channels {
-        if channel.keys.is_empty() && !channel.models.is_empty() {
-            anyhow::bail!("channel {}: models require at least one key", channel.key);
-        }
-        if channel.groups.is_empty() && !channel.models.is_empty() {
-            anyhow::bail!("channel {}: models require at least one group", channel.key);
+        if !channel.models.is_empty() {
+            ensure!(
+                !channel.keys.is_empty(),
+                "channel {}: models require at least one key",
+                channel.key
+            );
+            ensure!(
+                !channel.groups.is_empty(),
+                "channel {}: models require at least one group",
+                channel.key
+            );
         }
 
         let mut keys = Vec::with_capacity(channel.keys.len());
@@ -304,16 +325,20 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
         for (position, key) in channel.keys.iter().enumerate() {
             let index = match key.index {
                 Some(index) => index,
-                None => u32::try_from(position).map_err(|_| {
-                    anyhow::anyhow!("channel {}: more keys than the index space", channel.key)
+                None => u32::try_from(position).with_context(|| {
+                    format!("channel {}: more keys than the index space", channel.key)
                 })?,
             };
-            if !seen_indexes.insert(index) {
-                anyhow::bail!("channel {}: duplicate key index {index}", channel.key);
-            }
-            if !seen_secrets.insert(key.secret.as_str()) {
-                anyhow::bail!("channel {}: duplicate key secret", channel.key);
-            }
+            ensure!(
+                seen_indexes.insert(index),
+                "channel {}: duplicate key index {index}",
+                channel.key
+            );
+            ensure!(
+                seen_secrets.insert(key.secret.as_str()),
+                "channel {}: duplicate key secret",
+                channel.key
+            );
             keys.push(ChannelKey {
                 index,
                 secret: key.secret.clone(),
@@ -365,9 +390,10 @@ fn push_model_units(
     for group in groups {
         for key in keys {
             let unit_key = format!("{}:{group}:{}:{}", channel.key, model.name, key.index);
-            if !seen.insert(unit_key.clone()) {
-                anyhow::bail!("duplicate route unit {unit_key}");
-            }
+            ensure!(
+                seen.insert(unit_key.clone()),
+                "duplicate route unit {unit_key}"
+            );
             units.push(RouteUnitRecord {
                 meta: meta(&unit_key),
                 group: group.clone(),
@@ -393,13 +419,12 @@ fn effective_groups(channel: &ChannelSpec, model: &ModelSpec) -> anyhow::Result<
         .filter(|group| model.groups.contains(group))
         .cloned()
         .collect::<Vec<_>>();
-    if groups.is_empty() {
-        anyhow::bail!(
-            "channel {}: model {} is restricted to groups it is not visible in",
-            channel.key,
-            model.name
-        );
-    }
+    ensure!(
+        !groups.is_empty(),
+        "channel {}: model {} is restricted to groups it is not visible in",
+        channel.key,
+        model.name
+    );
     Ok(groups)
 }
 
@@ -415,18 +440,25 @@ fn build_tokens(
     let quotas = QuotaSnapshot::default();
 
     for spec in specs {
-        if !known_users.contains(spec.user.as_str()) {
-            anyhow::bail!("token {}: unknown user {}", spec.name, spec.user);
-        }
-        if spec.key.trim().is_empty() {
-            anyhow::bail!("token {}: empty key", spec.name);
-        }
+        ensure!(
+            known_users.contains(spec.user.as_str()),
+            "token {}: unknown user {}",
+            spec.name,
+            spec.user
+        );
+        ensure!(
+            !spec.key.trim().is_empty(),
+            "token {}: empty key",
+            spec.name
+        );
 
         let hash = sha256(&spec.key);
         let token_key = format!("tok_{}", hex::encode(hash));
         let remaining = match spec.quota {
-            Some(quota) if quota < 0 => anyhow::bail!("token {}: negative quota", spec.name),
-            Some(quota) => quota,
+            Some(quota) => {
+                ensure!(quota >= 0, "token {}: negative quota", spec.name);
+                quota
+            }
             None => UNLIMITED_BALANCE,
         };
 
@@ -455,15 +487,22 @@ fn build_prices(specs: &[PriceSpec]) -> anyhow::Result<(PricingSnapshot, Catalog
     let mut seen = HashSet::new();
 
     for spec in specs {
-        if !seen.insert((spec.model.clone(), spec.group.clone())) {
-            anyhow::bail!("duplicate price for {}/{}", spec.model, spec.group);
-        }
-        if !spec.input.is_finite() || !spec.output.is_finite() || !spec.cache.is_finite() {
-            anyhow::bail!("price {}: non-finite value", spec.model);
-        }
-        if spec.input < 0.0 || spec.output < 0.0 || spec.cache < 0.0 {
-            anyhow::bail!("price {}: negative value", spec.model);
-        }
+        ensure!(
+            seen.insert((spec.model.clone(), spec.group.clone())),
+            "duplicate price for {}/{}",
+            spec.model,
+            spec.group
+        );
+        ensure!(
+            spec.input.is_finite() && spec.output.is_finite() && spec.cache.is_finite(),
+            "price {}: non-finite value",
+            spec.model
+        );
+        ensure!(
+            spec.input >= 0.0 && spec.output >= 0.0 && spec.cache >= 0.0,
+            "price {}: negative value",
+            spec.model
+        );
 
         snapshot.upsert(
             spec.model.clone(),
@@ -498,9 +537,7 @@ fn validate_unique(file: &CatalogFile) -> anyhow::Result<()> {
 fn unique_by<'a>(items: impl Iterator<Item = &'a str>, what: &str) -> anyhow::Result<()> {
     let mut seen = HashSet::new();
     for item in items {
-        if !seen.insert(item) {
-            anyhow::bail!("duplicate {what} {item}");
-        }
+        ensure!(seen.insert(item), "duplicate {what} {item}");
     }
     Ok(())
 }
@@ -537,25 +574,25 @@ const fn enabled_status() -> u8 {
 }
 
 const fn user_role() -> u16 {
-    1
+    DEFAULT_USER_ROLE
 }
 
-const fn one_u32() -> u32 {
-    1
+const fn model_weight() -> u32 {
+    DEFAULT_MODEL_WEIGHT
 }
 
 const fn default_channel_concurrency() -> u32 {
-    32
+    DEFAULT_CHANNEL_MAX_CONCURRENCY
 }
 
-fn one_f64() -> f64 {
-    1.0
+const fn default_group_multiplier() -> f64 {
+    DEFAULT_GROUP_MULTIPLIER
 }
 
 fn default_group() -> String {
-    "default".to_string()
+    DEFAULT_GROUP_NAME.to_string()
 }
 
 fn default_provider() -> String {
-    "openai".to_string()
+    DEFAULT_PROVIDER_TYPE.to_string()
 }
