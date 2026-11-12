@@ -52,7 +52,7 @@
 //!   longer owns the weight formula.
 //!
 //! - **Live config reload**: `set_config` replaces the whole config at runtime
-//!   (issue #21 tracks the deferred hot-path hook; current implementation): the hot path reads `get_config()` and clones
+//!   (the hot-path hook is implemented): the hot path reads `get_config()` and clones
 //!   the current value; only parameters are swapped, cooldown/streak/EWMA state
 //!   is never reset (the states table stays as is).
 //!

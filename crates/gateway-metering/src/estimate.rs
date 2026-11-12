@@ -130,7 +130,18 @@ fn messages_tokens(body: &Value) -> u64 {
 
 /// One chat/Claude message: billable content plus any `tool_calls` function arguments.
 fn message_tokens(msg: &Map<String, Value>) -> u64 {
-    content_tokens(msg.get("content").unwrap_or(&Value::Null)) + openai_tool_call_arguments(msg)
+    content_tokens(msg.get("content").unwrap_or(&Value::Null))
+        + openai_tool_call_arguments(msg)
+        + legacy_function_call_arguments(msg)
+}
+
+/// `OpenAI` legacy `message.function_call.arguments` — the deprecated single-call shape
+/// (superseded by `tool_calls[]`); its arguments string is billable text.
+fn legacy_function_call_arguments(msg: &Map<String, Value>) -> u64 {
+    msg.get("function_call")
+        .and_then(|fc| fc.get("arguments"))
+        .and_then(Value::as_str)
+        .map_or(0, estimate_tokens)
 }
 
 /// `OpenAI` `message.tool_calls[].function.arguments` — each arguments string is billable text.
@@ -376,6 +387,11 @@ fn png_dimensions(data: &[u8]) -> Option<(u32, u32)> {
     if data.len() < 24 || &data[0..8] != b"\x89PNG\r\n\x1a\n" {
         return None;
     }
+    // A PNG signature alone cannot fabricate dimensions: the first chunk after the
+    // signature must be the IHDR chunk (its 4-byte type at offset 12..16).
+    if data.len() < 24 || &data[12..16] != b"IHDR" {
+        return None;
+    }
     let w = u32::from_be_bytes([data[16], data[17], data[18], data[19]]);
     let h = u32::from_be_bytes([data[20], data[21], data[22], data[23]]);
     Some((w, h))
@@ -440,13 +456,18 @@ fn decode_image_header_dimensions(b64: &str) -> Option<(u32, u32)> {
 /// Scale an image so its longest side fits 2048, then round each side down to a
 /// multiple of 32 (`OpenAI` tiling grid).
 fn fit_to_2048(w: u32, h: u32) -> (u32, u32) {
-    let max = w.max(h);
+    // Intermediate math in u64: a crafted PNG header can declare dimensions up to
+    // u32::MAX, and `w * 2048` in u32 would wrap (debug panic / release under-billing).
+    let max = u64::from(w.max(h));
     if max <= 2048 {
         return (w, h);
     }
-    let w = w * 2048 / max;
-    let h = h * 2048 / max;
-    (w - w % 32, h - h % 32)
+    #[allow(clippy::cast_possible_truncation)]
+    let scale = |side: u32| -> u32 {
+        let scaled = (u64::from(side) * 2048 / max) as u32;
+        scaled - scaled % 32
+    };
+    (scale(w), scale(h))
 }
 
 /// One base64 character -> its 6-bit value.
