@@ -75,20 +75,20 @@ fn prompt_literal_content_key_in_text_not_double_counted() {
     assert_eq!(estimate_prompt_tokens(&body), estimate_tokens(decoded));
 }
 
-/// Purpose: multimodal prompts bill text only; base64 image data is skipped.
+/// Purpose: multimodal prompts bill image headers, not the full base64 payload.
 /// Scenario: `OpenAI` parts-array content with one text part and one `image_url`
-/// part carrying a large base64 data URL. The old scanner matched nothing in
-/// this shape and fell through to whole-body/4, billing the base64 anyway.
-/// Acceptance: the estimate equals `estimate_tokens` of the text part alone.
+/// part carrying an undecodable base64 data URL. The header cannot be decoded, so
+/// the image bills the `low` flat 85 instead of the 4000-character base64 string.
+/// Acceptance: the estimate equals `estimate_tokens` of the text part plus 85.
 #[test]
-fn prompt_multimodal_parts_count_text_only_and_skip_base64() {
+fn prompt_openai_image_undecodable_bills_low_flat() {
     let body = bytes::Bytes::from(format!(
         r#"{{"messages":[{{"role":"user","content":[{{"type":"text","text":"describe this image"}},{{"type":"image_url","image_url":{{"url":"data:image/png;base64,{}"}}}}]}}]}}"#,
         "A".repeat(4000)
     ));
     assert_eq!(
         estimate_prompt_tokens(&body),
-        estimate_tokens("describe this image")
+        estimate_tokens("describe this image") + 85
     );
 }
 
@@ -198,4 +198,152 @@ fn prompt_claude_top_level_system_is_billed() {
         estimate_prompt_tokens(&block_system),
         estimate_tokens("be terse") + estimate_tokens("ping")
     );
+}
+
+/// Base64 encoder used to build synthetic image payloads in the tests below.
+fn to_base64(bytes: &[u8]) -> String {
+    const ALPH: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+        out.push(ALPH[(b0 >> 2) as usize] as char);
+        out.push(ALPH[(((b0 & 0x03) << 4) | (b1 >> 4)) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(ALPH[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(ALPH[(b2 & 0x3f) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
+}
+
+/// Minimal PNG header (magic + IHDR) for the given width/height; the CRC is a dummy.
+fn png_header(w: u32, h: u32) -> Vec<u8> {
+    let mut buf = Vec::new();
+    buf.extend_from_slice(b"\x89PNG\r\n\x1a\n");
+    buf.extend_from_slice(&13u32.to_be_bytes());
+    buf.extend_from_slice(b"IHDR");
+    buf.extend_from_slice(&w.to_be_bytes());
+    buf.extend_from_slice(&h.to_be_bytes());
+    buf.extend_from_slice(&[8, 2, 0, 0, 0]);
+    buf.extend_from_slice(&[0u8; 4]);
+    buf
+}
+
+/// Purpose: `OpenAI` `image_url` with `detail: "low"` bills a flat 85 regardless of size.
+/// Scenario: a text part plus an `image_url` part with `detail: "low"` and a decodable
+/// 100x100 PNG header.
+/// Acceptance: the estimate equals `estimate_tokens` of the text plus 85.
+#[test]
+fn prompt_openai_image_detail_low_is_85() {
+    let body = bytes::Bytes::from(format!(
+        r#"{{"messages":[{{"role":"user","content":[{{"type":"text","text":"describe this"}},{{"type":"image_url","detail":"low","image_url":{{"url":"data:image/png;base64:{}"}}}}]}}]}}"#,
+        to_base64(&png_header(100, 100))
+    ));
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("describe this") + 85
+    );
+}
+
+/// Purpose: `OpenAI` `image_url` detail `high`/absent bills 85 + 170 * tiles derived from
+/// the decoded PNG header, never the full base64 payload.
+/// Scenario: a 1024x1024 PNG header (fits 2048, tiles = ceil(1024/512)^2 = 4).
+/// Acceptance: the estimate equals `estimate_tokens` of the text plus 765 (85 + 170*4).
+#[test]
+fn prompt_openai_image_high_detail_known_png() {
+    let body = bytes::Bytes::from(format!(
+        r#"{{"messages":[{{"role":"user","content":[{{"type":"text","text":"describe this"}},{{"type":"image_url","image_url":{{"url":"data:image/png;base64:{}"}}}}]}}]}}"#,
+        to_base64(&png_header(1024, 1024))
+    ));
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("describe this") + 765
+    );
+}
+
+/// Purpose: Claude `image` block bills (w*h)/750 with each side capped at 1568.
+/// Scenario: a 1000x750 image header plus a text part.
+/// Acceptance: the estimate equals `estimate_tokens` of the text plus 1000 (1000*750/750).
+#[test]
+fn prompt_claude_image_block_known_size() {
+    let body = bytes::Bytes::from(format!(
+        r#"{{"messages":[{{"role":"user","content":[{{"type":"text","text":"read this"}},{{"type":"image","source":{{"type":"base64","media_type":"image/png","data":"{}"}}}}]}}]}}"#,
+        to_base64(&png_header(1000, 750))
+    ));
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("read this") + 1000
+    );
+}
+
+/// Purpose: Claude `image` block with an undecodable header bills 0 (no guessing).
+/// Scenario: a text part plus an image whose base64 is not a valid PNG/JPEG header.
+/// Acceptance: the estimate equals `estimate_tokens` of the text alone.
+#[test]
+fn prompt_claude_image_undecodable_is_zero() {
+    let body = bytes::Bytes::from_static(
+        br#"{"messages":[{"role":"user","content":[{"type":"text","text":"read this"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"notanimage"}}]}]}"#,
+    );
+    assert_eq!(estimate_prompt_tokens(&body), estimate_tokens("read this"));
+}
+
+/// Purpose: `OpenAI` `message.tool_calls[].function.arguments` is billed as text.
+/// Scenario: an assistant message with an empty content and one `tool_call` whose
+/// arguments JSON string is billable.
+/// Acceptance: the estimate equals `estimate_tokens` of the arguments string.
+#[test]
+fn prompt_openai_tool_calls_arguments_billed() {
+    let body = bytes::Bytes::from_static(
+        br#"{"messages":[{"role":"assistant","content":"","tool_calls":[{"id":"c1","function":{"name":"get_weather","arguments":"{\"city\":\"Paris\"}"}}]}]}"#,
+    );
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("{\"city\":\"Paris\"}")
+    );
+}
+
+/// Purpose: `OpenAI` `function_call_output.output` tool output is billed as text.
+/// Scenario: a user message whose content array holds a `function_call_output` block.
+/// Acceptance: the estimate equals the text plus `estimate_tokens` of the output.
+#[test]
+fn prompt_function_call_output_billed() {
+    let body = bytes::Bytes::from_static(
+        br#"{"messages":[{"role":"user","content":[{"type":"text","text":"what is the weather"},{"type":"function_call_output","call_id":"c1","output":"22 degrees"}]}]}"#,
+    );
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("what is the weather") + estimate_tokens("22 degrees")
+    );
+}
+
+/// Purpose: Responses `instructions` field is billed like a system prompt.
+/// Scenario: a Responses body with both `instructions` and `input`.
+/// Acceptance: the estimate equals `estimate_tokens` of instructions plus input.
+#[test]
+fn prompt_responses_instructions_billed() {
+    let body = bytes::Bytes::from_static(br#"{"instructions":"be helpful","input":"say hi"}"#);
+    assert_eq!(
+        estimate_prompt_tokens(&body),
+        estimate_tokens("be helpful") + estimate_tokens("say hi")
+    );
+}
+
+/// Purpose: Gemini `inline_data` images bill 258 tokens each, regardless of size.
+/// Scenario: a Gemini user turn with one text part and two `inline_data` image parts.
+/// Acceptance: the estimate equals `estimate_tokens` of the text plus 516 (2 * 258).
+#[test]
+fn prompt_gemini_inline_data_images_258_each() {
+    let b64 = to_base64(&png_header(50, 50));
+    let body = bytes::Bytes::from(format!(
+        r#"{{"contents":[{{"role":"user","parts":[{{"text":"hi"}},{{"inline_data":{{"mime_type":"image/png","data":"{b64}"}}}},{{"inline_data":{{"mime_type":"image/png","data":"{b64}"}}}}]}}]}}"#,
+    ));
+    assert_eq!(estimate_prompt_tokens(&body), estimate_tokens("hi") + 516);
 }

@@ -23,7 +23,7 @@
 //!   [`BufferedStream`] turns the buffer plus the remaining stream into a Live passthrough
 //!   (`StreamPhase::Live`).
 //! - Live-phase heartbeat / threshold flushing / error-frame finish are not implemented this
-//!   round (TODO(#158)): the Live arm of [`pipe_resilient`] keeps passthrough semantics.
+//!   round (TODO(ferrite-#158, re-anchored: #11)): the Live arm of [`pipe_resilient`] keeps passthrough semantics.
 //!
 //! ferrite's [`stream::SseContext`](crate::stream::SseContext) scan chain (token counting
 //! already in the pipeline) is cleaner than api-hub's byte-level hack; this module only does
@@ -52,12 +52,12 @@ pub struct StreamResilience {
     pub window_ms: u64,
     /// Live-phase upstream silence threshold (ms): beyond it, send a `: keepalive\n\n` SSE
     /// comment frame to the client to keep the connection alive.
-    /// TODO(#158): the Live phase is not implemented this round; currently unconsumed.
+    /// TODO(ferrite-#158, re-anchored: #11): the Live phase is not implemented this round; currently unconsumed.
     pub heartbeat_ms: u64,
     /// Candidate-switch cap for retries when the window-phase stream breaks (guarding against
     /// api-hub's brute-force max=100 default).
     ///
-    /// TODO(#311): the switch budget is managed centrally by
+    /// TODO(ferrite-#311, re-anchored: #21): the switch budget is managed centrally by
     /// `gateway_dispatch::retry::RetryPolicy`; this field is not consumed yet (the retry loop's
     /// `max_attempts` is already the authoritative source for the same responsibility).
     pub max_retries: u32,
@@ -137,7 +137,7 @@ pub fn has_completion_evidence(buf: &[u8]) -> bool {
 ///   [`ResilientChunk::Emit`]; on EOF with a criterion, return `Emit(empty)` (normal stream
 ///   finish, no caller action needed), without one return [`ResilientChunk::Broken`]
 ///   (classification only: flushing the buffer + the `event: error` frame is landed by the
-///   caller in the Live phase, TODO(#158)). Threshold flushing (32KB/150ms) and heartbeat
+///   caller in the Live phase, TODO(ferrite-#158, re-anchored: #11)). Threshold flushing (32KB/150ms) and heartbeat
 ///   (`cfg.heartbeat_ms`) in the Live phase are out of scope this round, so `cfg` is currently
 ///   unconsumed.
 /// - `ctx` is the hook for Live-phase settlement; unused this round: the window buffer is
@@ -156,7 +156,7 @@ pub fn pipe_resilient(
     cfg: &StreamResilience,
 ) -> ResilientChunk {
     // Deliberately ignored: the Live-phase thresholds of `cfg` (heartbeat / buffer flush) are
-    // not implemented this round; the signature is kept so TODO(#158) can consume them without
+    // not implemented this round; the signature is kept so TODO(ferrite-#158, re-anchored: #11) can consume them without
     // affecting this function's pure decision semantics.
     let _ = cfg;
     match (phase, chunk) {
@@ -176,7 +176,7 @@ pub fn pipe_resilient(
         }
         // Live phase passthrough this round: chunks are sent immediately.
         (StreamPhase::Live, Some(chunk)) => ResilientChunk::Emit(chunk.clone()),
-        // Live-phase EOF: classify only; no buffer flush / error-frame finish (TODO(#158)).
+        // Live-phase EOF: classify only; no buffer flush / error-frame finish (TODO(ferrite-#158, re-anchored: #11)).
         (StreamPhase::Live, None) => {
             if has_completion_evidence(buf) {
                 // Normal finish: no bytes left to flush (buf does not accumulate in passthrough

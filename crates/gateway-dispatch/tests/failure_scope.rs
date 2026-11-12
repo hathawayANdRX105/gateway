@@ -36,9 +36,9 @@ fn request_scoped_4xx_maps_to_request() {
 }
 
 #[test]
-#[ignore = "TODO(#158): skeleton not implemented"]
+#[ignore = "TODO(ferrite-#158, re-anchored: #11): skeleton not implemented"]
 fn policy_for_hits_per_model_then_default() {
     todo!(
-        "TODO(#158): ModelRetryPolicies::policy_for exactly matches per_model, otherwise falls back to default"
+        "TODO(ferrite-#158, re-anchored: #11): ModelRetryPolicies::policy_for exactly matches per_model, otherwise falls back to default"
     )
 }

@@ -52,7 +52,7 @@ pub struct ForwardStage {
     pub(crate) dispatch: Option<Arc<dyn Dispatch>>,
     /// Retry budget, effective only while `dispatch` is `Some`.
     ///
-    /// Hot-swappable handle (TODO(#311)): `ArcSwap` lets options polling replace
+    /// Hot-swappable handle: `ArcSwap` lets options polling replace
     /// the budget without rebuilding the stage; `handle_with_retry` reads the
     /// current value once on each loop entry (see `update_retry_policy` /
     /// `with_retry_handle`). `with_retry` keeps its value semantics and wraps it
@@ -439,7 +439,7 @@ impl ForwardStage {
             .unwrap_or_else(|| gateway_metering::estimate::raw_length_tokens(s));
         // Output-bound dialects are not wired yet: Responses `max_output_tokens`
         // and Gemini `generationConfig.maxOutputTokens` fall back to the EMA, as
-        // before this rewrite — tracked with the prompt-side carriers as TODO(#334).
+        // before this rewrite — tracked with the prompt-side carriers as issue #19.
         let bound = value
             .get("max_tokens")
             .and_then(serde_json::Value::as_u64)

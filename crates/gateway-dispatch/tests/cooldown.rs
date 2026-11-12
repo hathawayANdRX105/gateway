@@ -239,7 +239,7 @@ fn unauthorized_run_counts_403_alongside_401() {
     assert_eq!(table.get("transport").unauthorized_run, 0);
 }
 
-// ---------- Config hot update (TODO(#311)): set_config swaps parameters without
+// ---------- Config hot update: set_config swaps parameters without
 // resetting state ----------
 
 #[test]

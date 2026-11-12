@@ -35,7 +35,7 @@ pub struct InjectSpec {
 /// turn an unparseable request body into a 500. The skeleton currently returns the body
 /// unchanged for every input.
 pub fn rewrite_body(body: &Bytes, _spec: &InjectSpec) -> Bytes {
-    // TODO(#158): inject keys that were not sent explicitly + remove drop_fields; return
+    // TODO(ferrite-#158, re-anchored: #11): inject keys that were not sent explicitly + remove drop_fields; return
     // non-JSON bodies unchanged (main P4 implementation).
     // Skeleton semantics: return the body unchanged, no rewriting (not wired up yet; removes
     // the runtime panic trap of `todo!`).

@@ -5,11 +5,11 @@
 //! Accuracy target: ±10% (the same order as wildtoken), for fallback rather than authoritative
 //! metering.
 
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, to_string};
 
 /// Estimate a token count by character-class weighting.
 ///
-/// Weight table (TODO(#332) calibration): latin≈0.25 tok/char, cjk≈0.6, digit≈0.3...
+/// Weight table (TODO(ferrite-#332, re-anchored: #20) calibration): latin≈0.25 tok/char, cjk≈0.6, digit≈0.3...
 ///
 /// Cost: O(n) in characters, single pass, no allocation.
 #[must_use]
@@ -54,15 +54,20 @@ pub fn estimate_tokens(text: &str) -> u64 {
 /// passes bodies through untouched when src == dst, so the body is typically the client's
 /// own JSON):
 /// - `OpenAI` chat / Claude: `messages[].content` (plain string, or a parts array — text
-///   blocks under `text`, `tool_result` blocks under `content`) plus Claude's top-level
-///   `system`;
-/// - Gemini: `contents[].parts[].text` and `systemInstruction.parts[].text`;
-/// - `OpenAI` Responses: `input` (a string, or items carrying `content`).
+///   blocks under `text`, `tool_result` blocks under `content`, `image_url` / Claude
+///   `image` blocks, `tool_use` blocks, `function_call_output` blocks) plus Claude's
+///   top-level `system`;
+/// - Gemini: `contents[].parts[].text` and `systemInstruction.parts[].text`, plus
+///   `inline_data` image parts (258 tokens each);
+/// - `OpenAI` Responses: `input` (a string, or items carrying `content`) and `instructions`.
 ///
-/// Other billable carriers (Responses `instructions`, `function_call.arguments`,
-/// `function_call_output.output`) were never counted by the pre-rewrite scanner either;
-/// wiring them in is TODO(#334). Non-text parts (`image_url`, base64 data URLs) carry
-/// neither field and never count.
+/// Tool carriers are counted as text: `function_call.arguments`, `function_call_output.output`,
+/// Claude `tool_use` input (serialized to compact JSON), and Responses `instructions`.
+///
+/// Image parts are billed by their decoded pixel header (PNG IHDR / JPEG SOF), never by
+/// the full base64 payload: `OpenAI` `image_url` detail `low` = 85 flat, `high`/absent =
+/// 85 + 170 * tiles after fitting to 2048x2048; Claude `image` = (w*h)/750 capped at 1568;
+/// undecodable headers bill 85 (`OpenAI`) or 0 (`Claude`).
 ///
 /// The dialect extractors are summed, not dispatched: real bodies carry exactly one
 /// dialect's keys, and a hand-crafted body that mixes keys is then billed conservatively
@@ -74,8 +79,11 @@ pub fn estimate_tokens(text: &str) -> u64 {
 /// Cost: O(n) in body bytes — one tree walk, no allocation.
 #[must_use]
 pub fn estimate_prompt_from_value(body: &Value) -> Option<u64> {
-    let total =
-        messages_tokens(body) + system_tokens(body) + gemini_tokens(body) + responses_tokens(body);
+    let total = messages_tokens(body)
+        + system_tokens(body)
+        + gemini_tokens(body)
+        + responses_tokens(body)
+        + instructions_tokens(body);
     (total > 0).then_some(total)
 }
 
@@ -114,8 +122,31 @@ fn messages_tokens(body: &Value) -> u64 {
         .and_then(Value::as_array)
         .map_or(0, |msgs| {
             msgs.iter()
-                .filter_map(|m| m.get("content"))
-                .map(content_tokens)
+                .filter_map(Value::as_object)
+                .map(message_tokens)
+                .sum()
+        })
+}
+
+/// One chat/Claude message: billable content plus any `tool_calls` function arguments.
+fn message_tokens(msg: &Map<String, Value>) -> u64 {
+    content_tokens(msg.get("content").unwrap_or(&Value::Null)) + openai_tool_call_arguments(msg)
+}
+
+/// `OpenAI` `message.tool_calls[].function.arguments` — each arguments string is billable text.
+fn openai_tool_call_arguments(msg: &Map<String, Value>) -> u64 {
+    msg.get("tool_calls")
+        .and_then(Value::as_array)
+        .map_or(0, |calls| {
+            calls
+                .iter()
+                .filter_map(Value::as_object)
+                .map(|call| {
+                    call.get("function")
+                        .and_then(Value::as_object)
+                        .and_then(|f| f.get("arguments").and_then(Value::as_str))
+                        .map_or(0, estimate_tokens)
+                })
                 .sum()
         })
 }
@@ -139,17 +170,16 @@ fn parts_tokens(parts: &Value) -> u64 {
     })
 }
 
-/// One parts item: the `text` field for text blocks; otherwise the nested `content`
-/// value — Claude `tool_result` blocks carry billable tool output under `content` (a
-/// string or a nested block array, see `gateway-protocol-bridge` claude.rs), which the
-/// pre-rewrite literal scanner billed by matching that key anywhere; dropping it here
-/// would silently make tool output free. Items with neither field (`image_url`,
-/// documents) contribute nothing — the base64 skip rule, enforced by structure.
+/// One parts item: text blocks under `text`, tool output under `content` (Claude
+/// `tool_result`), image parts (`OpenAI` `image_url`, Claude `image`, Gemini `inline_data`),
+/// Claude `tool_use` input, and `OpenAI` `function_call_output` output. Items with no
+/// billable carrier contribute nothing.
 fn part_tokens(part: &Map<String, Value>) -> u64 {
-    part.get("text").and_then(Value::as_str).map_or_else(
+    let text_or_content = part.get("text").and_then(Value::as_str).map_or_else(
         || part.get("content").map_or(0, content_tokens),
         estimate_tokens,
-    )
+    );
+    text_or_content + image_part_tokens(part) + tool_part_tokens(part)
 }
 
 /// Claude's top-level `system`: plain string or text-block array.
@@ -192,4 +222,241 @@ fn input_item_tokens(item: &Value) -> u64 {
         .map(estimate_tokens)
         .or_else(|| item.get("content").map(content_tokens))
         .unwrap_or(0)
+}
+
+/// Responses `instructions` field — counted like Claude's top-level `system`.
+fn instructions_tokens(body: &Value) -> u64 {
+    body.get("instructions").map_or(0, content_tokens)
+}
+
+/// Image parts billed from a decoded pixel header, never the full base64 payload.
+fn image_part_tokens(part: &Map<String, Value>) -> u64 {
+    // OpenAI `image_url` part: `detail` lives on the part or inside `image_url`.
+    if part.get("image_url").is_some() {
+        return openai_image_tokens(part);
+    }
+    // Claude `image` block: base64 payload under `source.data`.
+    if part.get("type").and_then(Value::as_str) == Some("image") {
+        return claude_image_tokens(part);
+    }
+    // Gemini `inline_data` image: fixed 258 tokens per image.
+    if let Some(mime) = part
+        .get("inline_data")
+        .and_then(|d| d.get("mime_type").and_then(Value::as_str))
+        && mime.starts_with("image/")
+    {
+        return 258;
+    }
+    0
+}
+
+/// `OpenAI` `image_url` image tokens: 85 flat for `detail: "low"`; otherwise
+/// 85 + 170 * tiles after fitting the decoded dimensions into 2048x2048.
+/// Undecodable header falls back to the `low` flat 85.
+fn openai_image_tokens(part: &Map<String, Value>) -> u64 {
+    let detail = part
+        .get("detail")
+        .and_then(Value::as_str)
+        .or_else(|| {
+            part.get("image_url")
+                .and_then(|u| u.get("detail").and_then(Value::as_str))
+        })
+        .unwrap_or("high");
+    if detail == "low" {
+        return 85;
+    }
+    let url = part
+        .get("image_url")
+        .and_then(|u| u.get("url").and_then(Value::as_str));
+    let Some(url) = url else {
+        return 85;
+    };
+    let b64 = data_url_base64(url);
+    let Some(b64) = b64 else {
+        return 85;
+    };
+    let dims = decode_image_header_dimensions(b64);
+    let Some((w, h)) = dims else {
+        return 85;
+    };
+    let (w, h) = fit_to_2048(w, h);
+    let tiles: u64 = u64::from(w.div_ceil(512)) * u64::from(h.div_ceil(512));
+    85 + 170 * tiles
+}
+
+/// Claude `image` block tokens: (w*h)/750 with each side capped at 1568.
+/// Undecodable header bills 0.
+fn claude_image_tokens(part: &Map<String, Value>) -> u64 {
+    let b64 = part
+        .get("source")
+        .and_then(|s| s.get("data").and_then(Value::as_str));
+    let Some(b64) = b64 else {
+        return 0;
+    };
+    let dims = decode_image_header_dimensions(b64);
+    let Some((w, h)) = dims else {
+        return 0;
+    };
+    let w = w.min(1568);
+    let h = h.min(1568);
+    (u64::from(w) * u64::from(h)) / 750
+}
+
+/// Tool carriers in a parts block: Claude `tool_use` input and `OpenAI`
+/// `function_call_output` output, each counted as text.
+fn tool_part_tokens(part: &Map<String, Value>) -> u64 {
+    if part.get("type").and_then(Value::as_str) == Some("tool_use")
+        && let Some(input) = part.get("input")
+        && let Ok(serialized) = to_string(input)
+    {
+        return estimate_tokens(&serialized);
+    }
+    if part.get("type").and_then(Value::as_str) == Some("function_call_output") {
+        return part
+            .get("output")
+            .and_then(Value::as_str)
+            .map_or(0, estimate_tokens);
+    }
+    0
+}
+
+/// Extract the base64 payload from a `data:` URL.
+///
+/// Real `OpenAI` `image_url` values are `data:` URLs like
+/// `data:image/png;base64,iVBORw0KGgo...` (payload after the first `,`). Some
+/// clients write `data:image/png;base64:iVBORw0KGgo...` (payload after `:`);
+/// accept either. Only treat it as base64 when `base64` is declared in the
+/// media-type section.
+fn data_url_base64(url: &str) -> Option<&str> {
+    let rest = url.strip_prefix("data:")?;
+    let (media, payload) = rest.split_once(',').or_else(|| rest.split_once(':'))?;
+    if media.contains("base64") {
+        Some(payload)
+    } else {
+        None
+    }
+}
+
+/// Decode just enough of a base64 string to read an image header (capped at `limit`
+/// bytes — the whole payload is never decoded).
+fn decode_base64_prefix(s: &str, limit: usize) -> Vec<u8> {
+    let mut out = Vec::with_capacity(limit.min(s.len() * 3 / 4));
+    let mut buf = [0u8; 4];
+    let mut n = 0;
+    for c in s.bytes() {
+        let Some(v) = b64_val(c) else {
+            if c == b'=' || c.is_ascii_whitespace() {
+                continue;
+            }
+            break;
+        };
+        buf[n] = v;
+        n += 1;
+        if n == 4 {
+            if out.len() < limit {
+                out.push((buf[0] << 2) | (buf[1] >> 4));
+            }
+            if out.len() < limit {
+                out.push(((buf[1] & 0x0f) << 4) | (buf[2] >> 2));
+            }
+            if out.len() < limit {
+                out.push(((buf[2] & 0x03) << 6) | buf[3]);
+            }
+            n = 0;
+            if out.len() >= limit {
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// Read PNG width/height from the IHDR chunk (bytes 16-23) of a decoded header.
+fn png_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    if data.len() < 24 || &data[0..8] != b"\x89PNG\r\n\x1a\n" {
+        return None;
+    }
+    let w = u32::from_be_bytes([data[16], data[17], data[18], data[19]]);
+    let h = u32::from_be_bytes([data[20], data[21], data[22], data[23]]);
+    Some((w, h))
+}
+
+/// Read width/height from the first JPEG SOF marker (SOF0/SOF2/…) in a decoded header.
+fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
+    if data.len() < 4 || &data[0..2] != b"\xff\xd8" {
+        return None;
+    }
+    let mut i = 2usize;
+    while i + 3 <= data.len() {
+        if data[i] != 0xff {
+            return None;
+        }
+        let marker = data[i + 1];
+        i += 2;
+        while i < data.len() && data[i] == 0xff {
+            i += 1;
+        }
+        match marker {
+            0xd9 | 0xda => return None, // EOI / SOS -> entropy data, no more SOF
+            _ => {}
+        }
+        if i + 2 > data.len() {
+            return None;
+        }
+        let seg_len = u16::from_be_bytes([data[i], data[i + 1]]) as usize;
+        if matches!(
+            marker,
+            0xc0 | 0xc1
+                | 0xc2
+                | 0xc3
+                | 0xc5
+                | 0xc6
+                | 0xc7
+                | 0xc9
+                | 0xca
+                | 0xcb
+                | 0xcd
+                | 0xce
+                | 0xcf
+        ) && i + 7 <= data.len()
+            && seg_len >= 8
+        {
+            let h = u32::from(u16::from_be_bytes([data[i + 3], data[i + 4]]));
+            let w = u32::from(u16::from_be_bytes([data[i + 5], data[i + 6]]));
+            return Some((w, h));
+        }
+        i = i.saturating_add(seg_len);
+    }
+    None
+}
+
+/// Decode image dimensions from a base64 payload: PNG IHDR first, then JPEG SOF.
+fn decode_image_header_dimensions(b64: &str) -> Option<(u32, u32)> {
+    const HEADER_LIMIT: usize = 65536;
+    let data = decode_base64_prefix(b64, HEADER_LIMIT);
+    png_dimensions(&data).or_else(|| jpeg_dimensions(&data))
+}
+
+/// Scale an image so its longest side fits 2048, then round each side down to a
+/// multiple of 32 (`OpenAI` tiling grid).
+fn fit_to_2048(w: u32, h: u32) -> (u32, u32) {
+    let max = w.max(h);
+    if max <= 2048 {
+        return (w, h);
+    }
+    let w = w * 2048 / max;
+    let h = h * 2048 / max;
+    (w - w % 32, h - h % 32)
+}
+
+/// One base64 character -> its 6-bit value.
+fn b64_val(c: u8) -> Option<u8> {
+    match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    }
 }
