@@ -52,7 +52,7 @@
 //!   longer owns the weight formula.
 //!
 //! - **Live config reload**: `set_config` replaces the whole config at runtime
-//!   (TODO(#311) implementation): the hot path reads `get_config()` and clones
+//!   (the hot-path hook is implemented): the hot path reads `get_config()` and clones
 //!   the current value; only parameters are swapped, cooldown/streak/EWMA state
 //!   is never reset (the states table stays as is).
 //!
@@ -156,7 +156,7 @@ pub trait HealthTable: Send + Sync {
 type StateMap = HashMap<String, HealthState>;
 
 /// Pure in-memory health table — a Rust port of phase0 `HealthStore`.
-/// The config is hot-reloadable at runtime (TODO(#311) implemented as `set_config`:
+/// The config is hot-reloadable at runtime (implemented as `set_config`:
 /// only parameter values are swapped, state is untouched).
 pub struct MemoryHealthTable {
     states: Mutex<StateMap>,
@@ -227,7 +227,7 @@ impl MemoryHealthTable {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Live-reload config (TODO(#311)): replace only the config values, never
+    /// Live-reload config: replace only the config values, never
     /// reset cooldown/streak/EWMA state (the `states` table stays untouched). The
     /// caller (bin/api's live-reload bus) builds new values through the same
     /// `knobs::load_health_setting` path as boot.

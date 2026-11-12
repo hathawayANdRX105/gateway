@@ -51,7 +51,7 @@ pub struct GatewayErrorDetail {
 
 impl GatewayErrorBody {
     /// Builds an OpenAI-style error body from `NormalizedError` (SDK-compatible shape, to be
-    /// settled by TODO(#214)).
+    /// settled by TODO(ferrite-#214, re-anchored: #17)).
     #[must_use]
     pub fn from_normalized(err: &NormalizedError) -> Self {
         Self {
@@ -103,7 +103,7 @@ pub struct NormalizedError {
 }
 
 impl NormalizedError {
-    /// Classifies by upstream status code — TODO(#501) rule-table prototype:
+    /// Classifies by upstream status code — TODO(ferrite-#501, re-anchored: #16) rule-table prototype:
     /// 401/403 → auth (no retry), 429 → rate limited (retryable), 408 → upstream gateway
     /// timeout (retryable, transient), 5xx → upstream (retryable), other 4xx → request
     /// problem (no retry), anything else → 502 fallback.

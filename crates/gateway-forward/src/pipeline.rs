@@ -533,7 +533,7 @@ impl Pipeline for ReqwestPipeline {
 ///
 /// Current V1 scope: passthrough semantics, no parsing (the metering interface is
 /// not finalized).
-/// TODO(#334): wire up `gateway_metering::estimate_prompt_tokens`.
+/// Deferred (issue #19): wire up `gateway_metering::estimate::estimate_prompt_tokens`.
 pub fn capture_prompt_body(body: &bytes::Bytes) -> bytes::Bytes {
     body.clone()
 }

@@ -6,7 +6,7 @@
 //! - no fabricated [DONE]: an upstream truncation stays a truncation and is reported
 //!   as Truncated;
 //! - bounded write side: downstream backpressure never buffers the upstream unboundedly
-//!   (TODO(#502): waterline parameter).
+//!   (TODO(ferrite-#502, re-anchored: #12): waterline parameter).
 //!
 //! Division of labour with `gateway_metering::StreamScanner`: this type handles only
 //! **frames** (event/data/id boundaries, keepalive, termination); token counting is

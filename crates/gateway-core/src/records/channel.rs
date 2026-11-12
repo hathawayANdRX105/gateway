@@ -31,7 +31,7 @@ pub struct ChannelRecord {
     /// Groups under which this channel is visible/usable; corresponds to `GroupRecord::id`.
     pub groups: Vec<String>,
     /// Channel-level overrides: timeout/header overrides/parameter overrides/system prompt.
-    /// The structure is deferred (TODO(#206)); for now this keeps JSONB semantics.
+    /// The structure is deferred (TODO(ferrite-#206, re-anchored: #15)); for now this keeps JSONB semantics.
     pub settings: serde_json::Value,
 }
 
@@ -46,7 +46,7 @@ pub struct ChannelKey {
     /// Ciphertext or plaintext, decided by the store layer; the contract layer does not
     /// parse it.
     pub secret: String,
-    /// Per-key rate limit (RPM), 0 = unlimited. TODO(#211): confirm whether per-key RPM
+    /// Per-key rate limit (RPM), 0 = unlimited. TODO(ferrite-#211, re-anchored: #13): confirm whether per-key RPM
     /// is needed.
     pub rpm_limit: u32,
 }

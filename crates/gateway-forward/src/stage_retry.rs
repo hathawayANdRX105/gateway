@@ -31,7 +31,7 @@ impl ForwardStage {
     }
 
     /// Same as [`Self::with_retry`], but injects the hot-reload handle the caller already holds
-    /// (TODO(#311): the bin/api assembly layer hands the same `ArcSwap` to both the options polling
+    /// (the bin/api assembly layer hands the same `ArcSwap` to both the options polling
     /// side and this stage so the two share one budget; use `with_retry` when sharing is not
     /// needed).
     #[must_use]
@@ -45,7 +45,7 @@ impl ForwardStage {
         self
     }
 
-    /// Hot-swap the retry budget (TODO(#311)): storing a new value is enough; the retry loop reads
+    /// Hot-swap the retry budget: storing a new value is enough; the retry loop reads
     /// it the next time it is entered.
     pub fn update_retry_policy(&self, policy: RetryPolicy) {
         self.retry_policy.store(Arc::new(policy));
@@ -106,7 +106,7 @@ impl ForwardStage {
         // (settlement needs it).
         let commit_body = body.clone();
 
-        // Read the retry budget's current value once (hot-reload handle, TODO(#311)): the budget is
+        // Read the retry budget's current value once (hot-reload handle): the budget is
         // fixed for one request; a new value takes effect on the next request (loop semantics in
         // gateway_dispatch::retry::run_retry_loop).
         let retry_policy = self.retry_policy.load();

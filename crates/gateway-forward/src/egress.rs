@@ -52,7 +52,7 @@ pub(crate) fn body_preview(bytes: &[u8]) -> String {
 ///
 /// V1 scope: a single direct pool, redirect following disabled (upstream 3xx is
 /// treated as an error, never followed silently). SOCKS/HTTP proxying and sharding
-/// by `base_url` are deferred to the TODO(#522) pooling phase.
+/// by `base_url` are deferred to the TODO(ferrite-#522, re-anchored: #14) pooling phase.
 ///
 /// Returning `Pin<Box<dyn Future>>` instead of `impl Future` keeps the trait
 /// dyn-compatible (bin/api injects it as `Arc<dyn Egress>`).
@@ -161,7 +161,7 @@ impl std::fmt::Debug for ForwardedResponse {
 /// reqwest egress — holds a shared `reqwest::Client`.
 ///
 /// Direct connection; no redirect following; the connection pool buckets by host by
-/// default (built into reqwest). ponytail: pooling/sharding is left to TODO(#522);
+/// default (built into reqwest). ponytail: pooling/sharding is left to TODO(ferrite-#522, re-anchored: #14);
 /// one globally reused Client is enough for ordinary load, and `base_url` sharding can
 /// come when hot-key degradation shows up.
 #[derive(Clone)]
