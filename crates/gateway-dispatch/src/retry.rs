@@ -547,18 +547,18 @@ fn settle_attempt(
                 .get("context_window")
                 .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
+            // Escalate past the overflowed window; a channel without a bound
+            // (unlimited) has no direction to grow in — pass the error through.
             if window > 0 {
                 failover.raise_floor(window);
-                None
-            } else {
-                Some((
-                    crate::Attempt {
-                        candidate,
-                        attempt_no,
-                    },
-                    outcome,
-                ))
             }
+            (window == 0).then_some((
+                crate::Attempt {
+                    candidate,
+                    attempt_no,
+                },
+                outcome,
+            ))
         }
         AttemptOutcome::Retryable(_, _) | AttemptOutcome::Throttled { .. } => {
             // A final failure that is no longer a channel-scoped 4xx → clear the stash and pass

@@ -67,11 +67,7 @@ fn dispatcher(
     channels: &[ChannelRecord],
     kind: SelectorKind,
 ) -> gateway_dispatch::Dispatcher {
-    let mut unit_map = HashMap::new();
-    let mut channel_map = HashMap::new();
-    for u in &units {
-        unit_map.insert(u.meta.key.clone(), u.clone());
-    }
+    let mut channel_map = HashMap::with_capacity(channels.len());
     for c in channels {
         channel_map.insert(c.meta.key.clone(), c.clone());
     }
@@ -79,7 +75,6 @@ fn dispatcher(
         units,
         channels: channel_map,
     };
-    let _ = unit_map;
     gateway_dispatch::Dispatcher::new(
         Some(Arc::new(snapshot)),
         Arc::new(gateway_dispatch::health::MemoryHealthTable::new()),

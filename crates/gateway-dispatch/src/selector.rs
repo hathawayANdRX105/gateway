@@ -456,6 +456,8 @@ impl Selector for WeightedRandom {
         let weights: Vec<f64> = eligible
             .iter()
             .map(|unit| {
+                // Sticky boost: the bound channel's weight is multiplied (prior layer
+                // only); every other channel keeps its raw weight (×1.0).
                 let boost = if sticky_channel_key.is_some_and(|key| unit.channel_key == key) {
                     self.boost
                 } else {
