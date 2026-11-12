@@ -9,7 +9,7 @@
 
 use bytes::Bytes;
 use gateway_core::error::NormalizedError;
-use gateway_core::records::{RouteUnitRecord, SyncMeta, UsageEvent};
+use gateway_core::records::{ChannelSettings, RouteUnitRecord, SyncMeta, UsageEvent};
 use gateway_dispatch::health::{AttemptReport, FailureClass};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, TpsSample};
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
@@ -53,7 +53,7 @@ pub fn candidate(key: &str) -> Candidate {
         base_url: format!("http://upstream-{key}.invalid"),
         upstream_model: "m".to_string(),
         provider_type: "openai".to_string(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

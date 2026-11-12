@@ -19,7 +19,7 @@
 //! the egress status-code → `channel_scoped` mapping is consumed by the stage closure, and
 //! the end-to-end shape is covered by `bin/api/tests/route_resolution.rs` P0-2.
 
-use gateway_core::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::FailureClass;
 use gateway_dispatch::{
     AttemptOutcome, Candidate, DispatchError, FakeTimeControl, RetryPolicy, run_retry_loop,
@@ -48,7 +48,7 @@ fn candidate(key: &str) -> Candidate {
         base_url: format!("http://upstream-{key}.invalid"),
         upstream_model: "m".to_string(),
         provider_type: "openai".to_string(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

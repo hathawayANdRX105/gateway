@@ -23,7 +23,7 @@
 //! same outcome as "every retry rejected" in a real multi-candidate scenario.
 
 use bytes::Bytes;
-use gateway_core::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{AttemptReport, TpsSample};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, RetryPolicy};
 use gateway_forward::ForwardStage;
@@ -59,7 +59,7 @@ fn candidate(key: &str) -> Candidate {
         base_url: format!("http://upstream-{key}.invalid"),
         upstream_model: "m".to_string(),
         provider_type: "openai".to_string(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

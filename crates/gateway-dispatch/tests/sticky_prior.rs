@@ -4,6 +4,7 @@
 //! untouched, stickiness never hard-pins a channel, and the prior is explicitly
 //! renormalized after the boost (Σprior == 1).
 
+use gateway_core::records::ChannelSettings;
 use gateway_core::records::RouteUnitRecord;
 use gateway_core::records::SyncMeta;
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};
@@ -43,7 +44,7 @@ fn cand(key: &str) -> Candidate {
         base_url: "https://u".into(),
         upstream_model: "m".to_string(),
         provider_type: "openai".into(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

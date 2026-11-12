@@ -6,7 +6,7 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use bytes::Bytes;
 use chrono::Utc;
-use gateway_core::records::{SyncMeta, TokenRecord, UserRecord};
+use gateway_core::records::{ChannelSettings, SyncMeta, TokenRecord, UserRecord};
 use gateway_pipeline::{
     BodySource, ProtocolKind, RequestCtx, RequestMeta, SelectedRoute, Stage, StageError,
     StageOutcome,
@@ -486,7 +486,7 @@ fn ctx_with_channel(channel_key: &str) -> RequestCtx {
         base_url: "http://127.0.0.1:9999".into(),
         upstream_model: "gpt-4o".into(),
         provider_type: "openai".into(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     });
     ctx
 }

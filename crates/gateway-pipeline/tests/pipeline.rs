@@ -9,8 +9,7 @@ use gateway_pipeline::{
 use std::net::IpAddr;
 use std::sync::Arc;
 use uuid::Uuid;
-
-// ---------- Test helpers ----------
+use gateway_core::records::ChannelSettings;
 
 /// Build a minimal `RequestMeta` (empty body)
 fn meta(path: &str) -> RequestMeta {
@@ -179,7 +178,7 @@ impl Stage for AttributionStreamStage {
             base_url: "https://u".into(),
             upstream_model: "m".into(),
             provider_type: "openai".into(),
-            settings: serde_json::Value::Null,
+            settings: ChannelSettings::default(),
         });
         ctx.selected_channel_key = Some("ch-uuid".into());
         ctx.selected_channel_name = Some("Channel A".into());

@@ -20,7 +20,7 @@
 //!    other (reverse pin: unaffected when no fallback exists).
 
 use bytes::Bytes;
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::health::{AttemptReport, HealthTable, MemoryHealthTable, TpsSample};
 use gateway_dispatch::{Candidate, Dispatch, DispatchError, Dispatcher, RetryPolicy, Snapshot};
 use gateway_forward::ForwardStage;
@@ -162,7 +162,7 @@ fn channel(key: &str, base_url: String) -> ChannelRecord {
         max_concurrency: 10,
         status: 1,
         groups: vec!["g".to_string()],
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

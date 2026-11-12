@@ -13,7 +13,7 @@
 
 use bytes::Bytes;
 use gateway_core::error::NormalizedError;
-use gateway_core::records::RouteUnitRecord;
+use gateway_core::records::{ChannelSettings, RouteUnitRecord};
 use gateway_forward::ForwardTask;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::pipeline::forward_once;
@@ -78,7 +78,7 @@ fn mk_task(stream: bool, inbound: ProtocolKind, provider_type: &str) -> ForwardT
             base_url: "https://upstream.example".into(),
             upstream_model: "m".into(),
             provider_type: provider_type.into(),
-            settings: serde_json::Value::Null,
+            settings: ChannelSettings::default(),
         },
         path: "/v1/chat/completions".to_string(),
         headers: vec![],

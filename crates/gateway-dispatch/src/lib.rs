@@ -171,10 +171,7 @@ fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<Route
             c.status == STATUS_ENABLED
                 && !c.keys.is_empty()
                 && c.groups.iter().any(|g| g == group)
-                && c.settings
-                    .get("fallback")
-                    .and_then(serde_json::Value::as_bool)
-                    == Some(true)
+                && c.settings.fallback
         })
         .map(|c| RouteUnitRecord {
             meta: gateway_core::records::SyncMeta {
@@ -602,8 +599,8 @@ fn register_channel_limits(concurrency: &ConcurrencyState, snapshot: &Snapshot) 
     }
 }
 
-/// Register token budget caps from each snapshot channel's `settings.tpm_limit` (missing key /
-/// non-numeric falls back to `global_default`).
+/// Register token budget caps from each snapshot channel's `settings.tpm_limit`
+/// (missing key falls back to `global_default`).
 ///
 /// Symmetric to [`register_channel_limits`], called at the same snapshot assembly points; `0`
 /// = unlimited, not registered. `settings.tpm_limit` is a channel-level override;
@@ -611,40 +608,23 @@ fn register_channel_limits(concurrency: &ConcurrencyState, snapshot: &Snapshot) 
 /// idempotent (`TokenBudgetState::register_channel` overwrites the same key).
 fn register_token_budgets(token: &TokenBudgetState, snapshot: &Snapshot) {
     for channel in snapshot.channels.values() {
-        let eff = channel
-            .settings
-            .get("tpm_limit")
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or_else(|| token.global_default());
+        let eff = u64::from(channel.settings.tpm_limit);
         if eff > 0 {
             token.register_channel(&channel.meta.key, eff);
         }
     }
 }
 
-/// Priority-tier and context-window caps read from the channel `settings` bag
-/// (the strategy inputs are data, not schema: `settings` is an already-parsed
-/// in-memory `serde_json::Value`, so a read is a map lookup — no per-request
-/// JSON parsing).
+/// Priority-tier and context-window caps read from the channel `settings`
+/// (typed via [`ChannelSettings`]; defaults apply when the catalog omitted them).
 ///
-/// - `priority` (i64, default 0): higher = preferred. Only the highest-priority
+/// - `priority` (i32, default 0): higher = preferred. Only the highest-priority
 ///   tier with an eligible candidate competes; lower tiers become reachable when
 ///   every higher-tier candidate is excluded or cooling (new-api semantics).
 /// - `context_window` (u64, default 0): request-fit ceiling in tokens; `0` /
 ///   missing = unlimited (neutral, always fits).
 fn channel_caps(channel: Option<&ChannelRecord>) -> (i64, u64) {
-    channel.map_or((0, 0), |c| {
-        (
-            c.settings
-                .get("priority")
-                .and_then(serde_json::Value::as_i64)
-                .unwrap_or(0),
-            c.settings
-                .get("context_window")
-                .and_then(serde_json::Value::as_u64)
-                .unwrap_or(0),
-        )
-    })
+    channel.map_or((0, 0), |c| (i64::from(c.settings.priority), c.settings.context_window))
 }
 
 fn model_unknown(group: &str, model: &str) -> DispatchError {

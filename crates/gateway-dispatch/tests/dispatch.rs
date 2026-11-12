@@ -1,6 +1,6 @@
 //! Behavioral tests for the dispatch health table / global P2C selection / failover budget.
 
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::Dispatch;
 use gateway_dispatch::candidate::resolve_candidate;
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};
@@ -53,7 +53,7 @@ fn channel(key: &str, secret: &str, base_url: &str) -> ChannelRecord {
         max_concurrency: 10,
         status: 1,
         groups: vec!["default".to_string()],
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 
@@ -366,7 +366,7 @@ fn retry_loop_succeeds_after_one_failover() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| {
@@ -433,7 +433,7 @@ fn retry_loop_exhausts_budget_with_retryable() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| async {
@@ -469,7 +469,7 @@ fn retry_loop_fatal_stops_immediately() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| {

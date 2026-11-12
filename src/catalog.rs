@@ -16,11 +16,12 @@ use std::path::Path;
 use anyhow::{Context, ensure};
 use chrono::Utc;
 use gateway_facade::{
-    ChannelKey, ChannelRecord, GroupEntry, GroupSnapshot, ModelPrice, PriceRow, PriceTable,
-    PricingSnapshot, QuotaSnapshot, RouteUnitRecord, STATUS_ENABLED, Snapshot, SyncMeta,
+    ChannelKey, ChannelRecord, ChannelSettings, GroupEntry, GroupSnapshot, ModelPrice, PriceRow,
+    PriceTable, PricingSnapshot, QuotaSnapshot, RouteUnitRecord, STATUS_ENABLED, Snapshot, SyncMeta,
     TokenEntry, TokenRecord, TokenSnapshot, UserRecord, UserSnapshot, sha256,
 };
 use serde::Deserialize;
+use serde_json::Value;
 
 /// Internal units per dollar (new-api convention): catalog prices are `$ / M tokens`, and
 /// both the quota estimate and the settlement arithmetic work in internal units.
@@ -131,6 +132,10 @@ pub struct ChannelSpec {
     pub keys: Vec<KeySpec>,
     #[serde(default)]
     pub models: Vec<ModelSpec>,
+    /// Channel-level overrides (raw until load); unknown keys are preserved on the
+    /// record via [`ChannelSettings::extra`].
+    #[serde(default)]
+    pub settings: Option<Value>,
 }
 
 /// One upstream credential. `index` is optional; omitted entries are numbered by position.
@@ -357,7 +362,22 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
                 max_concurrency: channel.max_concurrency,
                 status: channel.status,
                 groups: channel.groups.clone(),
-                settings: serde_json::json!({}),
+                settings: {
+                    let raw = channel.settings.clone().unwrap_or(serde_json::json!({}));
+                    let parsed = ChannelSettings::from_value(raw).map_err(|e| {
+                        anyhow::anyhow!(
+                            "channel {}: invalid settings: {e}",
+                            channel.key
+                        )
+                    })?;
+                    parsed.validate().map_err(|e| {
+                        anyhow::anyhow!(
+                            "channel {}: invalid settings: {e}",
+                            channel.key
+                        )
+                    })?;
+                    parsed
+                },
             },
         );
 

@@ -12,7 +12,7 @@
 //! Assertions land only on **deterministic end states** (error variant / attempt count /
 //! `cooled_ms`), never on jitter-prone quantities.
 
-use gateway_core::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::DispatchError;
 use gateway_dispatch::candidate::Candidate;
 use gateway_dispatch::health::FailureClass;
@@ -43,7 +43,7 @@ fn cand(key: &str) -> Candidate {
         base_url: "https://u".into(),
         upstream_model: "m".into(),
         provider_type: "openai".into(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

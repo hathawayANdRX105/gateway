@@ -22,7 +22,7 @@ use gateway_pipeline::{
 use gateway_proxy::manager::ProxyManager;
 use gateway_proxy::node::ProxyScheme;
 use gateway_proxy::pool::{ProxyNode, ProxySnapshot};
-
+use gateway_core::records::ChannelSettings;
 const STREAM: StreamedAccum = StreamedAccum {
     prompt_tokens: 0,
     completion_tokens: 0,
@@ -124,7 +124,7 @@ fn route_for(key: &str, base: &str) -> SelectedRoute {
         base_url: base.into(),
         upstream_model: "gpt-4o".into(),
         provider_type: "openai".into(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

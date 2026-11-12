@@ -56,6 +56,6 @@ pub use proxy::sharelink::{
 };
 pub use proxy::{ProxyNode, ProxyPoolHandle, ProxyScheme, ProxySnapshot};
 pub use records::{
-    ChannelKey, ChannelRecord, GroupRecord, RouteUnitRecord, SyncMeta, TokenRecord, UsageEvent,
-    UserRecord,
+    ChannelKey, ChannelRecord, ChannelSettings, GroupRecord, MAX_CONTEXT_WINDOW, RouteUnitRecord,
+    SyncMeta, TokenRecord, UsageEvent, UserRecord,
 };
