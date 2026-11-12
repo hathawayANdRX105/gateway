@@ -1,12 +1,21 @@
 //! SSE frame scanner — byte-faithful forwarding plus event detection.
 //!
-//! Guarantees (matching new-api `scan_sse.go)`:
+//! Guarantees (matching new-api `scan_sse.go`):
 //! - forwarded bytes are byte-identical to the upstream (vendor-private frames
 //!   included), with no reordering and no dropped whitespace;
 //! - no fabricated [DONE]: an upstream truncation stays a truncation and is reported
 //!   as Truncated;
-//! - bounded write side: downstream backpressure never buffers the upstream unboundedly
-//!   (TODO(ferrite-#502, re-anchored: #12): waterline parameter).
+//! - bounded write side: buffered bytes (the incomplete-line buffer plus the
+//!   accumulated `data:` payload) are flushed once they reach the configured
+//!   waterline, so downstream backpressure never lets retention grow unboundedly.
+//!   Passthrough bytes are returned verbatim regardless; a flush only finalizes
+//!   retained state (a partial line is finalized early, so events split across a
+//!   flush point may fire early or be missed — keep inputs below the waterline for
+//!   the historic exact semantics).
+//!
+//! `Default` uses an unbounded waterline (`usize::MAX`), so existing consumers see
+//! the historic behavior unchanged; callers that need bounding construct with
+//! `SseScanner::new(waterline)`.
 //!
 //! Division of labour with `gateway_metering::StreamScanner`: this type handles only
 //! **frames** (event/data/id boundaries, keepalive, termination); token counting is
@@ -17,7 +26,7 @@ use serde_json::Value;
 
 /// SSE scanner: fed one chunk at a time, returning the passthrough bytes and detected
 /// events.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SseScanner {
     /// Leftover line buffer (an incomplete line spanning chunks).
     line_buf: Vec<u8>,
@@ -32,9 +41,28 @@ pub struct SseScanner {
     frame_data: Vec<String>,
     /// Queue of complete frame payloads (terminated by a blank-line separator).
     ready_frames: Vec<String>,
+    /// High-water mark in bytes for `line_buf` + `frame_data`. When retained bytes
+    /// reach it, `push` flushes buffered frames into `ready_frames` so the upstream
+    /// is never retained unboundedly. `usize::MAX` disables flushing.
+    waterline: usize,
 }
 
 impl SseScanner {
+    /// Create a scanner that flushes retained bytes once they reach `waterline`
+    /// bytes (`line_buf` + `frame_data`). Pass `usize::MAX` to disable flushing.
+    #[must_use]
+    pub fn new(waterline: usize) -> Self {
+        Self {
+            line_buf: Vec::new(),
+            saw_first_token: false,
+            saw_done: false,
+            done_cutoff: false,
+            frame_data: Vec::new(),
+            ready_frames: Vec::new(),
+            waterline,
+        }
+    }
+
     /// Feed one upstream byte chunk.
     pub fn push(&mut self, chunk: &Bytes) -> (Bytes, Vec<SseEvent>) {
         let mut events = Vec::new();
@@ -42,6 +70,18 @@ impl SseScanner {
             // A trailing `\r` (CRLF upstream) is not part of the payload.
             let line = line.strip_suffix(b"\r").unwrap_or(&line);
             self.handle_line(line, &mut events);
+            // Keep retention bounded: once the incomplete-line buffer plus the
+            // accumulated `data:` payload reach the waterline, flush buffered
+            // frames so downstream backpressure cannot let the upstream be
+            // retained unboundedly. Passthrough bytes are unaffected — every
+            // byte handed to `push` comes back verbatim.
+            if self.buffered_bytes() >= self.waterline {
+                self.flush_waterline(&mut events);
+            }
+        }
+        // A chunk with no newline leaves everything in `line_buf`: flush it too.
+        if self.buffered_bytes() >= self.waterline {
+            self.flush_waterline(&mut events);
         }
         (chunk.clone(), events)
     }
@@ -62,6 +102,30 @@ impl SseScanner {
         }
         self.line_buf = full[start..].to_vec();
         lines
+    }
+    /// Bytes currently retained by the scanner: the incomplete-line buffer plus
+    /// the accumulated `data:` payload. `ready_frames` is excluded — it is the
+    /// flush destination the consumer drains with `take_data_frames`.
+    fn buffered_bytes(&self) -> usize {
+        self.line_buf.len() + self.frame_data.iter().map(String::len).sum::<usize>()
+    }
+
+    /// Flush retained state once the high-water mark is reached.
+    ///
+    /// The trailing incomplete line is finalized as a complete line and any
+    /// accumulated `data:` payload is sealed into `ready_frames`, so retention
+    /// drops back below the waterline. A flush never invents a `[DONE]` and never
+    /// alters passthrough bytes; because a partial line is finalized early, events
+    /// split across the flush point may fire early or be missed.
+    fn flush_waterline(&mut self, events: &mut Vec<SseEvent>) {
+        if !self.line_buf.is_empty() {
+            let line = std::mem::take(&mut self.line_buf);
+            self.handle_line(&line, events);
+        }
+        if !self.frame_data.is_empty() {
+            self.ready_frames.push(self.frame_data.join("\n"));
+            self.frame_data.clear();
+        }
     }
 
     /// Handle one complete line: accumulate the `data:` payload and emit events.
@@ -170,6 +234,14 @@ impl SseScanner {
         } else {
             SseEnd::Truncated
         }
+    }
+}
+impl Default for SseScanner {
+    fn default() -> Self {
+        // Unbounded by default: existing consumers (`SseContext` in gateway-forward
+        // and the pipeline codec scanner) keep the historic behavior exactly; opt
+        // into bounding with `SseScanner::new(waterline)`.
+        Self::new(usize::MAX)
     }
 }
 
