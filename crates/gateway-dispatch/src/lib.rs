@@ -552,19 +552,36 @@ impl Dispatcher {
                 && !exclude.iter().any(|key| key == &unit.meta.key)
                 && self.health.is_selectable(&unit.meta.key, now)
         };
-        let Some(ceiling) = cands
-            .iter()
-            .zip(priorities)
-            .filter(|(unit, _)| eligible(unit))
-            .map(|(_, priority)| *priority)
-            .max()
-        else {
+        // Fast path: no tiering in effect (every eligible candidate has the same
+        // priority — the default configuration, all zeros) → the whole eligible pool
+        // is the top tier; return without allocating a filtered Vec.
+        let mut ceiling: Option<i64> = None;
+        let mut all_same = true;
+        for (unit, priority) in cands.iter().zip(priorities.iter()) {
+            if !eligible(unit) {
+                continue;
+            }
+            match ceiling {
+                None => ceiling = Some(*priority),
+                Some(current) if current == *priority => {}
+                Some(current) => {
+                    all_same = false;
+                    ceiling = Some(current.max(*priority));
+                }
+            }
+        }
+        let Some(ceiling) = ceiling else {
+            // Nothing eligible anywhere: hand back the full pool — the selector's
+            // shortest-cooldown urgent recall operates across tiers.
             return cands.to_vec();
         };
+        if all_same {
+            return cands.to_vec();
+        }
         cands
             .iter()
             .copied()
-            .zip(priorities)
+            .zip(priorities.iter())
             .filter(|(unit, priority)| eligible(unit) && **priority == ceiling)
             .map(|(unit, _)| unit)
             .collect()

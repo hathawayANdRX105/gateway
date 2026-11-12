@@ -481,6 +481,12 @@ impl ForwardStage {
         let switchable = e.channel_scoped;
         let upstream_429 = e.status == 429 && retryable;
         let retry_after_hint = e.retry_after_ms;
+        // Context-window overflow (400/413 + provider phrasing): the request does not
+        // fit this channel's window. The channel is not broken (health stays Neutral
+        // via Ok(400)) — the retry loop answers by raising the dispatch floor, so the
+        // next selection lands on a strictly larger window.
+        let window_overflow =
+            gateway_dispatch::failure_scope::is_context_overflow(e.status, &e.message);
         // Each failed attempt emits one zero-cost observation event: when the budget is exhausted /
         // Fatal terminates, the troubleshooting side still needs a trace that the request happened.
         // Must be called before `e` is moved into the return struct.
@@ -499,6 +505,11 @@ impl ForwardStage {
                 latency_ms,
                 retry_after_ms: retry_after_hint,
             }
+        } else if window_overflow {
+            // Handled before the retryable/switchable arms: an overflow must not be
+            // classified Retryable (same-window retries are pointless) nor channel-scoped
+            // Fatal (another channel with a larger window can still serve the request).
+            AttemptOutcome::WindowOverflow
         } else if retryable || degraded {
             // P1-C dual-ledger bridge: degraded = all proxy nodes bound to the channel are in node
             // cooldown and this attempt actually failed on the direct-connection fallback. Health
@@ -571,7 +582,12 @@ impl ForwardStage {
             // channel left to switch to — the retry loop brings it back as a terminal state) both
             // pass through the stashed NormalizedError's upstream status code; there is no
             // successful response to commit.
-            (None, AttemptOutcome::Fatal(_, _) | AttemptOutcome::FatalButSwitchable(_, _)) => {
+            (
+                None,
+                AttemptOutcome::Fatal(_, _)
+                | AttemptOutcome::FatalButSwitchable(_, _)
+                | AttemptOutcome::WindowOverflow,
+            ) => {
                 let e = lock(&slots.error).take().ok_or_else(|| {
                     StageError::Internal(anyhow::anyhow!("forward produced no result"))
                 })?;

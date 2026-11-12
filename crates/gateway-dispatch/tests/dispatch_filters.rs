@@ -248,6 +248,81 @@ fn channels_without_a_window_stay_neutral() {
     assert_eq!(picked.unit.channel_key, "ch-unlimited");
 }
 
+/// 验收标准（review finding 5b）：priority 分层 × 限流循环交互 —— 高层被限流
+/// 拒绝后，循环内重算分层自动暴露低层（同一轮 select 内不报 429）。
+#[test]
+fn rate_limit_refusals_expose_the_lower_tier() {
+    let units = [unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
+    let channels = [
+        channel("ch-hi", serde_json::json!({ "priority": 10 })),
+        channel("ch-lo", serde_json::json!({ "priority": 0 })),
+    ];
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000_000));
+    let clock = {
+        let now = Arc::clone(&now);
+        move || now.load(std::sync::atomic::Ordering::Relaxed)
+    };
+    let clock2 = clock.clone();
+    let d = gateway_dispatch::Dispatcher::with_limits_and_clock(
+        Some(Arc::new(gateway_core::dispatch::Snapshot {
+            units: units.to_vec(),
+            channels: channels
+                .iter()
+                .map(|c| (c.meta.key.clone(), c.clone()))
+                .collect(),
+        })),
+        Arc::new(gateway_dispatch::health::MemoryHealthTable::new()),
+        Arc::new(gateway_gate::concurrency::ConcurrencyState::default()),
+        Arc::new(HashMap::from([(
+            "ch-hi".to_string(),
+            gateway_dispatch::ratelimit::RateLimitSpec {
+                requests: 1,
+                window_ms: 60_000,
+            },
+        )])),
+        Arc::new(gateway_dispatch::ratelimit::SlidingWindow::with_clock(
+            clock2,
+        )),
+        clock,
+    )
+    .with_selector(Box::new(gateway_dispatch::WeightedRandom::new(1.0)));
+    // 第一次 select：抽中高层 ch-hi 并消耗其唯一速率名额。
+    let first = d.select("g", "m", &[], None, None).unwrap();
+    assert_eq!(first.unit.channel_key, "ch-hi");
+    // 第二次 select：ch-hi 被限流拒绝 → pick_within_limits 循环内重算分层 →
+    // 落到低层 ch-lo（不报 429：低层仍在预算内）。
+    let second = d.select("g", "m", &[], None, None).unwrap();
+    assert_eq!(
+        second.unit.channel_key, "ch-lo",
+        "a rate-limited top tier must expose the lower tier inside the same select"
+    );
+}
+
+/// 验收标准（review finding 1 分类器）：`is_context_overflow` 识别 context-window
+/// 溢出族（400/413 + provider 措辞），非 400/413 或无关措辞不误判。
+#[test]
+fn context_overflow_classifier_covers_provider_phrasings() {
+    use gateway_dispatch::failure_scope::is_context_overflow;
+    assert!(is_context_overflow(
+        400,
+        "{\"error\":{\"code\":\"context_length_exceeded\"}}"
+    ));
+    assert!(is_context_overflow(
+        400,
+        "This model's maximum context length is 8192 tokens"
+    ));
+    assert!(is_context_overflow(
+        400,
+        "messages: prompt is too long: 200000 tokens > 128000"
+    ));
+    assert!(is_context_overflow(
+        413,
+        "exceeds the maximum number of tokens"
+    ));
+    assert!(!is_context_overflow(500, "internal server error"));
+    assert!(!is_context_overflow(400, "invalid api key format"));
+}
+
 /// 验收标准：溢出升级方向 —— floor 抬到失败窗口之上后，只能落在严格更大的
 /// 窗口；全部放不下时 AllUnavailable（客户端不透传 context 错误）。
 #[test]
