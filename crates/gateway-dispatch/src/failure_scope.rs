@@ -3,6 +3,7 @@
 //! 400/413/422 (the request itself is bad) fail on any channel → Request.
 //! Reference: api-hub's deterministic error demotion (:466-474) and sub2api's
 //! three-state `NextAccountAction`.
+use gateway_core::error::classify_status;
 
 /// Whether a single 4xx failure is worth retrying on another channel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,11 +16,15 @@ pub enum FailureScope {
 
 /// Classification limited to "channel-scoped 4xx". 5xx/429 do not go through this
 /// function (retryable classification already lives in `egress::classify_status`).
+/// Delegates to [`gateway_core::error::classify_status`]: the shared table lives in
+/// `gateway-core` (dispatch depends on core, never the reverse), so one table drives
+/// both crates and there is no duplicated inline classification.
 #[must_use]
 pub fn classify_channel_scope(status: u16) -> FailureScope {
-    match status {
-        401 | 403 | 404 => FailureScope::Channel,
-        _ => FailureScope::Request,
+    if classify_status(status).is_some_and(|(_, _, channel_scoped)| channel_scoped) {
+        FailureScope::Channel
+    } else {
+        FailureScope::Request
     }
 }
 

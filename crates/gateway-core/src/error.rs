@@ -50,8 +50,24 @@ pub struct GatewayErrorDetail {
 }
 
 impl GatewayErrorBody {
-    /// Builds an OpenAI-style error body from `NormalizedError` (SDK-compatible shape, to be
-    /// settled by TODO(ferrite-#214, re-anchored: #17)).
+/// Builds the gateway `/v1` error body from a [`NormalizedError`].
+///
+/// Settled shape (issue #17): `{"error": {"code", "message", "type"}}` — OpenAI-compatible,
+/// so mainstream SDKs parse failures with their stock error handlers. `code` is one of the
+/// [`crate::error::code`] constants, `message` is the masked human-readable message, and
+/// `type` is the OpenAI-compatible error category derived from the HTTP status
+/// (`authentication_error` / `insufficient_quota` / `permission_error` / `not_found` /
+/// `rate_limit_error` / `api_error` / `invalid_request_error`).
+///
+/// Rationale: the three consumers of this contract (gateway error bodies, console envelopes,
+/// frontend i18n) all read `code`/`message`; `type` exists only for SDK wire compatibility
+/// and carries no dispatch semantics — the dispatch state machine classifies via
+/// [`NormalizedError::retryable`] and [`NormalizedError::channel_scoped`], never via `type`.
+///
+/// Boundary: this settles the body shape, not an external multi-SDK matrix. Verifying each
+/// vendor SDK against this shape is out of scope for #17 (tracked under ferrite-#214); if a
+/// vendor SDK needs different field names, add a protocol-specific shape in
+/// gateway-protocol-bridge instead of reshaping this contract.
     #[must_use]
     pub fn from_normalized(err: &NormalizedError) -> Self {
         Self {
@@ -90,8 +106,10 @@ pub struct NormalizedError {
     /// Whether the failure is "channel-scoped" (P1-B downgrade): 401/403/404 may succeed on
     /// another channel → true; request-scoped 4xx (400/413/422) fail on any channel → false.
     /// Candidate switching is decided only by `retryable`; this field merely lets a
-    /// non-retryable 4xx downgrade to the next candidate, with health recorded as Neutral
-    /// (`gateway_dispatch::failure_scope` is the classification authority).
+    /// non-retryable 4xx downgrade to the next candidate, with health recorded as Neutral.
+    /// The classification table (`STATUS_RULES` / [`classify_status`] in this module) is the
+    /// single source of truth; `gateway_dispatch::failure_scope::classify_channel_scope`
+    /// delegates to it, so core and dispatch cannot drift.
     pub channel_scoped: bool,
     /// Human-readable message (masked; must not contain upstream keys/internal addresses).
     pub message: String,
@@ -102,31 +120,121 @@ pub struct NormalizedError {
     pub retry_after_ms: Option<u64>,
 }
 
+/// One row of the status classification table, checked in order; the first match wins.
+///
+/// Specific codes (408, 429, 401/403/404) precede the ranges that contain them
+/// (400..=499 / 500..=599) so they keep their own row instead of being swallowed
+/// by the catch-all range.
+#[derive(Clone, Copy)]
+struct StatusRule {
+    lo: u16, // inclusive low bound; lo == hi means an exact status match
+    hi: u16, // inclusive high bound
+    /// One of the [`crate::error::code`] constants.
+    code: ErrorCode,
+    /// Whether the dispatch retry loop switches candidates for this status.
+    retryable: bool,
+    /// Whether another channel may succeed (401/403/404) vs a request fault (400/413/422).
+    channel_scoped: bool,
+}
+
+/// Single source of truth for `status -> (code, retryable, channel_scoped)` (issue #16).
+///
+/// Lives in `gateway-core` because `gateway-dispatch` depends on `core`, never the reverse;
+/// `gateway_dispatch::failure_scope::classify_channel_scope` delegates to [`classify_status`],
+/// so there is one table and no duplicated inline classification between the two crates.
+const STATUS_RULES: &[StatusRule] = &[
+    // exact matches first — they fall inside the ranges below
+    StatusRule {
+        lo: 401,
+        hi: 401,
+        code: code::INVALID_API_KEY,
+        retryable: false,
+        channel_scoped: true,
+    },
+    StatusRule {
+        lo: 403,
+        hi: 403,
+        code: code::INVALID_API_KEY,
+        retryable: false,
+        channel_scoped: true,
+    },
+    StatusRule {
+        lo: 404,
+        hi: 404,
+        code: code::INVALID_API_KEY,
+        retryable: false,
+        channel_scoped: true,
+    },
+    StatusRule {
+        lo: 408,
+        hi: 408,
+        code: code::UPSTREAM_ERROR,
+        retryable: true,
+        channel_scoped: false,
+    },
+    StatusRule {
+        lo: 429,
+        hi: 429,
+        code: code::RATE_LIMITED,
+        retryable: true,
+        channel_scoped: false,
+    },
+    // ranges last
+    StatusRule {
+        lo: 400,
+        hi: 499,
+        code: code::INVALID_API_KEY,
+        retryable: false,
+        channel_scoped: false,
+    },
+    StatusRule {
+        lo: 500,
+        hi: 599,
+        code: code::UPSTREAM_ERROR,
+        retryable: true,
+        channel_scoped: false,
+    },
+];
+
+/// Classifies `status` into `(code, retryable, channel_scoped)` per [`STATUS_RULES`].
+///
+/// Returns `None` when no row matches (e.g. a non-HTTP status); the caller owns the
+/// 502 fallback ([`NormalizedError::from_status`] maps those to status 502).
+#[must_use]
+pub fn classify_status(status: u16) -> Option<(ErrorCode, bool, bool)> {
+    for rule in STATUS_RULES {
+        if (rule.lo..=rule.hi).contains(&status) {
+            return Some((rule.code, rule.retryable, rule.channel_scoped));
+        }
+    }
+    None
+}
+
 impl NormalizedError {
-    /// Classifies by upstream status code — TODO(ferrite-#501, re-anchored: #16) rule-table prototype:
-    /// 401/403 → auth (no retry), 429 → rate limited (retryable), 408 → upstream gateway
-    /// timeout (retryable, transient), 5xx → upstream (retryable), other 4xx → request
-    /// problem (no retry), anything else → 502 fallback.
+    /// Classifies by upstream status code (issue #16): [`STATUS_RULES`] is the single source
+    /// of truth for `(code, retryable, channel_scoped)`:
+    /// 401/403/404 → `INVALID_API_KEY`, channel-scoped (another channel may succeed);
+    /// 429 → `RATE_LIMITED`, retryable; 408 → `UPSTREAM_ERROR`, retryable and transient;
+    /// 5xx → `UPSTREAM_ERROR`, retryable; other 4xx → `INVALID_API_KEY`, not retryable;
+    /// anything else → `UPSTREAM_ERROR` with status 502, not retryable.
+    ///
+    /// Zero behavior change vs the inline match it replaces: 408 must stay ahead of the
+    /// 400..=499 range, and 401/403/404 stay channel-scoped while the rest of 4xx is not.
     pub fn from_status(status: u16, raw_message: impl Into<String>) -> Self {
         let raw = raw_message.into();
-        let (code, http_status, retryable, message) = match status {
-            // 408 falls inside the 400..=499 range and must precede the fallback arm to match.
-            // 408 and 429 both fall inside 400..=499 and must precede the
-            // catch-all 4xx arm to match.
-            408 | 500..=599 => (code::UPSTREAM_ERROR, status, true, raw),
-            429 => (code::RATE_LIMITED, status, true, raw),
-            400..=499 => (code::INVALID_API_KEY, status, false, raw),
-            _ => (code::UPSTREAM_ERROR, 502, false, raw),
+        let http_status = if matches!(status, 400..=599) {
+            status
+        } else {
+            502
         };
+        let (code, retryable, channel_scoped) =
+            classify_status(status).unwrap_or((code::UPSTREAM_ERROR, false, false));
         Self {
             code,
             status: http_status,
             retryable,
-            message,
-            // Same table as gateway_dispatch::failure_scope::classify_channel_scope
-            // (contract is the lowest layer and cannot depend upward, so the matches! lives
-            // here).
-            channel_scoped: !retryable && matches!(status, 401 | 403 | 404),
+            message: raw,
+            channel_scoped,
             retry_after_ms: None,
         }
     }
