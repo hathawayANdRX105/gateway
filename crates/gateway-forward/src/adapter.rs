@@ -120,8 +120,9 @@ fn build_url(
 }
 
 /// Parse override headers from `ChannelRecord.settings.headers` (typed as a name →
-/// value string map). Malformed headers are rejected at catalog load, so here an
-/// absent/empty map simply means no overrides.
+/// JSON value map). A non-object `headers` is rejected at catalog load; non-string
+/// values are preserved in the map and skipped here, matching the old lenient
+/// bag-read — so an absent/empty map simply means no overrides.
 #[must_use]
 pub fn extra_headers_from_settings(settings: &ChannelSettings) -> Vec<(String, String)> {
     let mut out = Vec::with_capacity(settings.headers.len());

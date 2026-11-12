@@ -108,8 +108,13 @@ pub struct NormalizedError {
     /// Candidate switching is decided only by `retryable`; this field merely lets a
     /// non-retryable 4xx downgrade to the next candidate, with health recorded as Neutral.
     /// The classification table (`STATUS_RULES` / [`classify_status`] in this module) is the
-    /// single source of truth; `gateway_dispatch::failure_scope::classify_channel_scope`
-    /// delegates to it, so core and dispatch cannot drift.
+    /// single source of truth for `channel_scoped` across the workspace:
+    /// `gateway_dispatch::failure_scope::classify_channel_scope` and forward's egress both
+    /// delegate to it, so those consumers cannot drift. `code`/`retryable` are additionally
+    /// mapped by `gateway_forward::egress::classify_status` for the client-facing error
+    /// body — that mapping deliberately reports `UPSTREAM_ERROR` for generic 4xx (fatal
+    /// request errors, see its doc comment); the parity test in forward's
+    /// `classify_status.rs` pins where the two tables must agree.
     pub channel_scoped: bool,
     /// Human-readable message (masked; must not contain upstream keys/internal addresses).
     pub message: String,
@@ -212,11 +217,15 @@ pub fn classify_status(status: u16) -> Option<(ErrorCode, bool, bool)> {
 
 impl NormalizedError {
     /// Classifies by upstream status code (issue #16): [`STATUS_RULES`] is the single source
-    /// of truth for `(code, retryable, channel_scoped)`:
+    /// of truth for `(code, retryable, channel_scoped)` in core and dispatch:
     /// 401/403/404 → `INVALID_API_KEY`, channel-scoped (another channel may succeed);
     /// 429 → `RATE_LIMITED`, retryable; 408 → `UPSTREAM_ERROR`, retryable and transient;
     /// 5xx → `UPSTREAM_ERROR`, retryable; other 4xx → `INVALID_API_KEY`, not retryable;
     /// anything else → `UPSTREAM_ERROR` with status 502, not retryable.
+    ///
+    /// Forward's `egress::classify_status` (the client-facing production classifier)
+    /// deliberately keeps `UPSTREAM_ERROR` for generic 4xx — see its doc comment and the
+    /// parity test in forward's `classify_status.rs`.
     ///
     /// Zero behavior change vs the inline match it replaces: 408 must stay ahead of the
     /// 400..=499 range, and 401/403/404 stay channel-scoped while the rest of 4xx is not.

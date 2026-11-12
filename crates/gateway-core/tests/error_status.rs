@@ -107,6 +107,31 @@ fn boundary_statuses_classify_per_table() {
     assert!(server.retryable);
     assert!(!server.channel_scoped);
 
+    // Range edges: 599 is the top of the retryable 5xx range; 600 and 399 are outside
+    // every specific rule and must hit the 502 fallback; 499 is the top of the 4xx
+    // range (non-retryable, not channel-scoped). These are exactly the edges where a
+    // first-match/reordering bug in STATUS_RULES would hide.
+    let top_5xx = NormalizedError::from_status(599, "gateway gone");
+    assert_eq!(top_5xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(top_5xx.status, 599);
+    assert!(top_5xx.retryable);
+
+    let above_5xx = NormalizedError::from_status(600, "weird");
+    assert_eq!(above_5xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(above_5xx.status, 502);
+    assert!(!above_5xx.retryable);
+
+    let below_4xx = NormalizedError::from_status(399, "early");
+    assert_eq!(below_4xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(below_4xx.status, 502);
+    assert!(!below_4xx.retryable);
+
+    let top_4xx = NormalizedError::from_status(499, "client fat finger");
+    assert_eq!(top_4xx.code, code::INVALID_API_KEY);
+    assert_eq!(top_4xx.status, 499);
+    assert!(!top_4xx.retryable);
+    assert!(!top_4xx.channel_scoped);
+
     let unknown = NormalizedError::from_status(700, "nope");
     assert_eq!(unknown.code, code::UPSTREAM_ERROR);
     assert_eq!(unknown.status, 502);

@@ -1,5 +1,7 @@
 //! P2 streaming resilience — buffering window / heartbeat / break classification (the Window
-//! phase is wired, PR #158).
+//! phase is wired, PR #158; the Live phase below is implemented and test-anchored but NOT yet
+//! wired to a production drive loop — no production caller seeds `switches_remaining` or
+//! consumes `ResilientChunk::Broken` yet; wiring the Live drive loop is the next batch).
 //!
 //! Modelled on api-hub `_smart_stream` (:618-723) / `_drain_buffered` (:556-615), and adopts
 //! Bifrost's TTFT monitoring discipline: **once bytes have been sent to the client (Live
@@ -134,6 +136,11 @@ const FINISH_MARK: &[u8] = b"finish_reason";
 /// one [`ResilientChunk::Emit`] once they reach this size. Pure size-based decision —
 /// [`pipe_resilient`] holds no clock; the heartbeat (`cfg.heartbeat_ms`) keepalive is
 /// time-driven and decided on the caller side.
+///
+/// Scope: this bounds carried-over bytes only. A single upstream chunk larger than the
+/// threshold is emitted whole via the empty-buffer fast path (pass-through stays
+/// byte-faithful and is never split); retention of one chunk is the transport's frame
+/// size, not this watermark's.
 const LIVE_FLUSH_THRESHOLD: usize = 32 * 1024; // 32KB
 
 /// Whether `buf` already contains the complete criterion (`[DONE]` or `finish_reason`).

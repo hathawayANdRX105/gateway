@@ -67,6 +67,36 @@ fn channel_with_settings_loads() {
     Catalog::from_toml(&text).expect("valid settings must load");
 }
 
+/// Purpose: a `fallback_key_index` that matches an existing key index loads (the
+/// single configured key has index 0).
+/// Scenario: `settings = { fallback_key_index = 0 }`.
+/// Accepts: `Catalog::from_toml` succeeds.
+#[test]
+fn fallback_key_index_matching_a_key_loads() {
+    let text = catalog("{ fallback_key_index = 0 }");
+    Catalog::from_toml(&text).expect("in-range fallback_key_index must load");
+}
+
+/// Purpose: a `fallback_key_index` matching no key refuses the channel at load —
+/// the old silent skip (every fallback request failing with no signal) becomes a
+/// load-time rejection, the same refuse-not-clamp policy as priority.
+/// Scenario: `settings = { fallback_key_index = 7 }` with only key index 0 present.
+/// Accepts: load fails naming `fallback_key_index`, the index, and the channel.
+#[test]
+fn out_of_range_fallback_key_index_refuses_channel_at_load() {
+    let text = catalog("{ fallback_key_index = 7 }");
+    let err = Catalog::from_toml(&text).unwrap_err().to_string();
+    assert!(
+        err.contains("fallback_key_index"),
+        "load error must name fallback_key_index: {err}"
+    );
+    assert!(err.contains('7'), "load error must name the index: {err}");
+    assert!(
+        err.contains("ch-1"),
+        "load error must name the channel: {err}"
+    );
+}
+
 /// Purpose: unknown settings keys do not fail load (they are preserved in `extra`).
 /// Scenario: `settings = { priority = 2, custom_key = "custom" }`.
 /// Accepts: load succeeds — unknown keys are not rejected.

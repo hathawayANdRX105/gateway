@@ -44,6 +44,12 @@ pub struct SseScanner {
     /// High-water mark in bytes for `line_buf` + `frame_data`. When retained bytes
     /// reach it, `push` flushes buffered frames into `ready_frames` so the upstream
     /// is never retained unboundedly. `usize::MAX` disables flushing.
+    ///
+    /// Scope note: the watermark bounds retained bytes, and a flush may finalize a
+    /// partial `data:` line mid-payload — a payload crossing the watermark is emitted
+    /// as a frame at the flush point and its continuation arrives as a separate frame
+    /// (pinned by `sse_scanner_no_newline_stream_flushes_in_bounded_pieces`). Only opt
+    /// in when split-frame semantics are acceptable for the consumer.
     waterline: usize,
 }
 

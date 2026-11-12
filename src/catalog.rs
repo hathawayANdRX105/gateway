@@ -376,6 +376,13 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
                             channel.key
                         )
                     })?;
+                    if let Some(index) = parsed.fallback_key_index {
+                        ensure!(
+                            keys.iter().any(|k| k.index == index),
+                            "channel {}: settings.fallback_key_index {index} matches no key index",
+                            channel.key
+                        );
+                    }
                     parsed
                 },
             },

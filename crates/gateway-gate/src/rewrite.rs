@@ -39,6 +39,10 @@ pub struct InjectSpec {
 /// both lists ends up dropped. The object is re-serialized as valid JSON and untouched
 /// fields keep their values. Re-serialization sorts keys (`serde_json`'s default `Map` is
 /// ordered by key), so byte equality with the input is guaranteed for non-object bodies only.
+///
+/// Wiring status: implemented and test-anchored here, but no production call site
+/// invokes it yet (exported via `gateway-gate`, re-exported via `gateway-facade`);
+/// wiring it into the forward mount is a separate batch.
 pub fn rewrite_body(body: &Bytes, spec: &InjectSpec) -> Bytes {
     let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
         return body.clone();

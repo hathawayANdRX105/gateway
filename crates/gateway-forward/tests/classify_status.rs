@@ -187,3 +187,50 @@ fn retry_after_negative_or_garbage_is_none() {
     );
     assert_eq!(parse_retry_after_ms(None, NOW_MS), None);
 }
+
+/// Purpose: pin the parity contract between forward's client-facing
+/// `egress::classify_status` and core's `STATUS_RULES` table.
+/// Scenario: every status 100..=600 classified by both tables.
+/// Accepts: `retryable` and `channel_scoped` agree everywhere (the flags that drive
+/// retry/demotion semantics); `code` agrees everywhere EXCEPT the deliberately
+/// divergent generic-4xx set (400..=499 minus 401/403/408/429, where egress reports
+/// `UPSTREAM_ERROR` for fatal request errors while core's table says
+/// `INVALID_API_KEY`) — that divergence is documented on both sides, and this test
+/// fails if either table drifts beyond it.
+#[test]
+fn egress_and_core_tables_agree_on_flags_and_documented_code_divergence() {
+    use gateway_core::error::code;
+
+    for status in 100u16..=600 {
+        let egress = gateway_forward::egress::classify_status(status, "preview", None);
+        let core = gateway_core::error::NormalizedError::from_status(status, "preview");
+
+        assert_eq!(
+            egress.retryable, core.retryable,
+            "retryable must not drift between egress and core at {status}"
+        );
+        assert_eq!(
+            egress.channel_scoped, core.channel_scoped,
+            "channel_scoped must not drift between egress and core at {status}"
+        );
+
+        let in_divergent_set =
+            (400..=499).contains(&status) && !matches!(status, 401 | 403 | 408 | 429);
+        if in_divergent_set {
+            assert_eq!(
+                egress.code,
+                code::UPSTREAM_ERROR,
+                "egress generic 4xx must stay UPSTREAM_ERROR (fatal request error) at {status}"
+            );
+            assert_eq!(
+                core.code, code::INVALID_API_KEY,
+                "core generic 4xx must stay INVALID_API_KEY at {status}"
+            );
+        } else {
+            assert_eq!(
+                egress.code, core.code,
+                "code must not drift between egress and core at {status}"
+            );
+        }
+    }
+}

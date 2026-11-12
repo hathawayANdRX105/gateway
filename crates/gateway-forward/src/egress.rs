@@ -241,7 +241,14 @@ impl ReqwestEgress {
 /// - 5xx → `upstream_error`, retryable
 /// - other 4xx → `upstream_error` (fatal), neither retried nor demoted (the request
 ///   itself is bad; switching channels cannot save it)
-pub(crate) fn classify_status(
+///
+/// Deliberate divergence from core's `STATUS_RULES`: generic 4xx (including 404)
+/// reports `UPSTREAM_ERROR` rather than `INVALID_API_KEY`, because these are fatal
+/// request errors, not credential problems. `retryable` and `channel_scoped`
+/// delegate to the core table (via `failure_scope`), so the semantic flags cannot
+/// drift — forward's `classify_status.rs` parity test pins this contract.
+#[must_use]
+pub fn classify_status(
     status: u16,
     body_preview: &str,
     retry_after_ms: Option<u64>,
