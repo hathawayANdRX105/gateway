@@ -88,6 +88,7 @@ fn make_ctx(route: Option<SelectedRoute>) -> gateway_pipeline::RequestCtx {
             auth_version: 1,
         }),
         requested_model: Some("gpt-4o".to_string()),
+        requested_max_tokens: None,
         route,
         selected_channel_key: None,
         selected_channel_name: None,

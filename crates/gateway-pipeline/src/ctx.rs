@@ -211,6 +211,12 @@ pub struct RequestCtx {
     /// lookup).
     pub requested_model: Option<String>,
 
+    /// Written by `Gate::model` (promoted through the admission chain with the model name):
+    /// `max_tokens` / `max_completion_tokens` parsed from the request body. Dispatch uses it for
+    /// the context-fit estimate (`prompt + max_tokens` must fit the selected channel's window);
+    /// `None` = the request carried no explicit budget.
+    pub requested_max_tokens: Option<u32>,
+
     /// Written by Forward: non-streaming response body
     pub upstream: Option<UpstreamResponse>,
 
@@ -238,6 +244,7 @@ impl RequestCtx {
             selected_channel_key: None,
             selected_channel_name: None,
             requested_model: None,
+            requested_max_tokens: None,
             session_hint: None,
             upstream: None,
             streamed: StreamedAccum::default(),

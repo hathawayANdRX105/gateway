@@ -22,3 +22,33 @@ pub fn classify_channel_scope(status: u16) -> FailureScope {
         _ => FailureScope::Request,
     }
 }
+
+/// Detects the context-window-exceeded family of upstream errors (the request does
+/// not fit the selected model's context window).
+///
+/// Matched case-insensitively against the upstream error **message preview** (the
+/// 2048-byte lossy decode forward already carries); providers phrase it differently
+/// — `OpenAI` returns the `context_length_exceeded` code, Anthropic "prompt is too
+/// long", Gemini "exceeds the maximum number of tokens". Extend the list when a new
+/// provider phrasing shows up in production logs; a false negative degrades to the
+/// pre-existing behavior (the error passes through, no escalation), a false positive
+/// only costs one extra dispatch round.
+#[must_use]
+pub fn is_context_overflow(status: u16, message: &str) -> bool {
+    if !matches!(status, 400 | 413) {
+        return false;
+    }
+    let message = message.to_ascii_lowercase();
+    [
+        "context_length_exceeded",
+        "maximum context length",
+        "context length",
+        "prompt is too long",
+        "exceeds the maximum number of tokens",
+        "context window",
+        "too many input tokens",
+        "input tokens exceed",
+    ]
+    .iter()
+    .any(|needle| message.contains(needle))
+}

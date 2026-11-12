@@ -58,6 +58,22 @@ pub struct DaemonConfig {
     /// Graceful-shutdown drain budget in seconds.
     #[serde(default = "default_shutdown_timeout_secs")]
     pub shutdown_timeout_secs: u64,
+    /// Dispatch-stage configuration. Omitted = every default (P2C selection).
+    #[serde(default)]
+    pub dispatch: DispatchSection,
+}
+
+/// The `[dispatch]` config table: strategy knobs for the route-selection layer.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct DispatchSection {
+    /// Selection strategy for the route pool. `p2c` (default) = power-of-two-choices
+    /// with health/latency/concurrency/token posteriors; `weighted_random` = new-api
+    /// same-tier semantics (static weight only; decay/recovery lives in the
+    /// cooldown/health layer). The `[dispatch]` table is **boot-fixed**: changing the
+    /// strategy rebuilds the data plane.
+    #[serde(default)]
+    pub selector: gateway_facade::SelectorKind,
 }
 
 fn default_listen() -> String {

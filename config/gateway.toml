@@ -36,3 +36,17 @@ workers = 0
 # Graceful-shutdown drain budget in seconds: after SIGINT/SIGTERM, in-flight requests
 # (SSE streams included) get this long to finish before the process exits. Default: 30.
 shutdown_timeout_secs = 30
+
+# Dispatch-stage configuration. The `[dispatch]` table is boot-fixed (changing the
+# strategy rebuilds the data plane). Omitted = every default.
+#
+# selector: route-selection strategy for the channel pool.
+#   "p2c"             (default) power-of-two-choices by effective prior
+#                     (weight × slow-start ramp × sticky boost), posterior
+#                     likelihood comparison (latency × health × concurrency ×
+#                     token × throughput).
+#   "weighted_random" new-api same-tier semantics: weighted random by static
+#                     weight only; decay/recovery lives in the cooldown/health
+#                     layer, not in the weight itself.
+# [dispatch]
+# selector = "p2c"

@@ -355,7 +355,8 @@ fn retry_loop_succeeds_after_one_failover() {
             total_budget_ms: 0,
         },
         None,
-        |_: &str, _: &str, exclude: &[String], _: Option<&str>| {
+        None,
+        |_: &str, _: &str, exclude: &[String], _: Option<&str>, _: Option<u64>| {
             let key = if exclude.is_empty() { "ch1" } else { "ch2" };
             let mut u = unit("g", "m", key, 10, 1);
             u.channel_key = key.to_string();
@@ -421,7 +422,8 @@ fn retry_loop_exhausts_budget_with_retryable() {
             total_budget_ms: 0,
         },
         None,
-        |_: &str, _: &str, exclude: &[String], _: Option<&str>| {
+        None,
+        |_: &str, _: &str, exclude: &[String], _: Option<&str>, _: Option<u64>| {
             let key = if exclude.is_empty() { "ch1" } else { "ch2" };
             let mut u = unit("g", "m", key, 10, 1);
             u.channel_key = key.to_string();
@@ -458,7 +460,8 @@ fn retry_loop_fatal_stops_immediately() {
             total_budget_ms: 0,
         },
         None,
-        |_: &str, _: &str, _: &[String], _: Option<&str>| {
+        None,
+        |_: &str, _: &str, _: &[String], _: Option<&str>, _: Option<u64>| {
             let u = unit("g", "m", "ch1", 10, 1);
             Ok(gateway_dispatch::candidate::Candidate {
                 unit: u,
@@ -500,7 +503,8 @@ fn retry_loop_select_error_propagates() {
             total_budget_ms: 0,
         },
         None,
-        |group: &str, model: &str, _: &[String], _: Option<&str>| {
+        None,
+        |group: &str, model: &str, _: &[String], _: Option<&str>, _: Option<u64>| {
             Err(gateway_dispatch::DispatchError::ModelUnknown {
                 group: group.into(),
                 model: model.into(),
@@ -788,17 +792,20 @@ fn cooled_unit_is_filtered_globally() {
 
 #[test]
 fn failover_budget_and_tried_set() {
-    let mut f = Failover::new(RetryPolicy {
-        max_attempts: 3,
-        total_budget_ms: 0,
-    });
+    let mut f = Failover::new(
+        RetryPolicy {
+            max_attempts: 3,
+            total_budget_ms: 0,
+        },
+        None,
+    );
     assert_eq!(f.next_attempt(), Some(1));
     assert_eq!(f.next_attempt(), Some(2));
     assert_eq!(f.next_attempt(), Some(3));
     assert_eq!(f.next_attempt(), None, "Budget exhausted");
     assert!(f.is_exhausted());
 
-    let mut f = Failover::new(RetryPolicy::default());
+    let mut f = Failover::new(RetryPolicy::default(), None);
     assert_eq!(f.next_attempt(), Some(1));
     f.mark_tried("k1");
     f.mark_tried("k1"); // deduplicate
@@ -838,7 +845,7 @@ fn dispatcher_select_resolves_full_candidate() {
         Arc::new(MemoryHealthTable::new()),
         Arc::new(ConcurrencyState::default()),
     );
-    let c = dispatcher.select("g", "m", &[], None).unwrap();
+    let c = dispatcher.select("g", "m", &[], None, None).unwrap();
     assert_eq!(c.secret, "sk-secret");
     assert_eq!(c.base_url, "https://upstream.example");
 }
@@ -857,17 +864,19 @@ fn failover_end_to_end_switches_candidate() {
         Arc::new(ConcurrencyState::default()),
     );
 
-    let mut failover =
-        gateway_dispatch::retry::Failover::new(gateway_dispatch::retry::RetryPolicy::default());
+    let mut failover = gateway_dispatch::retry::Failover::new(
+        gateway_dispatch::retry::RetryPolicy::default(),
+        None,
+    );
     assert_eq!(failover.next_attempt(), Some(1));
     let first = dispatcher
-        .select("g", "m", failover.exclude(), None)
+        .select("g", "m", failover.exclude(), None, None)
         .unwrap();
     failover.mark_tried(first.unit.meta.key.clone());
 
     assert_eq!(failover.next_attempt(), Some(2));
     let second = dispatcher
-        .select("g", "m", failover.exclude(), None)
+        .select("g", "m", failover.exclude(), None, None)
         .unwrap();
     assert_ne!(
         second.unit.meta.key, first.unit.meta.key,
@@ -889,7 +898,7 @@ fn single_candidate_is_selected() {
         Arc::new(MemoryHealthTable::new()),
         Arc::new(ConcurrencyState::default()),
     );
-    let c = dispatcher.select("g", "m", &[], None).unwrap();
+    let c = dispatcher.select("g", "m", &[], None, None).unwrap();
     assert_eq!(c.unit.meta.key, "only");
 }
 
@@ -912,7 +921,7 @@ fn dispatcher_missing_key_index_returns_no_candidate() {
         Arc::new(ConcurrencyState::default()),
     );
     assert!(matches!(
-        dispatcher.select("g", "m", &[], None),
+        dispatcher.select("g", "m", &[], None, None),
         Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
     ));
 }
@@ -935,7 +944,7 @@ fn dispatcher_skips_disabled_channel() {
         Arc::new(ConcurrencyState::default()),
     );
     assert!(matches!(
-        dispatcher.select("g", "m", &[], None),
+        dispatcher.select("g", "m", &[], None, None),
         Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
     ));
 }
@@ -948,7 +957,7 @@ fn dispatcher_fails_closed_before_snapshot() {
         Arc::new(ConcurrencyState::default()),
     );
     assert!(matches!(
-        dispatcher.select("g", "m", &[], None),
+        dispatcher.select("g", "m", &[], None, None),
         Err(gateway_dispatch::DispatchError::SnapshotNotReady)
     ));
 }

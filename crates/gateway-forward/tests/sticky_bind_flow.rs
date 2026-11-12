@@ -802,6 +802,7 @@ impl Dispatch for StickyAwareDispatch {
         model: &str,
         exclude: &[String],
         sticky_channel_key: Option<&str>,
+        _min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         self.sticky_keys
             .lock()

@@ -82,6 +82,7 @@ impl Dispatch for StubDispatch {
         _: &str,
         _: &[String],
         _: Option<&str>,
+        _: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
         Err(DispatchError::SnapshotNotReady)
     }

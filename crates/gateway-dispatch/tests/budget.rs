@@ -70,7 +70,8 @@ fn all_cooling_recovers_within_budget_and_wait_does_not_burn_attempt() {
             total_budget_ms: 500,
         },
         None,
-        |_, _, _, _| {
+        None,
+        |_, _, _, _, _| {
             let n = select_calls.fetch_add(1, Ordering::SeqCst);
             // First select: all cooling → AllUnavailable (recovers after 10ms); after the
             // loop sleeps, the next select recovers → Ok.
@@ -130,7 +131,8 @@ fn all_cooling_recovery_over_budget_returns_all_unavailable() {
             total_budget_ms: 50,
         },
         None,
-        |g, m, _, _| {
+        None,
+        |g, m, _, _, _| {
             Err(DispatchError::AllUnavailable {
                 group: g.to_string(),
                 model: m.to_string(),
@@ -187,7 +189,8 @@ fn model_unknown_returns_immediately_without_attempt() {
             total_budget_ms: 500,
         },
         None,
-        |g, m, _, _| {
+        None,
+        |g, m, _, _, _| {
             Err(DispatchError::ModelUnknown {
                 group: g.to_string(),
                 model: m.to_string(),
@@ -235,7 +238,8 @@ fn failed_attempts_accumulate_until_budget_exhausted() {
             total_budget_ms: 50,
         },
         None,
-        |_, _, _, _| Ok(cand("c1")),
+        None,
+        |_, _, _, _, _| Ok(cand("c1")),
         |_| {
             let acalls = Arc::clone(&acalls);
             async move {
@@ -274,7 +278,8 @@ fn healthy_channel_succeeds_first_attempt_without_burning_budget() {
             total_budget_ms: 45_000,
         },
         None,
-        |_, _, _, _| Ok(cand("c1")),
+        None,
+        |_, _, _, _, _| Ok(cand("c1")),
         |_| {
             let ac = Arc::clone(&ac);
             async move {
@@ -315,7 +320,8 @@ fn success_does_not_count_against_budget_even_when_slow() {
             total_budget_ms: 50,
         },
         None,
-        |_, _, _, _| Ok(cand("c1")),
+        None,
+        |_, _, _, _, _| Ok(cand("c1")),
         |_| async {
             // One slow success (400ms) — success, no budget charged.
             AttemptOutcome::Done {
@@ -347,7 +353,8 @@ fn all_unavailable_without_cooling_reports_zero_retry_after() {
             total_budget_ms: 0,
         },
         None,
-        |_, _, _, _| {
+        None,
+        |_, _, _, _, _| {
             Err(DispatchError::AllUnavailable {
                 group: "default".to_string(),
                 model: "m".to_string(),
@@ -396,7 +403,8 @@ fn cooling_with_budget_off_does_not_wait_or_loop() {
             total_budget_ms: 0, // off
         },
         None,
-        |g, m, _, _| {
+        None,
+        |g, m, _, _, _| {
             // Channel permanently cooling (ra>0 forever): with the budget off it must never
             // sleep → AllUnavailable immediately.
             Err(DispatchError::AllUnavailable {

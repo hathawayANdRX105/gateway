@@ -45,7 +45,7 @@ pub mod protocol;
 pub mod proxy;
 pub mod records;
 
-pub use dispatch::{DispatcherHandle, RetryPolicy, STATUS_ENABLED, Snapshot};
+pub use dispatch::{DispatcherHandle, RetryPolicy, STATUS_ENABLED, SelectorKind, Snapshot};
 pub use error::{ErrorCode, NormalizedError};
 pub use health::HealthHandle;
 pub use metering::{Hold, Insufficient, Ledger, ModelPrice, PriceTable, SettleSink};

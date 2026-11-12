@@ -108,6 +108,7 @@ pub trait Selector: Send + Sync {
 
 /// P2C selector that samples by effective prior (static weight × slow-start ramp
 /// discount) and compares real-state posteriors.
+#[derive(Clone)]
 pub struct P2CSelector {
     concurrency: Arc<ConcurrencyState>,
     choices: usize,
@@ -191,7 +192,8 @@ impl P2CSelector {
 /// range are all clamped to the ceiling. The selector layer provides this
 /// backstop so prior normalization is immune to inf inputs from any source
 /// (including future assembly paths).
-fn clamp_sticky_boost(boost: f64) -> f64 {
+#[must_use]
+pub fn clamp_sticky_boost(boost: f64) -> f64 {
     if boost.is_finite() && boost > 0.0 && boost <= MAX_STICKY_BOOST {
         boost
     } else {
@@ -398,6 +400,81 @@ impl P2CSelector {
         };
         (latency_factor * state.ewma_score * concurrency_factor * token_discount * tps_factor)
             .clamp(LIKELIHOOD_FLOOR, 1.0)
+    }
+}
+
+/// new-api style selector: weighted random by **static weight** across the
+/// eligible pool.
+///
+/// The new-api contract (jev-verified against upstream docs): channels carry a
+/// static weight, the pool selects by weighted random, and decay/recovery is
+/// time-based binary (a failing channel is excluded until its cooldown elapses)
+/// rather than score-based. This implementation maps that contract onto the
+/// `Selector` seam: the static weight is the only decision input, the hard gates
+/// (enable bit / exclusion / cooldown) filter the pool exactly as for P2C, and
+/// the sticky channel gets a prior-style weight multiplier (never bypasses the
+/// vetoes). Health EWMA, latency digests, concurrency and token occupancy are
+/// deliberately **not** consulted — that is the difference being tested, and it
+/// is what makes this selector a faithful port of the new-api same-tier policy.
+///
+/// Stateless: the RNG comes in through the trait, so statistical tests are
+/// deterministic without global state.
+pub struct WeightedRandom {
+    /// Sticky prior boost multiplier (same clamp contract as P2C's
+    /// `with_sticky_boost`): the bound channel's weight is multiplied by this
+    /// before sampling; stickiness never hard-pins a channel.
+    boost: f64,
+}
+
+impl WeightedRandom {
+    /// Create a weighted-random selector with the given sticky boost.
+    ///
+    /// Illegal values (non-finite / ≤0 / above the ceiling) clamp to the ceiling,
+    /// same as the P2C constructor's contract.
+    #[must_use]
+    pub fn new(sticky_boost: f64) -> Self {
+        Self {
+            boost: clamp_sticky_boost(sticky_boost),
+        }
+    }
+}
+
+impl Selector for WeightedRandom {
+    fn pick<'a>(
+        &self,
+        units: &[&'a RouteUnitRecord],
+        health: &dyn HealthTable,
+        exclude: &[String],
+        sticky_channel_key: Option<&str>,
+        now_ms: u64,
+        rng: &mut dyn rand::RngCore,
+    ) -> Option<&'a RouteUnitRecord> {
+        let eligible = eligible_units(units, health, exclude, now_ms);
+        if eligible.is_empty() {
+            return recall_fainted(units, health, exclude, now_ms);
+        }
+        let weights: Vec<f64> = eligible
+            .iter()
+            .map(|unit| {
+                // Sticky boost: the bound channel's weight is multiplied (prior layer
+                // only); every other channel keeps its raw weight (×1.0).
+                let boost = if sticky_channel_key.is_some_and(|key| unit.channel_key == key) {
+                    self.boost
+                } else {
+                    1.0
+                };
+                f64::from(unit.weight) * boost
+            })
+            .collect();
+        let total: f64 = weights.iter().sum();
+        if total.is_finite() && total > 0.0 {
+            Some(eligible[pick_weighted_index(&weights, rng)])
+        } else {
+            // Degenerate totals (all-zero weights / overflow) degrade to a uniform
+            // draw — same defense as the P2C prior renormalization.
+            let index = rng.gen_range(0..eligible.len());
+            Some(eligible[index])
+        }
     }
 }
 

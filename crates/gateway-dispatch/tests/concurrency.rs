@@ -198,7 +198,7 @@ fn dispatcher_concurrent_select_returns_valid_candidate() {
         let d = Arc::clone(&dispatcher);
         handles.push(std::thread::spawn(move || {
             for _ in 0..200 {
-                let c = d.select("g", "m", &[], None).unwrap();
+                let c = d.select("g", "m", &[], None, None).unwrap();
                 assert_ne!(c.secret, "");
             }
         }));

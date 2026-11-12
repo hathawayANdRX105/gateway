@@ -1593,6 +1593,7 @@ dependencies = [
  "gateway-core",
  "gateway-forward",
  "gateway-gate",
+ "gateway-metering",
  "gateway-pipeline",
  "gateway-protocol-bridge",
  "http 1.5.0",
