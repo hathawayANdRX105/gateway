@@ -1,0 +1,91 @@
+# Gateway 压测场景配置
+# 目标：测 gateway 本身性能，上游模型只是产生 200 响应
+# 原则：控制 RPS，遇 429 立即退避，防封号
+
+scenarios:
+  # 场景 1：低并发基线
+  baseline:
+    description: "低并发基线，测单请求延迟"
+    enabled: true
+    model: "gpt-4o"
+    duration_seconds: 60
+    rate:
+      requests_per_second: 2
+      burst: 5
+      cooldown_ms: 500
+      max_concurrent: 5
+    abort_on_429: true
+    timeout_ms: 30000
+
+  # 场景 2：中等并发
+  medium_load:
+    description: "中等并发，测吞吐和延迟分布"
+    enabled: true
+    model: "gpt-4o"
+    duration_seconds: 120
+    rate:
+      requests_per_second: 5
+      burst: 10
+      cooldown_ms: 200
+      max_concurrent: 20
+    abort_on_429: true
+    timeout_ms: 30000
+
+  # 场景 3：多模型轮换
+  multi_model:
+    description: "多模型轮换，分散单模型压力"
+    enabled: true
+    models:
+      - "gpt-4o"   # 每个别名都必须在 config/catalog.toml 的 group/channel 里存在
+    duration_seconds: 120
+    rate:
+      requests_per_second: 3
+      burst: 6
+      cooldown_ms: 300
+      max_concurrent: 15
+    abort_on_429: true
+    timeout_ms: 30000
+
+  # 场景 4：流式请求
+  streaming:
+    description: "流式请求，测 SSE 稳定性"
+    enabled: true
+    model: "gpt-4o"
+    duration_seconds: 60
+    rate:
+      requests_per_second: 2
+      burst: 4
+      cooldown_ms: 500
+      max_concurrent: 10
+    stream: true
+    abort_on_429: true
+    timeout_ms: 60000
+
+  # 场景 5：压力测试（谨慎）
+  stress:
+    description: "压力测试，找 gateway 极限"
+    enabled: false  # 默认关闭，手动开启
+    model: "gpt-4o"
+    duration_seconds: 300
+    rate:
+      requests_per_second: 10
+      burst: 20
+      cooldown_ms: 100
+      max_concurrent: 50
+    abort_on_429: true
+    timeout_ms: 30000
+
+# 全局设置
+global:
+  gateway_url: "http://127.0.0.1:8080"
+  api_key: "sk-replace-me"   # 对应 config/catalog.toml 的 [[tokens]].key
+  # gatewayd 默认把日志写到 stdout；重定向到文件后在这里填路径，分析结果才会带日志统计。
+  # gateway_log: "/tmp/gatewayd.log"
+  warmup_seconds: 5
+  cooldown_seconds: 5
+
+# 输出
+output:
+  directory: "benches/results"
+  save_raw_responses: false
+  save_logs: true
