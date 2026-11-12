@@ -925,6 +925,119 @@ fn dispatcher_missing_key_index_returns_no_candidate() {
         Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
     ));
 }
+// ---------- fallback key selection (issue #11(a)) ----------
+
+// fallback_key_index = Some(1): no route unit for the model → the fallback channel's unit
+// carries key_index 1 and select resolves the key at index 1 ("sk-one").
+#[test]
+fn fallback_uses_settings_key_index_when_some() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![
+                ChannelKey {
+                    index: 0,
+                    secret: "sk-zero".to_string(),
+                    rpm_limit: 0,
+                },
+                ChannelKey {
+                    index: 1,
+                    secret: "sk-one".to_string(),
+                    rpm_limit: 0,
+                },
+            ],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: Some(1),
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    let c = dispatcher.select("default", "m", &[], None, None).unwrap();
+    assert_eq!(c.secret, "sk-one");
+    assert_eq!(c.unit.key_index, 1);
+}
+
+// fallback_key_index = None: the fallback unit keeps key_index 0 (old behavior).
+#[test]
+fn fallback_defaults_to_key_index_0_when_none() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![ChannelKey {
+                index: 0,
+                secret: "sk-zero".to_string(),
+                rpm_limit: 0,
+            }],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: None,
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    let c = dispatcher.select("default", "m", &[], None, None).unwrap();
+    assert_eq!(c.secret, "sk-zero");
+    assert_eq!(c.unit.key_index, 0);
+}
+
+// fallback_key_index = Some(5) with no key at that index: resolve_candidate finds no
+// candidate and select fails closed with AllUnavailable (channel skipped).
+#[test]
+fn fallback_out_of_range_key_index_yields_no_candidate() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![ChannelKey {
+                index: 0,
+                secret: "sk-zero".to_string(),
+                rpm_limit: 0,
+            }],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: Some(5),
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    assert!(matches!(
+        dispatcher.select("default", "m", &[], None, None),
+        Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
+    ));
+}
 
 #[test]
 fn dispatcher_skips_disabled_channel() {

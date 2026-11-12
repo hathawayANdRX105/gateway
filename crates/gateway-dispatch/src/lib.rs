@@ -161,8 +161,10 @@ pub fn candidates_from_snapshot<'a>(
 ///
 /// The model name passes through unchanged (no rename) — the semantics of a fallback channel
 /// is "accept everything and dispatch it yourself".
-/// `key_index` is fixed at 0: which key a multi-key fallback channel uses is out of scope here
-/// (TODO(ferrite-#158, re-anchored: #11)); no settings-driven key selection exists yet.
+/// The fallback unit's `key_index` comes from `ChannelSettings.fallback_key_index`:
+/// `Some(i)` selects key index `i`; `None` keeps index `0` (the previous behavior). An index
+/// with no matching key resolves to no candidate via [`resolve_candidate`] and the channel is
+/// skipped, preserving the old behaviour.
 /// Channels not marked fallback do not participate, preserving the old behaviour.
 fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<RouteUnitRecord> {
     snap.channels
@@ -184,7 +186,7 @@ fn fallback_units(snap: &Snapshot, group: &str, public_model: &str) -> Vec<Route
             group: group.to_string(),
             public_model: public_model.to_string(),
             channel_key: c.meta.key.clone(),
-            key_index: 0,
+            key_index: c.settings.fallback_key_index.unwrap_or(0),
             upstream_model: public_model.to_string(),
             weight: 1,
             status: STATUS_ENABLED,
