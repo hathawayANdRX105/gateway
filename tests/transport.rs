@@ -153,13 +153,14 @@ fn response_conversion_maps_status_and_drops_framing_headers() {
     );
 }
 
-fn test_state(max_request_bytes: usize) -> web::Data<AppState> {
+fn test_state(max_request_bytes: usize, billing_enabled: bool) -> web::Data<AppState> {
     web::Data::new(AppState::new(
         Arc::new(Pipeline::new()),
         max_request_bytes,
         Vec::new(),
         Arc::new(CalibrationLog::new()),
         CatalogCounts::default(),
+        billing_enabled,
     ))
 }
 
@@ -167,7 +168,7 @@ fn test_state(max_request_bytes: usize) -> web::Data<AppState> {
 async fn probes_answer_without_a_token() {
     let app = actix_web::test::init_service(
         App::new()
-            .app_data(test_state(1024))
+            .app_data(test_state(1024, false))
             .route("/healthz", web::get().to(healthz))
             .route("/readyz", web::get().to(readyz))
             .default_service(web::to(dispatch)),
@@ -195,12 +196,65 @@ async fn probes_answer_without_a_token() {
     let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
     assert_eq!(json["status"], "ready");
 }
+#[actix_web::test]
+async fn readyz_reports_billing_enabled() {
+    // Scenario: the deployment mounted a settlement sink (billing_enabled = true).
+    // Acceptance: /readyz always returns "billing": "enabled" in the parsed body.
+    let app = actix_web::test::init_service(
+        App::new()
+            .app_data(test_state(1024, true))
+            .route("/healthz", web::get().to(healthz))
+            .route("/readyz", web::get().to(readyz))
+            .default_service(web::to(dispatch)),
+    )
+    .await;
+
+    let ready = actix_web::test::call_service(
+        &app,
+        actix_web::test::TestRequest::get()
+            .uri("/readyz")
+            .to_request(),
+    )
+    .await;
+    assert_eq!(ready.status().as_u16(), 200);
+    let body = actix_web::test::read_body(ready).await;
+    let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
+    assert_eq!(json["status"], "ready");
+    assert_eq!(json["billing"], "enabled");
+}
+
+#[actix_web::test]
+async fn readyz_reports_billing_disabled() {
+    // Scenario: the deployment mounted no settlement sink (billing_enabled = false).
+    // Acceptance: /readyz always returns "billing": "disabled" in the parsed body.
+    let app = actix_web::test::init_service(
+        App::new()
+            .app_data(test_state(1024, false))
+            .route("/healthz", web::get().to(healthz))
+            .route("/readyz", web::get().to(readyz))
+            .default_service(web::to(dispatch)),
+    )
+    .await;
+
+    let ready = actix_web::test::call_service(
+        &app,
+        actix_web::test::TestRequest::get()
+            .uri("/readyz")
+            .to_request(),
+    )
+    .await;
+    assert_eq!(ready.status().as_u16(), 200);
+    let body = actix_web::test::read_body(ready).await;
+    let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
+    assert_eq!(json["status"], "ready");
+    assert_eq!(json["billing"], "disabled");
+}
 
 #[actix_web::test]
 async fn unknown_path_is_404_before_the_pipeline() {
     let app = actix_web::test::init_service(
         App::new()
-            .app_data(test_state(1024))
+            .app_data(test_state(1024, false))
             .default_service(web::to(dispatch)),
     )
     .await;
@@ -219,7 +273,7 @@ async fn unknown_path_is_404_before_the_pipeline() {
 async fn oversized_body_is_rejected_before_the_pipeline() {
     let app = actix_web::test::init_service(
         App::new()
-            .app_data(test_state(8))
+            .app_data(test_state(8, false))
             .default_service(web::to(dispatch)),
     )
     .await;

@@ -46,6 +46,11 @@ pub struct AppState {
     trusted_proxies: Vec<IpAddr>,
     calibration: Arc<CalibrationLog>,
     counts: CatalogCounts,
+    /// Whether a settlement sink is mounted. The standalone shape always mounts
+    /// the logging sink (assemble → Settle); embedded consumers derive this from
+    /// their own facade Config. Drives the always-present /readyz `billing`
+    /// field so an unbilled relay is visible to ops.
+    billing_enabled: bool,
 }
 
 impl AppState {
@@ -56,6 +61,7 @@ impl AppState {
         trusted_proxies: Vec<IpAddr>,
         calibration: Arc<CalibrationLog>,
         counts: CatalogCounts,
+        billing_enabled: bool,
     ) -> Self {
         Self {
             pipeline,
@@ -63,6 +69,7 @@ impl AppState {
             trusted_proxies,
             calibration,
             counts,
+            billing_enabled,
         }
     }
 }
@@ -98,13 +105,19 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         config.pool_shard_by_alias,
     );
     let pipeline = gateway.pipeline();
-    let state = web::Data::new(AppState {
+    // /readyz exposes billing so ops can tell an unbilled relay from one that
+    // settles usage. The standalone shape always mounts the logging settle sink
+    // (assemble → Settle), so this is fixed at true here; an embedded consumer
+    // derives it from its own facade Config (settle.is_some()).
+    let billing_enabled = true;
+    let state = web::Data::new(AppState::new(
         pipeline,
-        max_request_bytes: config.max_request_bytes,
-        trusted_proxies: config.trusted_proxies.clone(),
+        config.max_request_bytes,
+        config.trusted_proxies.clone(),
+        calibration.clone(),
         counts,
-        calibration: calibration.clone(),
-    });
+        billing_enabled,
+    ));
 
     let factory = {
         let state = state.clone();
@@ -223,8 +236,17 @@ pub async fn healthz() -> HttpResponse {
 }
 
 pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
+    // Billing is always reported: an unbilled relay is invisible to ops
+    // otherwise, unlike `calibration`, which only appears once samples have
+    // been recorded. Additive for existing /readyz consumers.
+    let billing = if state.billing_enabled {
+        "enabled"
+    } else {
+        "disabled"
+    };
     let mut body = serde_json::json!({
         "status": "ready",
+        "billing": billing,
         "channels": state.counts.channels,
         "routeUnits": state.counts.route_units,
         "groups": state.counts.groups,
