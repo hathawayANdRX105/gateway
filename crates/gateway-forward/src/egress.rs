@@ -4,6 +4,8 @@
 //! wildtoken (per-upstream timeouts). V1 scope: direct + HTTP(S) proxy;
 //! SOCKS/sing-box/TLS camouflage deferred (account-pool scenarios).
 
+use parking_lot::Mutex;
+use std::collections::{HashMap, VecDeque};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
@@ -51,14 +53,22 @@ pub(crate) fn body_preview(bytes: &[u8]) -> String {
 /// Egress executor — holder of a pooled reqwest Client.
 ///
 /// V1 scope: a single direct pool, redirect following disabled (upstream 3xx is
-/// treated as an error, never followed silently). SOCKS/HTTP proxying and sharding
-/// by `base_url` are deferred to the TODO(ferrite-#522, re-anchored: #14) pooling phase.
+/// treated as an error, never followed silently). SOCKS/HTTP proxying is deferred
+/// to a later phase; issue #14 shards the pool by the requested model alias
+/// (public name): many upstream channels serve the same public alias and requests
+/// aggregate per alias, so a per-alias pool isolates a hot alias from other
+/// aliases while reqwest still pools per host inside each client.
 ///
 /// Returning `Pin<Box<dyn Future>>` instead of `impl Future` keeps the trait
 /// dyn-compatible (bin/api injects it as `Arc<dyn Egress>`).
 pub trait Egress: Send + Sync {
     /// Send a prepared request and return the raw response (including the body
     /// stream).
+    ///
+    /// `alias` is the requested model alias (public name): it selects the
+    /// connection-pool shard — the same alias reuses one pooled client while
+    /// different aliases get isolated pools ([`ReqwestEgress`] shards by alias;
+    /// other implementations may ignore it).
     ///
     /// Three-part timeout semantics:
     /// - `connect_ms`: the reqwest Client's built-in connect timeout (TCP/TLS
@@ -73,6 +83,7 @@ pub trait Egress: Send + Sync {
     /// prepended).
     fn execute<'a>(
         &'a self,
+        alias: &str,
         url: &'a str,
         headers: &'a [(String, String)],
         body: Bytes,
@@ -158,15 +169,46 @@ impl std::fmt::Debug for ForwardedResponse {
     }
 }
 
-/// reqwest egress — holds a shared `reqwest::Client`.
+/// Maximum number of alias-shared clients held at once. A `Client` is dropped
+/// when its alias shard is evicted (FIFO: least recently inserted alias first),
+/// which closes that client's idle connections; reqwest still pools per host
+/// inside each surviving client.
+pub const MAX_ALIAS_SHARDS: usize = 64;
+
+/// One shard of the egress connection pool: the aliases mapped to their clients,
+/// plus insertion order for FIFO eviction.
+struct AliasShards {
+    clients: HashMap<String, Arc<reqwest::Client>>,
+    order: VecDeque<String>,
+}
+
+/// Inner state shared by [`ReqwestEgress`] clones: one shared client when
+/// sharding is off, otherwise a bounded alias-keyed map of clients.
+struct EgressInner {
+    /// When `true` (the default), `client_for` returns a distinct pooled client
+    /// per requested model alias; when `false`, one shared client serves every
+    /// alias (the old behavior).
+    shard_by_alias: bool,
+    /// Single pooled client used when sharding is off.
+    shared: Arc<reqwest::Client>,
+    /// Alias-sharded clients, used when `shard_by_alias` is on. A plain mutex is
+    /// enough: the hit path is a `HashMap` lookup plus an `Arc` clone, and a
+    /// client is only built on the rare miss (cold start or a new alias).
+    shards: Mutex<AliasShards>,
+}
+
+/// reqwest egress — alias-sharded pooled clients.
 ///
-/// Direct connection; no redirect following; the connection pool buckets by host by
-/// default (built into reqwest). ponytail: pooling/sharding is left to TODO(ferrite-#522, re-anchored: #14);
-/// one globally reused Client is enough for ordinary load, and `base_url` sharding can
-/// come when hot-key degradation shows up.
+/// Direct connection; no redirect following; the connection pool buckets by host
+/// by default (built into reqwest). Issue #14: when sharding is on, clients are
+/// keyed by the requested model alias (public name) — the same public alias is
+/// served by many upstream channels and requests aggregate per alias, so a
+/// per-alias pool isolates a hot alias from other aliases while reqwest still
+/// pools per host inside each client. With sharding off, one globally reused
+/// Client serves every alias (the old behavior).
 #[derive(Clone)]
 pub struct ReqwestEgress {
-    client: Arc<reqwest::Client>,
+    inner: Arc<EgressInner>,
     /// Default connect timeout (per-request timeouts could override it — the current
     /// implementation uses this default).
     connect_timeout: Duration,
@@ -180,13 +222,18 @@ impl std::fmt::Debug for ReqwestEgress {
 
 impl Default for ReqwestEgress {
     fn default() -> Self {
-        Self::new()
+        Self::new(true)
     }
 }
 
 impl ReqwestEgress {
     /// Direct client — redirects disabled, built-in connection pool, no proxy.
     /// Connect timeout defaults to 5s.
+    ///
+    /// `shard_by_alias` selects issue #14 alias sharding: `true` (the default;
+    /// the `pool_shard_by_alias` config knob) keys a distinct pooled client per
+    /// requested model alias; `false` serves every alias from one shared client
+    /// (the old behavior).
     ///
     /// # Panics
     ///
@@ -196,25 +243,49 @@ impl ReqwestEgress {
     #[allow(unknown_lints)]
     #[allow(expect_in_non_result)]
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(shard_by_alias: bool) -> Self {
         let connect_timeout = Duration::from_millis(5_000);
-        let client = reqwest::Client::builder()
-            .redirect(RedirectPolicy::none())
-            .connect_timeout(connect_timeout)
-            .pool_max_idle_per_host(8)
-            .build()
-            .expect("reqwest client build");
         Self {
-            client: Arc::new(client),
+            inner: Arc::new(EgressInner {
+                shard_by_alias,
+                shared: Arc::new(Self::build_client(connect_timeout)),
+                shards: Mutex::new(AliasShards {
+                    clients: HashMap::new(),
+                    order: VecDeque::new(),
+                }),
+            }),
             connect_timeout,
         }
     }
 
+    /// Build one production reqwest client: every shard gets identical
+    /// parameters (redirects disabled, connect timeout fixed at builder time,
+    /// `pool_max_idle_per_host(8)` per-host pool).
+    #[allow(unknown_lints)]
+    #[allow(expect_in_non_result)]
+    fn build_client(connect_timeout: Duration) -> reqwest::Client {
+        reqwest::Client::builder()
+            .redirect(RedirectPolicy::none())
+            .connect_timeout(connect_timeout)
+            .pool_max_idle_per_host(8)
+            .build()
+            .expect("reqwest client build")
+    }
+
     /// Custom client — for tests (injecting a mock transport) or future proxy pooling.
+    /// The injected client serves every alias: sharding stays off so a mock is never
+    /// bypassed by a lazily built shard.
     #[must_use]
     pub fn with_client(client: reqwest::Client, connect_timeout: Duration) -> Self {
         Self {
-            client: Arc::new(client),
+            inner: Arc::new(EgressInner {
+                shard_by_alias: false,
+                shared: Arc::new(client),
+                shards: Mutex::new(AliasShards {
+                    clients: HashMap::new(),
+                    order: VecDeque::new(),
+                }),
+            }),
             connect_timeout,
         }
     }
@@ -225,6 +296,42 @@ impl ReqwestEgress {
     #[must_use]
     pub fn connect_timeout(&self) -> Duration {
         self.connect_timeout
+    }
+
+    /// Resolve the pooled client for `alias`: the same alias always returns the
+    /// same `Arc` (pool reuse across the channels serving that alias); different
+    /// aliases get isolated clients. With sharding disabled, every alias returns
+    /// the single shared client.
+    ///
+    /// The map is bounded by [`MAX_ALIAS_SHARDS`]: a miss past the bound evicts
+    /// the first-inserted alias (FIFO) and drops its `Client`, closing that
+    /// client's idle connections.
+    #[must_use]
+    pub fn client_for(&self, alias: &str) -> Arc<reqwest::Client> {
+        if !self.inner.shard_by_alias {
+            return Arc::clone(&self.inner.shared);
+        }
+        let mut shards = self.inner.shards.lock();
+        if let Some(client) = shards.clients.get(alias) {
+            return Arc::clone(client);
+        }
+        let key = alias.to_string();
+        let client = Arc::new(Self::build_client(self.connect_timeout));
+        if shards.clients.len() >= MAX_ALIAS_SHARDS
+            && let Some(oldest) = shards.order.pop_front()
+        {
+            shards.clients.remove(&oldest); // dropped ⇒ idle connections close
+        }
+        shards.clients.insert(key.clone(), Arc::clone(&client));
+        shards.order.push_back(key);
+        client
+    }
+
+    /// Number of alias shards currently held (bounded by [`MAX_ALIAS_SHARDS`]);
+    /// `1` when sharding is off.
+    #[must_use]
+    pub fn shard_count(&self) -> usize {
+        self.inner.shards.lock().clients.len()
     }
 }
 
@@ -463,6 +570,7 @@ async fn send_request(
 impl Egress for ReqwestEgress {
     fn execute<'a>(
         &'a self,
+        alias: &str,
         url: &'a str,
         headers: &'a [(String, String)],
         body: Bytes,
@@ -482,7 +590,7 @@ impl Egress for ReqwestEgress {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let client = Arc::clone(&self.client);
+        let client = Arc::clone(&self.client_for(alias));
         let url = url.to_string();
 
         Box::pin(async move {

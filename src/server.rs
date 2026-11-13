@@ -22,6 +22,7 @@ use gateway_facade::{
     Components, Config, Context, GatewayBuilder, Ledger, MemoryLedger, Pipeline, ProxyManager,
     QuotaGate, RequestCtx, ReqwestEgress, Settle, SettleSink, State, UsageEvent, error_to_response,
 };
+use gateway_metering::calibration::CalibrationLog;
 
 use crate::catalog::{Catalog, CatalogCounts};
 use crate::config::DaemonConfig;
@@ -43,6 +44,7 @@ pub struct AppState {
     pipeline: Arc<Pipeline>,
     max_request_bytes: usize,
     trusted_proxies: Vec<IpAddr>,
+    calibration: Arc<CalibrationLog>,
     counts: CatalogCounts,
 }
 
@@ -52,12 +54,14 @@ impl AppState {
         pipeline: Arc<Pipeline>,
         max_request_bytes: usize,
         trusted_proxies: Vec<IpAddr>,
+        calibration: Arc<CalibrationLog>,
         counts: CatalogCounts,
     ) -> Self {
         Self {
             pipeline,
             max_request_bytes,
             trusted_proxies,
+            calibration,
             counts,
         }
     }
@@ -72,6 +76,8 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
     let config = DaemonConfig::load(&args.config_path)?;
     let catalog = Catalog::load(&config.catalog_path(&args.config_path))?;
     let counts = catalog.counts;
+    let calibration = Arc::new(CalibrationLog::new());
+    gateway_metering::calibration::install(Arc::clone(&calibration));
 
     tracing::info!(
         channels = counts.channels,
@@ -86,13 +92,18 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let gateway = assemble(catalog, config.dispatch.selector);
+    let gateway = assemble(
+        catalog,
+        config.dispatch.selector,
+        config.pool_shard_by_alias,
+    );
     let pipeline = gateway.pipeline();
     let state = web::Data::new(AppState {
         pipeline,
         max_request_bytes: config.max_request_bytes,
         trusted_proxies: config.trusted_proxies.clone(),
         counts,
+        calibration: calibration.clone(),
     });
 
     let factory = {
@@ -135,7 +146,11 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
 
 /// Build the gateway once: one ledger seeded from the catalog, one quota gate, one
 /// settlement pair. Nothing here is per-request.
-fn assemble(catalog: Catalog, selector: gateway_facade::SelectorKind) -> gateway_facade::Gateway {
+fn assemble(
+    catalog: Catalog,
+    selector: gateway_facade::SelectorKind,
+    pool_shard_by_alias: bool,
+) -> gateway_facade::Gateway {
     let ledger = Arc::new(MemoryLedger::new());
     ledger.reseed(&catalog.quota_snapshot);
 
@@ -148,7 +163,7 @@ fn assemble(catalog: Catalog, selector: gateway_facade::SelectorKind) -> gateway
             ..Config::default()
         },
         components: Components {
-            egress: Arc::new(ReqwestEgress::new()),
+            egress: Arc::new(ReqwestEgress::new(pool_shard_by_alias)),
             // The standalone shape never leases from the proxy pool: no node rows exist
             // until a control plane installs them, and the direct egress client serves
             // every channel.
@@ -208,7 +223,7 @@ pub async fn healthz() -> HttpResponse {
 }
 
 pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({
+    let mut body = serde_json::json!({
         "status": "ready",
         "channels": state.counts.channels,
         "routeUnits": state.counts.route_units,
@@ -216,7 +231,16 @@ pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
         "users": state.counts.users,
         "tokens": state.counts.tokens,
         "prices": state.counts.prices,
-    }))
+    });
+    // Calibration statistics from real traffic: only exposed once samples have
+    // been recorded, keeping the endpoint shape backwards compatible otherwise.
+    let report = state.calibration.report();
+    if report.n > 0
+        && let Ok(value) = serde_json::to_value(report)
+    {
+        body["calibration"] = value;
+    }
+    HttpResponse::Ok().json(body)
 }
 
 /// The one request entry: path guard → body read → pipeline → actix response.

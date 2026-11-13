@@ -26,6 +26,7 @@ use gateway_daemon::server::{
 };
 use gateway_facade::Pipeline;
 
+use gateway_metering::calibration::CalibrationLog;
 fn ip(text: &str) -> IpAddr {
     text.parse().expect("test address must parse")
 }
@@ -157,6 +158,7 @@ fn test_state(max_request_bytes: usize) -> web::Data<AppState> {
         Arc::new(Pipeline::new()),
         max_request_bytes,
         Vec::new(),
+        Arc::new(CalibrationLog::new()),
         CatalogCounts::default(),
     ))
 }

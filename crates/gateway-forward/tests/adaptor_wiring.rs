@@ -39,6 +39,7 @@ struct MockEgress {
 impl Egress for MockEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         url: &'a str,
         _headers: &'a [(String, String)],
         body: Bytes,
@@ -493,6 +494,7 @@ struct LeakyEgress {
 impl Egress for LeakyEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -590,6 +592,7 @@ struct OversizedErrorEgress {
 impl Egress for OversizedErrorEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -650,6 +653,7 @@ struct HangingErrorEgress {
 impl Egress for HangingErrorEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

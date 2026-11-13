@@ -38,14 +38,19 @@ impl ForwardStage {
         status: u16,
         candidate: &SelectedRoute,
     ) {
+        let usage = gateway_metering::extract_usage(resp_body);
+        if let Some(usage) = usage {
+            let estimated = gateway_metering::estimate::estimate_prompt_tokens(req_body);
+            record_calibration(
+                gateway_metering::calibration::global().as_ref(),
+                estimated,
+                usage.prompt,
+            );
+        }
         let (Some(pt), Some(sink)) = (self.price_table.as_ref(), self.sink.as_ref()) else {
             return;
         };
-        let counts = counts_or_estimate(
-            gateway_metering::extract_usage(resp_body),
-            req_body,
-            resp_body,
-        );
+        let counts = counts_or_estimate(usage, req_body, resp_body);
         // Take the prehold out of ctx before the attribution check: QuotaGate reserved the
         // estimated cost at admission, so a missing-attribution exit must still release the
         // reservation instead of letting it stick until the next reseed.
@@ -296,7 +301,21 @@ pub(crate) fn counts_or_estimate(
         }
     })
 }
-
+/// Side-record an estimate-vs-reported prompt pair for calibration when the
+/// upstream reported usage. A no-op when the log is not installed or usage is
+/// absent; never disturbs the settlement flow it wraps.
+pub(crate) fn record_calibration(
+    log: Option<&Arc<gateway_metering::calibration::CalibrationLog>>,
+    estimated_prompt: u64,
+    reported_prompt: u64,
+) {
+    let Some(log) = log else {
+        return;
+    };
+    // A reported prompt of 0 means the upstream gave no usage; `CalibrationLog::record`
+    // ignores such samples (no calibration signal, avoids division by zero).
+    log.record(estimated_prompt, reported_prompt);
+}
 /// Milliseconds duration → `u32`, saturating at the limit (about 49.7 days).
 pub(crate) fn millis_saturating(elapsed: Duration) -> u32 {
     u32::try_from(elapsed.as_millis()).unwrap_or(u32::MAX)

@@ -308,9 +308,9 @@ async fn serve_once(
 async fn egress_returns_body_for_2xx() {
     use futures_util::StreamExt;
     let (url, server) = serve_once("200 OK", "hello world").await;
-    let egress = ReqwestEgress::new();
+    let egress = ReqwestEgress::new(true);
     let resp = egress
-        .execute(&url, &[], Bytes::new(), &Timeouts::default())
+        .execute("m", &url, &[], Bytes::new(), &Timeouts::default())
         .await
         .expect("2xx should succeed");
     assert_eq!(resp.status(), 200);
@@ -327,9 +327,9 @@ async fn egress_returns_body_for_2xx() {
 #[tokio::test]
 async fn egress_classifies_429_as_retryable() {
     let (url, server) = serve_once("429 Too Many Requests", "rate limited").await;
-    let egress = ReqwestEgress::new();
+    let egress = ReqwestEgress::new(true);
     let err = egress
-        .execute(&url, &[], Bytes::new(), &Timeouts::default())
+        .execute("m", &url, &[], Bytes::new(), &Timeouts::default())
         .await
         .expect_err("429 should be an error");
     assert!(err.retryable, "429 should be marked retryable");
@@ -486,7 +486,7 @@ async fn forward_once_routes_claude_client_to_openai_endpoint() {
     let mut task = task;
     task.candidate.base_url = format!("http://127.0.0.1:{port}");
 
-    let egress = ReqwestEgress::new();
+    let egress = ReqwestEgress::new(true);
     let formats = Arc::new(FormatRegistry::with_defaults());
     let timeouts = Timeouts::default();
 
@@ -556,7 +556,7 @@ async fn cross_format_upstream_400_propagates_as_400_not_502() {
     // Client says Anthropic, channel is openai: cross-format. Real reqwest path.
     let result = gateway_forward::pipeline::forward_once(
         &task,
-        &ReqwestEgress::new(),
+        &ReqwestEgress::new(true),
         &Arc::new(FormatRegistry::with_defaults()),
         &Timeouts::default(),
     )
@@ -643,7 +643,7 @@ async fn stream_upstream_413_propagates_as_413_not_sse() {
 
     let result = gateway_forward::pipeline::forward_once(
         &task,
-        &ReqwestEgress::new(),
+        &ReqwestEgress::new(true),
         &Arc::new(FormatRegistry::with_defaults()),
         &Timeouts::default(),
     )

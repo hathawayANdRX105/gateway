@@ -10,7 +10,8 @@ use crate::egress::ByteStream;
 use crate::stage::ForwardStage;
 use crate::stage_sticky::{StickyBind, bind_sticky};
 use crate::stage_telemetry::{
-    StreamTps, counts_or_estimate, report_stream_tps, settlement_identity, submit_event,
+    StreamTps, counts_or_estimate, record_calibration, report_stream_tps, settlement_identity,
+    submit_event,
 };
 use crate::stream::{self, pipe_chunk};
 use bytes::Bytes;
@@ -118,11 +119,12 @@ impl ForwardStage {
         // inside the unfold, where `ctx` is no longer available (`BoxStream` is
         // `'static`). Table not mounted / no key source ⇒ None, write side skipped.
         let sticky_bind = self.sticky_bind(ctx, candidate, req_body);
+        let prompt_estimate = gateway_metering::estimate::estimate_prompt_tokens(req_body);
         let mapped = futures_util::stream::unfold(state, move |state| {
             let sink = sink.clone();
             let group_id = group_id.clone();
             let sticky_bind = sticky_bind.clone();
-            next_stream_item(state, sink, group_id, sticky_bind)
+            next_stream_item(state, sink, group_id, sticky_bind, prompt_estimate)
         });
         let stream: futures_util::stream::BoxStream<'static, Result<Bytes, std::io::Error>> =
             Box::pin(mapped);
@@ -322,6 +324,7 @@ async fn next_stream_item(
     sink: Option<Arc<dyn gateway_metering::SettleSink>>,
     group_id: String,
     sticky_bind: Option<Arc<StickyBind>>,
+    prompt_estimate: u64,
 ) -> Option<(Result<Bytes, std::io::Error>, StreamCommitState)> {
     enum Step {
         Chunk(Bytes),
@@ -394,6 +397,7 @@ async fn next_stream_item(
                 sink.as_ref(),
                 &group_id,
                 sticky_bind.as_ref(),
+                prompt_estimate,
                 500,
                 Some(&e.to_string()),
             );
@@ -407,6 +411,7 @@ async fn next_stream_item(
                 sink.as_ref(),
                 &group_id,
                 sticky_bind.as_ref(),
+                prompt_estimate,
                 200,
                 None,
             );
@@ -419,6 +424,7 @@ async fn next_stream_item(
             &group_id,
             sticky_bind.as_ref(),
             "stream idle timeout",
+            prompt_estimate,
         )),
         Step::MaxTimeout => Some(settle_timeout(
             state,
@@ -426,6 +432,7 @@ async fn next_stream_item(
             &group_id,
             sticky_bind.as_ref(),
             "stream max duration exceeded",
+            prompt_estimate,
         )),
     }
 }
@@ -440,8 +447,17 @@ fn settle_timeout(
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
     reason: &'static str,
+    prompt_estimate: u64,
 ) -> (Result<Bytes, std::io::Error>, StreamCommitState) {
-    finish_stream(&mut state, sink, group_id, sticky_bind, 500, Some(reason));
+    finish_stream(
+        &mut state,
+        sink,
+        group_id,
+        sticky_bind,
+        prompt_estimate,
+        500,
+        Some(reason),
+    );
     state.settled = true;
     (
         Err(std::io::Error::new(std::io::ErrorKind::TimedOut, reason)),
@@ -460,12 +476,21 @@ fn finish_stream(
     sink: Option<&Arc<dyn gateway_metering::SettleSink>>,
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
+    prompt_estimate: u64,
     status_code: u16,
     error: Option<&str>,
 ) {
     let Some(sse) = state.sse.take() else {
         return;
     };
+    // Calibration side-record (streaming settle path): record the estimate vs
+    // the upstream-reported prompt usage when the upstream reports one.
+    record_calibration(
+        gateway_metering::calibration::global().as_ref(),
+        prompt_estimate,
+        sse.token_scanner.upstream_usage().map_or(0, |u| u.prompt),
+    );
+
     let priced = sse.price_table.is_some();
     let (_end, counts, event) = stream::finish(sse, status_code, error);
     let cost = event.as_ref().map(|ev| ev.cost);

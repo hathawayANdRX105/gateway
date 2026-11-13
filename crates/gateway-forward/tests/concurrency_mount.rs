@@ -114,6 +114,7 @@ impl DelayedEgress {
 impl Egress for DelayedEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

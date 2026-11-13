@@ -183,7 +183,13 @@ pub async fn forward_once(
     let body = translate_request_body(task, formats, inbound, upstream_format)?;
 
     let resp = egress
-        .execute(&prepared.url, &merged, body, timeouts)
+        .execute(
+            &task.candidate.unit.public_model,
+            &prepared.url,
+            &merged,
+            body,
+            timeouts,
+        )
         .await?;
 
     let status = resp.status();

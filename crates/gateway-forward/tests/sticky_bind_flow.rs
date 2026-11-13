@@ -145,6 +145,7 @@ struct JsonEgress {
 impl Egress for JsonEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -205,6 +206,7 @@ struct BrokenSseEgress;
 impl Egress for BrokenSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -245,6 +247,7 @@ impl GatedSseEgress {
 impl Egress for GatedSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -275,6 +278,7 @@ struct SseFramesEgress {
 impl Egress for SseFramesEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

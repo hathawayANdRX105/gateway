@@ -121,6 +121,7 @@ async fn egress_sends_http_over_dialer() {
     let body = Bytes::from_static(br#"{"model":"probe"}"#);
     let resp = egress
         .execute(
+            "probe",
             &format!("http://{addr}/v1/chat/completions"),
             &headers_for(body.len()),
             body,
@@ -152,6 +153,7 @@ async fn dial_failure_is_retryable_502() {
     let egress = AdapterEgress::new(Arc::new(RefusingDialer), Duration::from_secs(5));
     let err = egress
         .execute(
+            "probe",
             "http://upstream.invalid/v1/chat/completions",
             &headers_for(2),
             Bytes::from_static(b"{}"),
@@ -175,6 +177,7 @@ async fn slow_dial_hits_connect_timeout() {
     );
     let err = egress
         .execute(
+            "probe",
             "http://upstream.invalid/v1/chat/completions",
             &headers_for(2),
             Bytes::from_static(b"{}"),
@@ -196,6 +199,7 @@ async fn body_stream_not_truncated() {
     let egress = AdapterEgress::new(Arc::new(LocalDialer(addr)), Duration::from_secs(5));
     let resp = egress
         .execute(
+            "probe",
             &format!("http://{addr}/"),
             &headers_for(0),
             Bytes::new(),

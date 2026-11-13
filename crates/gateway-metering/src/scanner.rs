@@ -99,6 +99,12 @@ impl StreamScanner {
             finish_reason: None,
         }
     }
+    /// Whether the upstream reported usage in any stream frame (last non-zero
+    /// merge wins); `None` when the upstream sent no usage at all.
+    #[must_use]
+    pub fn upstream_usage(&self) -> Option<TokenCounts> {
+        self.upstream_usage
+    }
 
     /// Ingest one stream chunk, scanning every complete line it closes.
     ///

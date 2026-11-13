@@ -17,7 +17,7 @@ use gateway_metering::SettleSink;
 use gateway_pipeline::{
     BodySource, ProtocolKind, RequestCtx, RequestMeta, SelectedRoute, StreamedAccum, TokenInfo,
 };
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 // ---------- Request builders ----------
 
@@ -133,26 +133,26 @@ impl ScriptedEgress {
     /// Upstream urls that were requested (for asserting attempt counts and hit
     /// candidates).
     pub fn calls(&self) -> Vec<String> {
-        self.calls.lock().unwrap().clone()
+        self.calls.lock().clone()
     }
 }
 
 impl Egress for ScriptedEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
         _timeouts: &'a Timeouts,
     ) -> std::pin::Pin<
         Box<
-            dyn std::future::Future<
-                    Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>,
-                > + Send
+            dyn Future<Output = Result<ForwardedResponse, gateway_core::error::NormalizedError>>
+                + Send
                 + 'a,
         >,
     > {
-        self.calls.lock().unwrap().push(url.to_string());
+        self.calls.lock().push(url.to_string());
         let (_, plan) = self
             .plans
             .iter()
@@ -196,16 +196,13 @@ pub struct FixedEgress {
 impl Egress for FixedEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
         _timeouts: &'a Timeouts,
     ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<ForwardedResponse, NormalizedError>>
-                + Send
-                + 'a,
-        >,
+        Box<dyn Future<Output = Result<ForwardedResponse, NormalizedError>> + Send + 'a>,
     > {
         let stream = futures_util::stream::iter(vec![Ok::<Bytes, std::io::Error>(
             Bytes::from_static(self.body),
@@ -257,14 +254,13 @@ impl MockDispatch {
 
     /// Sequence of select calls (a snapshot of the exclude set per call).
     pub fn selects(&self) -> Vec<Vec<String>> {
-        self.selects.lock().unwrap().clone()
+        self.selects.lock().clone()
     }
 
     /// Sequence of report calls (unit key + health result).
     pub fn reports(&self) -> Vec<(String, Result<u16, FailureClass>)> {
         self.reports
             .lock()
-            .unwrap()
             .iter()
             .map(|(key, report)| (key.clone(), report.outcome))
             .collect()
@@ -280,7 +276,7 @@ impl Dispatch for MockDispatch {
         _sticky_channel_key: Option<&str>,
         _min_context: Option<u64>,
     ) -> Result<Candidate, DispatchError> {
-        self.selects.lock().unwrap().push(exclude.to_vec());
+        self.selects.lock().push(exclude.to_vec());
         self.candidates
             .iter()
             .find(|c| !exclude.contains(&c.unit.meta.key))
@@ -293,10 +289,7 @@ impl Dispatch for MockDispatch {
     }
 
     fn report(&self, unit_key: &str, report: AttemptReport) {
-        self.reports
-            .lock()
-            .unwrap()
-            .push((unit_key.to_string(), report));
+        self.reports.lock().push((unit_key.to_string(), report));
     }
 
     fn report_tps(&self, _unit_key: &str, _sample: TpsSample) {}
@@ -318,13 +311,13 @@ pub struct VecSink(Mutex<Vec<UsageEvent>>);
 
 impl SettleSink for VecSink {
     fn submit(&self, event: UsageEvent) {
-        self.0.lock().unwrap().push(event);
+        self.0.lock().push(event);
     }
 }
 
 #[allow(dead_code)] // same as above: the events accessor is not used by every binary
 impl VecSink {
     pub fn events(&self) -> Vec<UsageEvent> {
-        self.0.lock().unwrap().clone()
+        self.0.lock().clone()
     }
 }

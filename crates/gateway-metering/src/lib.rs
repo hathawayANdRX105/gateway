@@ -23,6 +23,7 @@
 //! on a crash — acceptable, because the `UsageEvent` (WAL) is the authoritative
 //! billing source; the balance of record is the center's converged `used_quota`.
 
+pub mod calibration;
 pub mod estimate;
 pub mod ledger;
 pub mod pricing;

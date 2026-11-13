@@ -17,6 +17,9 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono   = { workspace = true }
 bytes    = { workspace = true }
+# CalibrationLog's ring mutex: parking_lot guards return directly (no poison unwrap),
+# matching the rule applied to every immediately-unwrapped std lock.
+parking_lot = "0.12"
 
 [lints]
 workspace = true

@@ -93,6 +93,7 @@ fn sse_stream(
 impl Egress for ScriptedSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

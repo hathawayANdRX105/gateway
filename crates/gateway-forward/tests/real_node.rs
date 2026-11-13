@@ -115,6 +115,7 @@ async fn egress_over_real_socks5_node() {
 
     let resp = egress
         .execute(
+            "probe",
             &format!("http://{http_addr}/real"),
             &[],
             Bytes::new(),

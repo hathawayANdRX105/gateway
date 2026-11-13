@@ -78,7 +78,7 @@ async fn classify(status: u16, body: &'static [u8]) -> gateway_core::error::Norm
     let headers = [("content-type".to_string(), "application/json".to_string())];
     let request_body = Bytes::from_static(b"{\"model\":\"m\"}");
     egress
-        .execute(&url, &headers, request_body, &TIMEOUTS)
+        .execute("m", &url, &headers, request_body, &TIMEOUTS)
         .await
         .err()
         .unwrap_or_else(|| panic!("{status} is non-2xx, it must be classified as an error"))

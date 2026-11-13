@@ -39,12 +39,13 @@ http-body-util = "0.1"
 tokio-rustls = "0.26"
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
 webpki-roots = "0.26"
+# parking_lot stays a crates.io dep (not in the workspace table); used by the
+# egress alias-shard map (guards return directly, no poison unwrap).
+parking_lot = "0.12"
 
 [dev-dependencies]
 tokio = { workspace = true }
 futures-util = { workspace = true }
-# parking_lot stays a crates.io dep (not in the workspace table)
-parking_lot = "0.12"
 http = { workspace = true }
 uuid = { workspace = true }
 

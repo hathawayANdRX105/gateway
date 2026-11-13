@@ -32,6 +32,7 @@ struct UnreachableEgress;
 impl Egress for UnreachableEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: bytes::Bytes,

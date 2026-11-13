@@ -259,6 +259,7 @@ fn incoming_to_stream(body: Incoming) -> ByteStream {
 impl crate::egress::Egress for AdapterEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         url: &'a str,
         headers: &'a [(String, String)],
         body: Bytes,
