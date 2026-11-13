@@ -49,7 +49,10 @@ fn unknown_keys_land_in_extra_and_round_trip() {
         "nested": { "a": [1, 2] },
     }))
     .unwrap();
-    assert_eq!(settings.extra.get("custom_header"), Some(&serde_json::json!("whatever")));
+    assert_eq!(
+        settings.extra.get("custom_header"),
+        Some(&serde_json::json!("whatever"))
+    );
     assert_eq!(
         settings.extra.get("nested"),
         Some(&serde_json::json!({ "a": [1, 2] }))
@@ -57,8 +60,14 @@ fn unknown_keys_land_in_extra_and_round_trip() {
     assert!(!settings.extra.contains_key("priority"));
 
     let reserialized = serde_json::to_value(&settings).unwrap();
-    assert_eq!(reserialized.get("custom_header"), Some(&serde_json::json!("whatever")));
-    assert_eq!(reserialized.get("nested"), Some(&serde_json::json!({ "a": [1, 2] })));
+    assert_eq!(
+        reserialized.get("custom_header"),
+        Some(&serde_json::json!("whatever"))
+    );
+    assert_eq!(
+        reserialized.get("nested"),
+        Some(&serde_json::json!({ "a": [1, 2] }))
+    );
     assert_eq!(reserialized.get("priority"), Some(&serde_json::json!(1)));
 }
 
@@ -83,9 +92,10 @@ fn validate_refuses_negative_priority() {
 /// the bound validation passes.
 #[test]
 fn validate_refuses_context_window_above_max() {
-    let too_big =
-        ChannelSettings::from_value(serde_json::json!({ "context_window": MAX_CONTEXT_WINDOW + 1 }))
-            .unwrap();
+    let too_big = ChannelSettings::from_value(
+        serde_json::json!({ "context_window": MAX_CONTEXT_WINDOW + 1 }),
+    )
+    .unwrap();
     let err = too_big.validate().unwrap_err();
     assert!(
         err.contains("context_window"),
@@ -100,8 +110,9 @@ fn validate_refuses_context_window_above_max() {
         "error must report the bound: {err}"
     );
 
-    let at_bound = ChannelSettings::from_value(serde_json::json!({ "context_window": MAX_CONTEXT_WINDOW }))
-        .unwrap();
+    let at_bound =
+        ChannelSettings::from_value(serde_json::json!({ "context_window": MAX_CONTEXT_WINDOW }))
+            .unwrap();
     at_bound
         .validate()
         .expect("context_window == MAX_CONTEXT_WINDOW must load");
@@ -113,8 +124,7 @@ fn validate_refuses_context_window_above_max() {
 /// Accepts: `from_value` returns an error naming `priority`.
 #[test]
 fn from_value_rejects_wrongly_typed_known_keys() {
-    let err = ChannelSettings::from_value(serde_json::json!({ "priority": "high" }))
-        .unwrap_err();
+    let err = ChannelSettings::from_value(serde_json::json!({ "priority": "high" })).unwrap_err();
     assert!(err.contains("priority"), "error must name the key: {err}");
 }
 

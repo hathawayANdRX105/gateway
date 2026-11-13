@@ -17,8 +17,8 @@ use anyhow::{Context, ensure};
 use chrono::Utc;
 use gateway_facade::{
     ChannelKey, ChannelRecord, ChannelSettings, GroupEntry, GroupSnapshot, ModelPrice, PriceRow,
-    PriceTable, PricingSnapshot, QuotaSnapshot, RouteUnitRecord, STATUS_ENABLED, Snapshot, SyncMeta,
-    TokenEntry, TokenRecord, TokenSnapshot, UserRecord, UserSnapshot, sha256,
+    PriceTable, PricingSnapshot, QuotaSnapshot, RouteUnitRecord, STATUS_ENABLED, Snapshot,
+    SyncMeta, TokenEntry, TokenRecord, TokenSnapshot, UserRecord, UserSnapshot, sha256,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -365,16 +365,10 @@ fn build_dispatch(channels: &[ChannelSpec]) -> anyhow::Result<(Snapshot, usize)>
                 settings: {
                     let raw = channel.settings.clone().unwrap_or(serde_json::json!({}));
                     let parsed = ChannelSettings::from_value(raw).map_err(|e| {
-                        anyhow::anyhow!(
-                            "channel {}: invalid settings: {e}",
-                            channel.key
-                        )
+                        anyhow::anyhow!("channel {}: invalid settings: {e}", channel.key)
                     })?;
                     parsed.validate().map_err(|e| {
-                        anyhow::anyhow!(
-                            "channel {}: invalid settings: {e}",
-                            channel.key
-                        )
+                        anyhow::anyhow!("channel {}: invalid settings: {e}", channel.key)
                     })?;
                     if let Some(index) = parsed.fallback_key_index {
                         ensure!(

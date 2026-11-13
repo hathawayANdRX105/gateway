@@ -8,11 +8,11 @@
 
 use std::net::IpAddr;
 
+use crate::stage::StageError;
+use bytes::Bytes;
 use gateway_core::metering::Hold;
 use gateway_core::protocol::{ProtocolKind, RequestPath};
 use gateway_core::records::ChannelSettings;
-use crate::stage::StageError;
-use bytes::Bytes;
 use http::{Extensions, HeaderMap};
 use uuid::Uuid;
 

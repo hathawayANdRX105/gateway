@@ -15,7 +15,9 @@
 //!   selection can only land on strictly larger windows.
 
 use gateway_core::dispatch::SelectorKind;
-use gateway_core::records::{ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::Dispatch;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -112,7 +114,13 @@ fn priority_tiers_prefer_the_higher_tier() {
     // ch-hi: priority 10, weight 1；ch-lo: priority 0, weight 100 —— 权重不能跨层。
     let units = vec![unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 100)];
     let channels = vec![
-        channel("ch-hi", ChannelSettings { priority: 10, ..Default::default() }),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
         channel("ch-lo", ChannelSettings::default()),
     ];
     for kind in [SelectorKind::P2c, SelectorKind::WeightedRandom] {
@@ -139,7 +147,13 @@ fn priority_tiers_prefer_the_higher_tier() {
 fn tier_descends_when_the_higher_tier_is_excluded() {
     let units = vec![unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
     let channels = [
-        channel("ch-hi", ChannelSettings { priority: 10, ..Default::default() }),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
         channel("ch-lo", ChannelSettings::default()),
     ];
     let d = dispatcher(units, &channels, SelectorKind::WeightedRandom);
@@ -160,7 +174,13 @@ fn tier_descends_when_the_higher_tier_cools_down() {
     let units = [unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
     let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000_000));
     let channels = [
-        channel("ch-hi", ChannelSettings { priority: 10, ..Default::default() }),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
         channel("ch-lo", ChannelSettings::default()),
     ];
     let clock = {
@@ -216,8 +236,20 @@ fn context_fit_drops_channels_that_cannot_hold_the_request() {
     // ch-tiny: 窗口 1000；ch-big: 窗口 100_000。请求需要 50_000。
     let units = vec![unit("g", "m", "ch-tiny", 100), unit("g", "m", "ch-big", 1)];
     let channels = vec![
-        channel("ch-tiny", ChannelSettings { context_window: 1000, ..Default::default() }),
-        channel("ch-big", ChannelSettings { context_window: 100_000, ..Default::default() }),
+        channel(
+            "ch-tiny",
+            ChannelSettings {
+                context_window: 1000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-big",
+            ChannelSettings {
+                context_window: 100_000,
+                ..Default::default()
+            },
+        ),
     ];
     let required = Some(50_000_u64);
     for kind in [SelectorKind::P2c, SelectorKind::WeightedRandom] {
@@ -254,7 +286,13 @@ fn channels_without_a_window_stay_neutral() {
 fn rate_limit_refusals_expose_the_lower_tier() {
     let units = [unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
     let channels = [
-        channel("ch-hi", ChannelSettings { priority: 10, ..Default::default() }),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
         channel("ch-lo", ChannelSettings::default()),
     ];
     let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000_000));
@@ -335,9 +373,27 @@ fn raising_the_floor_escalates_to_strictly_larger_windows() {
         unit("g", "m", "ch-100k", 1),
     ];
     let channels = vec![
-        channel("ch-1k", ChannelSettings { context_window: 1_000, ..Default::default() }),
-        channel("ch-10k", ChannelSettings { context_window: 10_000, ..Default::default() }),
-        channel("ch-100k", ChannelSettings { context_window: 100_000, ..Default::default() }),
+        channel(
+            "ch-1k",
+            ChannelSettings {
+                context_window: 1_000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-10k",
+            ChannelSettings {
+                context_window: 10_000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-100k",
+            ChannelSettings {
+                context_window: 100_000,
+                ..Default::default()
+            },
+        ),
     ];
     // 预过滤：需要 5k → 1k 被丢，10k 与 100k 按 priority（默认 0，同层）竞争。
     let d = dispatcher(units, &channels, SelectorKind::WeightedRandom);

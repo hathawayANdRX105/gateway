@@ -38,7 +38,9 @@ mod common;
 use bytes::Bytes;
 use futures_util::Stream;
 use futures_util::StreamExt;
-use gateway_core::records::{ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::health::{HealthTable, MemoryHealthTable, TpsSample};
 use gateway_dispatch::{
     AttemptReport, Candidate, Dispatch, DispatchError, Dispatcher, RetryPolicy, Snapshot,

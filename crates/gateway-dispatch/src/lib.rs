@@ -626,7 +626,9 @@ fn register_token_budgets(token: &TokenBudgetState, snapshot: &Snapshot) {
 /// - `context_window` (u64, default 0): request-fit ceiling in tokens; `0` /
 ///   missing = unlimited (neutral, always fits).
 fn channel_caps(channel: Option<&ChannelRecord>) -> (i64, u64) {
-    channel.map_or((0, 0), |c| (i64::from(c.settings.priority), c.settings.context_window))
+    channel.map_or((0, 0), |c| {
+        (i64::from(c.settings.priority), c.settings.context_window)
+    })
 }
 
 fn model_unknown(group: &str, model: &str) -> DispatchError {

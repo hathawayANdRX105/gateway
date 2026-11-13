@@ -223,7 +223,8 @@ fn egress_and_core_tables_agree_on_flags_and_documented_code_divergence() {
                 "egress generic 4xx must stay UPSTREAM_ERROR (fatal request error) at {status}"
             );
             assert_eq!(
-                core.code, code::INVALID_API_KEY,
+                core.code,
+                code::INVALID_API_KEY,
                 "core generic 4xx must stay INVALID_API_KEY at {status}"
             );
         } else {

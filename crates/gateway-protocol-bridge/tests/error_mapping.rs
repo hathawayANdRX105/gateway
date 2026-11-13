@@ -45,18 +45,26 @@ fn each_protocol_has_its_own_error_shape() {
     );
     // Settled shape (issue #17): `error.{code, message, type}` — exactly these three keys,
     // OpenAI-compatible; no extra fields, no renamed fields.
-    let chat_error = chat["error"].as_object().expect("chat error body is a JSON object");
+    let chat_error = chat["error"]
+        .as_object()
+        .expect("chat error body is a JSON object");
     assert_eq!(
         chat_error.len(),
         3,
         "settled shape has exactly three fields, actual: {chat}"
     );
-    assert!(chat_error.contains_key("code"), "settled shape keeps error.code, actual: {chat}");
+    assert!(
+        chat_error.contains_key("code"),
+        "settled shape keeps error.code, actual: {chat}"
+    );
     assert!(
         chat_error.contains_key("message"),
         "settled shape keeps error.message, actual: {chat}"
     );
-    assert!(chat_error.contains_key("type"), "settled shape keeps error.type, actual: {chat}");
+    assert!(
+        chat_error.contains_key("type"),
+        "settled shape keeps error.type, actual: {chat}"
+    );
 
     // Responses: also error.{code,message,type}, but code is absent on the SDK side (null).
     let resp = to_responses_shape(&sample());
@@ -68,18 +76,26 @@ fn each_protocol_has_its_own_error_shape() {
     );
     // Settled shape (issue #17): `error.{code, message, type}` — exactly these three keys
     // (code is intentionally null on the Responses SDK side).
-    let resp_error = resp["error"].as_object().expect("responses error body is a JSON object");
+    let resp_error = resp["error"]
+        .as_object()
+        .expect("responses error body is a JSON object");
     assert_eq!(
         resp_error.len(),
         3,
         "settled shape has exactly three fields, actual: {resp}"
     );
-    assert!(resp_error.contains_key("code"), "settled shape keeps error.code, actual: {resp}");
+    assert!(
+        resp_error.contains_key("code"),
+        "settled shape keeps error.code, actual: {resp}"
+    );
     assert!(
         resp_error.contains_key("message"),
         "settled shape keeps error.message, actual: {resp}"
     );
-    assert!(resp_error.contains_key("type"), "settled shape keeps error.type, actual: {resp}");
+    assert!(
+        resp_error.contains_key("type"),
+        "settled shape keeps error.type, actual: {resp}"
+    );
 
     // Anthropic: top-level type=error; the inner object has only type+message (no code).
     let anth = to_anthropic_shape(&sample());

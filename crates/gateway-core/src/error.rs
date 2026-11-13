@@ -50,24 +50,24 @@ pub struct GatewayErrorDetail {
 }
 
 impl GatewayErrorBody {
-/// Builds the gateway `/v1` error body from a [`NormalizedError`].
-///
-/// Settled shape (issue #17): `{"error": {"code", "message", "type"}}` — OpenAI-compatible,
-/// so mainstream SDKs parse failures with their stock error handlers. `code` is one of the
-/// [`crate::error::code`] constants, `message` is the masked human-readable message, and
-/// `type` is the OpenAI-compatible error category derived from the HTTP status
-/// (`authentication_error` / `insufficient_quota` / `permission_error` / `not_found` /
-/// `rate_limit_error` / `api_error` / `invalid_request_error`).
-///
-/// Rationale: the three consumers of this contract (gateway error bodies, console envelopes,
-/// frontend i18n) all read `code`/`message`; `type` exists only for SDK wire compatibility
-/// and carries no dispatch semantics — the dispatch state machine classifies via
-/// [`NormalizedError::retryable`] and [`NormalizedError::channel_scoped`], never via `type`.
-///
-/// Boundary: this settles the body shape, not an external multi-SDK matrix. Verifying each
-/// vendor SDK against this shape is out of scope for #17 (tracked under ferrite-#214); if a
-/// vendor SDK needs different field names, add a protocol-specific shape in
-/// gateway-protocol-bridge instead of reshaping this contract.
+    /// Builds the gateway `/v1` error body from a [`NormalizedError`].
+    ///
+    /// Settled shape (issue #17): `{"error": {"code", "message", "type"}}` — OpenAI-compatible,
+    /// so mainstream SDKs parse failures with their stock error handlers. `code` is one of the
+    /// [`crate::error::code`] constants, `message` is the masked human-readable message, and
+    /// `type` is the OpenAI-compatible error category derived from the HTTP status
+    /// (`authentication_error` / `insufficient_quota` / `permission_error` / `not_found` /
+    /// `rate_limit_error` / `api_error` / `invalid_request_error`).
+    ///
+    /// Rationale: the three consumers of this contract (gateway error bodies, console envelopes,
+    /// frontend i18n) all read `code`/`message`; `type` exists only for SDK wire compatibility
+    /// and carries no dispatch semantics — the dispatch state machine classifies via
+    /// [`NormalizedError::retryable`] and [`NormalizedError::channel_scoped`], never via `type`.
+    ///
+    /// Boundary: this settles the body shape, not an external multi-SDK matrix. Verifying each
+    /// vendor SDK against this shape is out of scope for #17 (tracked under ferrite-#214); if a
+    /// vendor SDK needs different field names, add a protocol-specific shape in
+    /// gateway-protocol-bridge instead of reshaping this contract.
     #[must_use]
     pub fn from_normalized(err: &NormalizedError) -> Self {
         Self {

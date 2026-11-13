@@ -265,11 +265,17 @@ fn live_eof_without_evidence_flushes_buffered_bytes() {
                 flushed, buffered,
                 "Broken should report the number of flushed bytes"
             );
-            assert!(!budget_exhausted, "switches remaining must not signal exhaustion");
+            assert!(
+                !budget_exhausted,
+                "switches remaining must not signal exhaustion"
+            );
         }
         other => panic!("Live EOF without evidence should be Broken, got {other:?}"),
     }
-    assert!(buf.is_empty(), "buffered bytes should be flushed, not discarded");
+    assert!(
+        buf.is_empty(),
+        "buffered bytes should be flushed, not discarded"
+    );
 }
 
 /// Live EOF without completion evidence, switch cap exhausted: `Broken` signals exhaustion
@@ -282,8 +288,13 @@ fn live_eof_switch_budget_exhausted_signals_exhaustion() {
     for remaining in [3u32, 2, 1] {
         let mut buf = Vec::from(&b"data: part"[..]);
         match pipe_resilient(&mut c, &mut buf, None, StreamPhase::Live, remaining) {
-            ResilientChunk::Broken { budget_exhausted, .. } => {
-                assert!(!budget_exhausted, "remaining switches must not signal exhaustion");
+            ResilientChunk::Broken {
+                budget_exhausted, ..
+            } => {
+                assert!(
+                    !budget_exhausted,
+                    "remaining switches must not signal exhaustion"
+                );
             }
             other => panic!("expected Broken, got {other:?}"),
         }
@@ -294,8 +305,14 @@ fn live_eof_switch_budget_exhausted_signals_exhaustion() {
             flushed,
             budget_exhausted,
         } => {
-            assert_eq!(flushed, 10, "an exhausted break still flushes buffered bytes");
-            assert!(budget_exhausted, "exhausted switch budget must signal exhaustion");
+            assert_eq!(
+                flushed, 10,
+                "an exhausted break still flushes buffered bytes"
+            );
+            assert!(
+                budget_exhausted,
+                "exhausted switch budget must signal exhaustion"
+            );
         }
         other => panic!("exhausted switch budget must signal budget_exhausted, got {other:?}"),
     }
@@ -336,7 +353,11 @@ fn live_buffer_flushes_at_threshold_watermark() {
         ResilientChunk::Buffered => {}
         other => panic!("below-watermark Live buffer should hold, got {other:?}"),
     }
-    assert_eq!(buf.len(), 1003, "carried-over bytes plus the chunk stay buffered");
+    assert_eq!(
+        buf.len(),
+        1003,
+        "carried-over bytes plus the chunk stay buffered"
+    );
     // At the watermark: the whole buffer flushes as one `Emit`.
     let mut buf = vec![0u8; 32_768 - 3];
     match pipe_resilient(
@@ -347,7 +368,11 @@ fn live_buffer_flushes_at_threshold_watermark() {
         StreamResilience::default().max_retries,
     ) {
         ResilientChunk::Emit(bytes) => {
-            assert_eq!(bytes.len(), 32_768, "threshold crossing flushes the whole buffer");
+            assert_eq!(
+                bytes.len(),
+                32_768,
+                "threshold crossing flushes the whole buffer"
+            );
             assert!(buf.is_empty(), "flush takes the buffer");
         }
         other => panic!("threshold crossing should flush, got {other:?}"),

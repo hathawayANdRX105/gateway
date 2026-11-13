@@ -11,8 +11,8 @@
 //! candidate / Neutral report) is covered by `channel_downgrade.rs`; the end-to-end
 //! dual-channel demotion is covered by `bin/api/tests/route_resolution.rs` P0-2.
 
-use gateway_dispatch::{FailureScope, classify_channel_scope};
 use gateway_dispatch::retry::{ModelRetryPolicies, RetryPolicy};
+use gateway_dispatch::{FailureScope, classify_channel_scope};
 use std::collections::HashMap;
 
 #[test]

@@ -3,13 +3,13 @@
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use gateway_core::records::ChannelSettings;
 use gateway_pipeline::{
     PipeStream, Pipeline, RequestCtx, RequestMeta, Stage, StageError, StageOutcome,
 };
 use std::net::IpAddr;
 use std::sync::Arc;
 use uuid::Uuid;
-use gateway_core::records::ChannelSettings;
 
 /// Build a minimal `RequestMeta` (empty body)
 fn meta(path: &str) -> RequestMeta {

@@ -163,10 +163,7 @@ fn sse_scanner_below_waterline_is_byte_identical() {
     let input = b": keepalive\ndata: {\"role\":\"assistant\"}\n\ndata: [DONE]\n\n";
     let (pass, events) = s.push(&Bytes::from_static(input));
     assert_eq!(pass, Bytes::from_static(input));
-    assert_eq!(
-        events,
-        vec![SseEvent::Ping, SseEvent::FirstToken]
-    );
+    assert_eq!(events, vec![SseEvent::Ping, SseEvent::FirstToken]);
     assert_eq!(s.take_data_frames(), vec![r#"{"role":"assistant"}"#]);
     assert_eq!(s.finish(), SseEnd::Clean);
 }

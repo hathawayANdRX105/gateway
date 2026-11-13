@@ -8,7 +8,9 @@
 //! (injection through the Egress trait).
 
 use bytes::Bytes;
-use gateway_core::records::{ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::stage::DispatchStage;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::stage::ForwardStage;

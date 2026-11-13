@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use bytes::Bytes;
+use gateway_core::records::ChannelSettings;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::stage::ForwardStage;
 use gateway_pipeline::{
@@ -22,7 +23,6 @@ use gateway_pipeline::{
 use gateway_proxy::manager::ProxyManager;
 use gateway_proxy::node::ProxyScheme;
 use gateway_proxy::pool::{ProxyNode, ProxySnapshot};
-use gateway_core::records::ChannelSettings;
 const STREAM: StreamedAccum = StreamedAccum {
     prompt_tokens: 0,
     completion_tokens: 0,

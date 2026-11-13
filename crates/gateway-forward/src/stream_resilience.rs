@@ -119,7 +119,10 @@ pub enum ResilientChunk {
     /// `budget_exhausted` = whether the Live-phase candidate-switch cap
     /// (`StreamResilience.max_retries`, mirroring `RetryPolicy.max_attempts`) has been
     /// consumed — when true, the caller stops switching candidates and surfaces the error.
-    Broken { flushed: usize, budget_exhausted: bool },
+    Broken {
+        flushed: usize,
+        budget_exhausted: bool,
+    },
 }
 
 /// Completeness criterion — the only basis for deciding "is it safe to send" on EOF inside the
