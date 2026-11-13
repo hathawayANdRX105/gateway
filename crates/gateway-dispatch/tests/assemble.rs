@@ -8,7 +8,9 @@
 //! (injection through the Egress trait).
 
 use bytes::Bytes;
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::stage::DispatchStage;
 use gateway_forward::egress::{Egress, ForwardedResponse, Timeouts};
 use gateway_forward::stage::ForwardStage;
@@ -123,7 +125,7 @@ fn mk_snapshot() -> Arc<gateway_dispatch::Snapshot> {
         max_concurrency: 10,
         status: 1,
         groups: vec!["default".into()],
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     };
     let mut channels = std::collections::HashMap::new();
     channels.insert("ch1".into(), channel);

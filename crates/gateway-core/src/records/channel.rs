@@ -1,10 +1,96 @@
-//! Channel records — upstream provider access points.
-//!
-//! References: new-api `internal/catalog/store_channel.go` (multi-key/settings),
-//! sub2api ent/schema/account.go (dispatch metadata), domain one of 07-database-schema.md.
-
 use super::SyncMeta;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+
+/// Upper bound on `ChannelSettings.context_window` (tokens). A channel whose window
+/// exceeds it is refused at catalog load — it is never silently clamped.
+pub const MAX_CONTEXT_WINDOW: u64 = 10_000_000;
+
+/// Channel-level overrides, promoted from the raw settings bag to typed fields.
+///
+/// Known keys deserialize into typed fields with documented defaults; every other
+/// key lands in `extra` and round-trips verbatim, so old settings JSON with
+/// arbitrary keys still deserializes and re-serializes unchanged
+/// (the `gateway_protocol_bridge::ir` `extra`/`flatten` escape-hatch precedent).
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct ChannelSettings {
+    #[serde(default)]
+    pub priority: i32,
+    #[serde(default)]
+    pub context_window: u64,
+    #[serde(default)]
+    pub fallback: bool,
+    #[serde(default)]
+    pub tpm_limit: u32,
+    /// Header overrides: header name → raw JSON value; non-string values are skipped
+    /// by the consumer (`extra_headers_from_settings`), matching the old bag-read
+    /// leniency; absent means no overrides.
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub headers: Map<String, Value>,
+    /// Index of the key a multi-key fallback channel uses; `None` = not yet
+    /// settings-driven (kept for the #11(a) consumer, no behavior change yet).
+    #[serde(default)]
+    pub fallback_key_index: Option<u32>,
+    /// Unknown settings keys preserved verbatim for lossless round-trip.
+    #[serde(default, flatten, skip_serializing_if = "Map::is_empty")]
+    pub extra: Map<String, Value>,
+}
+
+impl ChannelSettings {
+    /// Parse a raw settings bag into typed settings. Wrongly typed known keys are
+    /// rejected with the offending key named; unknown keys are preserved in `extra`.
+    ///
+    /// # Errors
+    /// Returns the offending key and serde's reason when the value is not a JSON
+    /// object or a known key holds a wrongly typed value.
+    pub fn from_value(value: Value) -> Result<Self, String> {
+        let mut bag = serde_json::from_value::<Map<String, Value>>(value)
+            .map_err(|e| format!("invalid channel settings: {e}"))?;
+        Ok(Self {
+            priority: take_field(&mut bag, "priority")?,
+            context_window: take_field(&mut bag, "context_window")?,
+            fallback: take_field(&mut bag, "fallback")?,
+            tpm_limit: take_field(&mut bag, "tpm_limit")?,
+            headers: take_field(&mut bag, "headers")?,
+            fallback_key_index: take_field(&mut bag, "fallback_key_index")?,
+            extra: bag,
+        })
+    }
+
+    /// Load-time invariants: `priority` non-negative, `context_window` within the
+    /// documented bound. Rejects the record instead of silently clamping.
+    ///
+    /// # Errors
+    /// Returns the key, the rejected value, and the bound when an invariant is violated.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.priority < 0 {
+            return Err(format!(
+                "priority must be non-negative (got {})",
+                self.priority
+            ));
+        }
+        if self.context_window > MAX_CONTEXT_WINDOW {
+            return Err(format!(
+                "context_window {} exceeds the maximum of {} tokens",
+                self.context_window, MAX_CONTEXT_WINDOW
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Deserialize one known settings key, falling back to `T::default()` when absent.
+/// The key is named in the error so catalog-load messages point at the offender.
+fn take_field<T: DeserializeOwned + Default>(
+    bag: &mut Map<String, Value>,
+    key: &str,
+) -> Result<T, String> {
+    match bag.remove(key) {
+        Some(v) => serde_json::from_value(v).map_err(|e| format!("field `{key}`: {e}")),
+        None => Ok(T::default()),
+    }
+}
 
 /// Upstream channel: an external provider access point that dispatch can select.
 ///
@@ -30,9 +116,12 @@ pub struct ChannelRecord {
     pub status: u8,
     /// Groups under which this channel is visible/usable; corresponds to `GroupRecord::id`.
     pub groups: Vec<String>,
-    /// Channel-level overrides: timeout/header overrides/parameter overrides/system prompt.
-    /// The structure is deferred (TODO(ferrite-#206, re-anchored: #15)); for now this keeps JSONB semantics.
-    pub settings: serde_json::Value,
+    /// Channel-level overrides: priority / context window / tpm limit / fallback flag /
+    /// header overrides, typed ([`ChannelSettings`]). Missing settings deserialize to
+    /// the defaults; unknown keys are preserved in `settings.extra` so old JSON with
+    /// arbitrary keys round-trips losslessly.
+    #[serde(default)]
+    pub settings: ChannelSettings,
 }
 
 /// One upstream credential. Encryption is the store layer's responsibility; the contract

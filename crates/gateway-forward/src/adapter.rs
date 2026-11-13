@@ -5,9 +5,9 @@
 //! Protocol body conversion lives in the protocol crate; this module only does
 //! **addressing and authentication**.
 
+use gateway_core::ChannelSettings;
 use gateway_dispatch::Candidate;
 use gateway_pipeline::ProtocolKind;
-
 /// Preparation output — the direct input to `egress::execute`.
 #[derive(Debug, Clone)]
 pub struct PreparedRequest {
@@ -119,19 +119,16 @@ fn build_url(
     }
 }
 
-/// Parse override headers from ChannelRecord.settings.headers (a JSON object).
-///
-/// Invalid structure → empty list. Header names are lowercased to match the
-/// case-insensitive comparison in the later sanitize step.
+/// Parse override headers from `ChannelRecord.settings.headers` (typed as a name →
+/// JSON value map). A non-object `headers` is rejected at catalog load; non-string
+/// values are preserved in the map and skipped here, matching the old lenient
+/// bag-read — so an absent/empty map simply means no overrides.
 #[must_use]
-pub fn extra_headers_from_settings(settings: &serde_json::Value) -> Vec<(String, String)> {
-    let Some(obj) = settings.get("headers").and_then(|v| v.as_object()) else {
-        return Vec::new();
-    };
-    let mut out = Vec::with_capacity(obj.len());
-    for (k, v) in obj {
-        let Some(s) = v.as_str() else { continue };
-        out.push((k.to_ascii_lowercase(), s.to_string()));
+pub fn extra_headers_from_settings(settings: &ChannelSettings) -> Vec<(String, String)> {
+    let mut out = Vec::with_capacity(settings.headers.len());
+    for (name, value) in &settings.headers {
+        let Some(s) = value.as_str() else { continue };
+        out.push((name.to_ascii_lowercase(), s.to_string()));
     }
     out
 }

@@ -1,5 +1,7 @@
 //! P2 streaming resilience — buffering window / heartbeat / break classification (the Window
-//! phase is wired, PR #158).
+//! phase is wired, PR #158; the Live phase below is implemented and test-anchored but NOT yet
+//! wired to a production drive loop — no production caller seeds `switches_remaining` or
+//! consumes `ResilientChunk::Broken` yet; wiring the Live drive loop is the next batch).
 //!
 //! Modelled on api-hub `_smart_stream` (:618-723) / `_drain_buffered` (:556-615), and adopts
 //! Bifrost's TTFT monitoring discipline: **once bytes have been sent to the client (Live
@@ -21,9 +23,16 @@
 //!   inside the window the whole response is discarded for another candidate; with a
 //!   criterion the buffer is drained, and when the window expires (upstream still sending)
 //!   [`BufferedStream`] turns the buffer plus the remaining stream into a Live passthrough
-//!   (`StreamPhase::Live`).
-//! - Live-phase heartbeat / threshold flushing / error-frame finish are not implemented this
-//!   round (TODO(ferrite-#158, re-anchored: #11)): the Live arm of [`pipe_resilient`] keeps passthrough semantics.
+//!   (`StreamPhase::Live`);
+//! - Live phase (in [`pipe_resilient`]): chunks pass straight through
+//!   ([`ResilientChunk::Emit`]); carried-over buffered bytes are flushed once they reach the
+//!   [`LIVE_FLUSH_THRESHOLD`] watermark; EOF with completion evidence finishes normally
+//!   (`Emit` empty), EOF without it flushes the buffered bytes and returns
+//!   [`ResilientChunk::Broken`] with the flushed count plus a switch-budget-exhausted flag
+//!   (`cfg.max_retries`, mirroring `RetryPolicy::max_attempts`);
+//! - Live-phase heartbeat (`cfg.heartbeat_ms`) is time-driven: [`pipe_resilient`] holds no
+//!   clock, so keepalive expiry on upstream silence is decided on the caller side (the
+//!   Live-phase counterpart of [`drain_stream_window`]); `pipe_resilient` itself stays pure.
 //!
 //! ferrite's [`stream::SseContext`](crate::stream::SseContext) scan chain (token counting
 //! already in the pipeline) is cleaner than api-hub's byte-level hack; this module only does
@@ -50,16 +59,22 @@ pub struct StreamResilience {
     /// chunks are only buffered, never sent; a broken stream can be retried on the whole
     /// response against another candidate.
     pub window_ms: u64,
-    /// Live-phase upstream silence threshold (ms): beyond it, send a `: keepalive\n\n` SSE
-    /// comment frame to the client to keep the connection alive.
-    /// TODO(ferrite-#158, re-anchored: #11): the Live phase is not implemented this round; currently unconsumed.
-    pub heartbeat_ms: u64,
-    /// Candidate-switch cap for retries when the window-phase stream breaks (guarding against
-    /// api-hub's brute-force max=100 default).
+    /// Live-phase upstream silence threshold (ms): beyond it, the caller sends a
+    /// `: keepalive\n\n` SSE comment frame to the client to keep the connection alive.
     ///
-    /// TODO(ferrite-#311, re-anchored: #21): the switch budget is managed centrally by
-    /// `gateway_dispatch::retry::RetryPolicy`; this field is not consumed yet (the retry loop's
-    /// `max_attempts` is already the authoritative source for the same responsibility).
+    /// Time-driven: [`pipe_resilient`] holds no clock, so the keepalive decision is made on
+    /// the caller side (like [`drain_stream_window`] drives the Window phase with real time);
+    /// this field is read by the Live-phase drive loop, not by `pipe_resilient` itself.
+    pub heartbeat_ms: u64,
+    /// Candidate-switch cap for Live-phase stream breaks (guarding against api-hub's
+    /// brute-force max=100 default).
+    ///
+    /// Mirrors `gateway_core::dispatch::RetryPolicy.max_attempts` (the authoritative
+    /// attempt budget, gateway-core/src/dispatch.rs:70-73): this field is the copy the
+    /// Live-phase drive loop reads to seed the `switches_remaining` counter of
+    /// [`pipe_resilient`]. Each Live-phase break consumes one switch; at zero,
+    /// [`ResilientChunk::Broken`] carries `budget_exhausted = true` so the caller stops
+    /// switching candidates.
     pub max_retries: u32,
 }
 
@@ -93,14 +108,21 @@ pub enum ResilientChunk {
     /// Net SSE bytes to send (flushed in the Live phase past the threshold, or drained when the
     /// Window phase turns Live).
     Emit(Bytes),
-    /// Keep accumulating in buf inside the window; not sent yet.
+    /// Keep accumulating in buf; not sent yet (Window phase, or Live-phase buffering below
+    /// the flush watermark).
     Buffered,
     /// Stream broke inside the window (EOF with no completeness criterion, zero bytes sent):
     /// the upper layer replaces the whole candidate and retries.
     WindowEofRetryable,
     /// Live-phase break: flush the buffered bytes to the client, then finish with an `event:
     /// error` frame. `flushed` = number of bytes flushed (for settlement and logs).
-    Broken { flushed: usize },
+    /// `budget_exhausted` = whether the Live-phase candidate-switch cap
+    /// (`StreamResilience.max_retries`, mirroring `RetryPolicy.max_attempts`) has been
+    /// consumed — when true, the caller stops switching candidates and surfaces the error.
+    Broken {
+        flushed: usize,
+        budget_exhausted: bool,
+    },
 }
 
 /// Completeness criterion — the only basis for deciding "is it safe to send" on EOF inside the
@@ -112,6 +134,17 @@ pub enum ResilientChunk {
 /// window means the stream still has trailing bytes, so nothing is emitted yet.
 const DONE_MARK: &[u8] = b"[DONE]";
 const FINISH_MARK: &[u8] = b"finish_reason";
+/// Live-phase buffer flush watermark (bytes): when Live-phase buffering applies
+/// (carried-over bytes between frames / during resumption), buffered bytes are flushed as
+/// one [`ResilientChunk::Emit`] once they reach this size. Pure size-based decision —
+/// [`pipe_resilient`] holds no clock; the heartbeat (`cfg.heartbeat_ms`) keepalive is
+/// time-driven and decided on the caller side.
+///
+/// Scope: this bounds carried-over bytes only. A single upstream chunk larger than the
+/// threshold is emitted whole via the empty-buffer fast path (pass-through stays
+/// byte-faithful and is never split); retention of one chunk is the transport's frame
+/// size, not this watermark's.
+const LIVE_FLUSH_THRESHOLD: usize = 32 * 1024; // 32KB
 
 /// Whether `buf` already contains the complete criterion (`[DONE]` or `finish_reason`).
 ///
@@ -133,13 +166,21 @@ pub fn has_completion_evidence(buf: &[u8]) -> bool {
 ///   check completeness — if the buffer contains either `[DONE]` or `finish_reason` (criterion
 ///   copied from `_drain_buffered`), drain the buffer and send it as a whole; otherwise return
 ///   [`ResilientChunk::WindowEofRetryable`];
-/// - **Live phase**: passthrough is kept this round — chunks go straight to
-///   [`ResilientChunk::Emit`]; on EOF with a criterion, return `Emit(empty)` (normal stream
-///   finish, no caller action needed), without one return [`ResilientChunk::Broken`]
-///   (classification only: flushing the buffer + the `event: error` frame is landed by the
-///   caller in the Live phase, TODO(ferrite-#158, re-anchored: #11)). Threshold flushing (32KB/150ms) and heartbeat
-///   (`cfg.heartbeat_ms`) in the Live phase are out of scope this round, so `cfg` is currently
-///   unconsumed.
+/// - **Live phase**: no destructive restart once bytes are flowing to the client — chunks go
+///   straight to [`ResilientChunk::Emit`]. When `buf` already carries bytes (Live-phase
+///   buffering between frames / during resumption), the chunk is appended and the buffer is
+///   flushed as one `Emit` once it reaches [`LIVE_FLUSH_THRESHOLD`] (32KB); below the
+///   watermark the bytes are held ([`ResilientChunk::Buffered`]). On EOF (`chunk = None`):
+///   with completion evidence in buf, return `Emit(empty)` (normal stream finish); without it
+///   the stream broke mid-response — flush what is buffered and return [`ResilientChunk::Broken`]
+///   with the flushed byte count. `switches_remaining` counts Live-phase breaks against the
+///   candidate-switch cap seeded from `StreamResilience.max_retries` (which mirrors
+///   `RetryPolicy.max_attempts`); at zero, `Broken` carries `budget_exhausted = true` so the
+///   caller stops switching candidates. The caller decrements the counter on each non-exhausted
+///   break; this function is stateless.
+/// - Heartbeat (`cfg.heartbeat_ms`): time-driven keepalive on upstream silence — decided on
+///   the caller side, since [`pipe_resilient`] holds no clock (like [`drain_stream_window`]
+///   which drives the Window phase with real time); this function stays pure.
 /// - `ctx` is the hook for Live-phase settlement; unused this round: the window buffer is
 ///   spliced back into the byte stream before entering the original scan chain, and token
 ///   counting is handled character by character by [`crate::stream::pipe_chunk`] as before —
@@ -153,12 +194,8 @@ pub fn pipe_resilient(
     buf: &mut Vec<u8>,
     chunk: Option<&Bytes>,
     phase: StreamPhase,
-    cfg: &StreamResilience,
+    switches_remaining: u32,
 ) -> ResilientChunk {
-    // Deliberately ignored: the Live-phase thresholds of `cfg` (heartbeat / buffer flush) are
-    // not implemented this round; the signature is kept so TODO(ferrite-#158, re-anchored: #11) can consume them without
-    // affecting this function's pure decision semantics.
-    let _ = cfg;
     match (phase, chunk) {
         // Inside the window: only accumulate, never send; the client sees zero bytes.
         (StreamPhase::Window, Some(chunk)) => {
@@ -174,16 +211,34 @@ pub fn pipe_resilient(
                 ResilientChunk::WindowEofRetryable
             }
         }
-        // Live phase passthrough this round: chunks are sent immediately.
-        (StreamPhase::Live, Some(chunk)) => ResilientChunk::Emit(chunk.clone()),
-        // Live-phase EOF: classify only; no buffer flush / error-frame finish (TODO(ferrite-#158, re-anchored: #11)).
+        // Live phase: bytes are already flowing to the client, so no destructive restart —
+        // passthrough the chunk unchanged. When `buf` already carries buffered bytes
+        // (Live-phase buffering between frames / during resumption), append and flush once
+        // the watermark is reached; below it, keep buffering.
+        (StreamPhase::Live, Some(chunk)) => {
+            if buf.is_empty() {
+                return ResilientChunk::Emit(chunk.clone());
+            }
+            buf.extend_from_slice(chunk);
+            if buf.len() >= LIVE_FLUSH_THRESHOLD {
+                return ResilientChunk::Emit(Bytes::from(std::mem::take(buf)));
+            }
+            ResilientChunk::Buffered
+        }
+        // Live-phase EOF: with completion evidence → normal finish; without it the stream
+        // broke mid-response — flush the buffered bytes, count the break against the switch
+        // cap, and surface exhaustion when the cap reaches zero.
         (StreamPhase::Live, None) => {
             if has_completion_evidence(buf) {
                 // Normal finish: no bytes left to flush (buf does not accumulate in passthrough
                 // mode); return an empty Emit as the signal.
                 ResilientChunk::Emit(Bytes::new())
             } else {
-                ResilientChunk::Broken { flushed: 0 }
+                let flushed = std::mem::take(buf).len();
+                ResilientChunk::Broken {
+                    flushed,
+                    budget_exhausted: switches_remaining == 0,
+                }
             }
         }
     }

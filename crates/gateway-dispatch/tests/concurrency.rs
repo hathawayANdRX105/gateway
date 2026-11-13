@@ -137,7 +137,9 @@ fn health_table_concurrent_streak_trips_breaker() {
 
 #[test]
 fn dispatcher_concurrent_select_returns_valid_candidate() {
-    use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+    use gateway_core::records::{
+        ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+    };
     use gateway_dispatch::Dispatch;
 
     fn unit(key: &str) -> RouteUnitRecord {
@@ -178,7 +180,7 @@ fn dispatcher_concurrent_select_returns_valid_candidate() {
                     max_concurrency: 10,
                     status: 1,
                     groups: vec!["g".to_string()],
-                    settings: serde_json::Value::Null,
+                    settings: ChannelSettings::default(),
                 },
             )
         })

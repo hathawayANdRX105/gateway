@@ -28,39 +28,47 @@ pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 
 /// Listener and process settings.
 ///
-/// `catalog` is required — a process with no catalog has no routes and no keys — and is
-/// resolved relative to the config file's directory. There is intentionally no
-/// `Default`: the per-field serde defaults below carry the documented values, and
-/// `catalog` has none.
+/// Defaults live in the `Default` impl below (serde reads it via container-level
+/// `#[serde(default)]`). `catalog` is still required in practice — an omitted path
+/// loads as empty and the catalog file open fails at startup.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct DaemonConfig {
     /// TCP listener, e.g. `127.0.0.1:8080`.
-    #[serde(default = "default_listen")]
     pub listen: String,
     /// Optional Unix-domain listener for co-located clients.
-    #[serde(default)]
     pub uds_path: Option<PathBuf>,
-    /// Catalog file: channels, groups, users, tokens, prices. Required: a process with
-    /// no catalog has no route and no key, so a missing path must fail at load.
+    /// Catalog file: channels, groups, users, tokens, prices. A process with no catalog
+    /// has no route and no key: an omitted path loads as empty and the catalog file open
+    /// fails at startup.
     pub catalog: PathBuf,
     /// Request body ceiling in bytes; larger requests get `413`.
-    #[serde(default = "default_max_request_bytes")]
     pub max_request_bytes: usize,
     /// Peers whose `x-forwarded-for` header is trusted. Empty = never trust the header
     /// (the socket peer address is used). Add the reverse proxy's address, not the
     /// client's.
-    #[serde(default)]
     pub trusted_proxies: Vec<IpAddr>,
     /// Actix worker count; `0` uses the actix default (available parallelism).
-    #[serde(default)]
     pub workers: usize,
     /// Graceful-shutdown drain budget in seconds.
-    #[serde(default = "default_shutdown_timeout_secs")]
     pub shutdown_timeout_secs: u64,
     /// Dispatch-stage configuration. Omitted = every default (P2C selection).
-    #[serde(default)]
     pub dispatch: DispatchSection,
+}
+
+impl Default for DaemonConfig {
+    fn default() -> Self {
+        Self {
+            listen: format!("{DEFAULT_LISTEN_HOST}:{DEFAULT_LISTEN_PORT}"),
+            uds_path: None,
+            catalog: PathBuf::new(),
+            max_request_bytes: DEFAULT_MAX_REQUEST_BYTES,
+            trusted_proxies: Vec::new(),
+            workers: 0,
+            shutdown_timeout_secs: DEFAULT_SHUTDOWN_TIMEOUT_SECS,
+            dispatch: DispatchSection::default(),
+        }
+    }
 }
 
 /// The `[dispatch]` config table: strategy knobs for the route-selection layer.
@@ -74,18 +82,6 @@ pub struct DispatchSection {
     /// strategy rebuilds the data plane.
     #[serde(default)]
     pub selector: gateway_facade::SelectorKind,
-}
-
-fn default_listen() -> String {
-    format!("{DEFAULT_LISTEN_HOST}:{DEFAULT_LISTEN_PORT}")
-}
-
-const fn default_max_request_bytes() -> usize {
-    DEFAULT_MAX_REQUEST_BYTES
-}
-
-const fn default_shutdown_timeout_secs() -> u64 {
-    DEFAULT_SHUTDOWN_TIMEOUT_SECS
 }
 
 impl DaemonConfig {

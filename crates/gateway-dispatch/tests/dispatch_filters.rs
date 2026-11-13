@@ -15,7 +15,9 @@
 //!   selection can only land on strictly larger windows.
 
 use gateway_core::dispatch::SelectorKind;
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::Dispatch;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -43,7 +45,7 @@ fn unit(group: &str, model: &str, key: &str, weight: u32) -> RouteUnitRecord {
     }
 }
 
-fn channel(key: &str, settings: serde_json::Value) -> ChannelRecord {
+fn channel(key: &str, settings: ChannelSettings) -> ChannelRecord {
     ChannelRecord {
         meta: meta(key),
         name: key.to_string(),
@@ -112,8 +114,14 @@ fn priority_tiers_prefer_the_higher_tier() {
     // ch-hi: priority 10, weight 1；ch-lo: priority 0, weight 100 —— 权重不能跨层。
     let units = vec![unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 100)];
     let channels = vec![
-        channel("ch-hi", serde_json::json!({ "priority": 10 })),
-        channel("ch-lo", serde_json::json!({ "priority": 0 })),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
+        channel("ch-lo", ChannelSettings::default()),
     ];
     for kind in [SelectorKind::P2c, SelectorKind::WeightedRandom] {
         let d = dispatcher(units.clone(), &channels, kind);
@@ -139,8 +147,14 @@ fn priority_tiers_prefer_the_higher_tier() {
 fn tier_descends_when_the_higher_tier_is_excluded() {
     let units = vec![unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
     let channels = [
-        channel("ch-hi", serde_json::json!({ "priority": 10 })),
-        channel("ch-lo", serde_json::json!({ "priority": 0 })),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
+        channel("ch-lo", ChannelSettings::default()),
     ];
     let d = dispatcher(units, &channels, SelectorKind::WeightedRandom);
     let exclude = vec!["ch-hi".to_string()];
@@ -158,11 +172,17 @@ fn tier_descends_when_the_higher_tier_is_excluded() {
 #[test]
 fn tier_descends_when_the_higher_tier_cools_down() {
     let units = [unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
-    let channels = [
-        channel("ch-hi", serde_json::json!({ "priority": 10 })),
-        channel("ch-lo", serde_json::json!({ "priority": 0 })),
-    ];
     let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000_000));
+    let channels = [
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
+        channel("ch-lo", ChannelSettings::default()),
+    ];
     let clock = {
         let now = Arc::clone(&now);
         move || now.load(std::sync::atomic::Ordering::Relaxed)
@@ -216,8 +236,20 @@ fn context_fit_drops_channels_that_cannot_hold_the_request() {
     // ch-tiny: 窗口 1000；ch-big: 窗口 100_000。请求需要 50_000。
     let units = vec![unit("g", "m", "ch-tiny", 100), unit("g", "m", "ch-big", 1)];
     let channels = vec![
-        channel("ch-tiny", serde_json::json!({ "context_window": 1000 })),
-        channel("ch-big", serde_json::json!({ "context_window": 100_000 })),
+        channel(
+            "ch-tiny",
+            ChannelSettings {
+                context_window: 1000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-big",
+            ChannelSettings {
+                context_window: 100_000,
+                ..Default::default()
+            },
+        ),
     ];
     let required = Some(50_000_u64);
     for kind in [SelectorKind::P2c, SelectorKind::WeightedRandom] {
@@ -242,7 +274,7 @@ fn context_fit_drops_channels_that_cannot_hold_the_request() {
 #[test]
 fn channels_without_a_window_stay_neutral() {
     let units = vec![unit("g", "m", "ch-unlimited", 1)];
-    let channels = vec![channel("ch-unlimited", serde_json::Value::Null)];
+    let channels = vec![channel("ch-unlimited", ChannelSettings::default())];
     let d = dispatcher(units, &channels, SelectorKind::WeightedRandom);
     let picked = d.select("g", "m", &[], None, Some(999_999)).unwrap();
     assert_eq!(picked.unit.channel_key, "ch-unlimited");
@@ -254,8 +286,14 @@ fn channels_without_a_window_stay_neutral() {
 fn rate_limit_refusals_expose_the_lower_tier() {
     let units = [unit("g", "m", "ch-hi", 1), unit("g", "m", "ch-lo", 1)];
     let channels = [
-        channel("ch-hi", serde_json::json!({ "priority": 10 })),
-        channel("ch-lo", serde_json::json!({ "priority": 0 })),
+        channel(
+            "ch-hi",
+            ChannelSettings {
+                priority: 10,
+                ..Default::default()
+            },
+        ),
+        channel("ch-lo", ChannelSettings::default()),
     ];
     let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000_000));
     let clock = {
@@ -335,9 +373,27 @@ fn raising_the_floor_escalates_to_strictly_larger_windows() {
         unit("g", "m", "ch-100k", 1),
     ];
     let channels = vec![
-        channel("ch-1k", serde_json::json!({ "context_window": 1_000 })),
-        channel("ch-10k", serde_json::json!({ "context_window": 10_000 })),
-        channel("ch-100k", serde_json::json!({ "context_window": 100_000 })),
+        channel(
+            "ch-1k",
+            ChannelSettings {
+                context_window: 1_000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-10k",
+            ChannelSettings {
+                context_window: 10_000,
+                ..Default::default()
+            },
+        ),
+        channel(
+            "ch-100k",
+            ChannelSettings {
+                context_window: 100_000,
+                ..Default::default()
+            },
+        ),
     ];
     // 预过滤：需要 5k → 1k 被丢，10k 与 100k 按 priority（默认 0，同层）竞争。
     let d = dispatcher(units, &channels, SelectorKind::WeightedRandom);

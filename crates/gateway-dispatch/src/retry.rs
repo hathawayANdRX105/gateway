@@ -542,11 +542,7 @@ fn settle_attempt(
         // through to the client as terminal.
         AttemptOutcome::WindowOverflow => {
             failover.mark_tried(candidate.unit.meta.key.clone());
-            let window = candidate
-                .settings
-                .get("context_window")
-                .and_then(serde_json::Value::as_u64)
-                .unwrap_or(0);
+            let window = candidate.settings.context_window;
             // Escalate past the overflowed window; a channel without a bound
             // (unlimited) has no direction to grow in — pass the error through.
             if window > 0 {

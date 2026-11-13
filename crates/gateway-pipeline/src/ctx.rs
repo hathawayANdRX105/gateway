@@ -8,11 +8,11 @@
 
 use std::net::IpAddr;
 
-use gateway_core::metering::Hold;
-use gateway_core::protocol::{ProtocolKind, RequestPath};
-
 use crate::stage::StageError;
 use bytes::Bytes;
+use gateway_core::metering::Hold;
+use gateway_core::protocol::{ProtocolKind, RequestPath};
+use gateway_core::records::ChannelSettings;
 use http::{Extensions, HeaderMap};
 use uuid::Uuid;
 
@@ -84,9 +84,9 @@ pub struct SelectedRoute {
     /// Channel protocol family (`ChannelRecord.provider_type`): "openai" / "claude" /
     /// "gemini" / "passthrough"; determines auth headers and the path template.
     pub provider_type: String,
-    /// Channel-level overrides (`ChannelRecord.settings`); the `headers` subset is consumed by
+    /// Channel-level overrides (`ChannelSettings`): the `headers` subset is consumed by
     /// forward, the rest is left for metering and auditing.
-    pub settings: serde_json::Value,
+    pub settings: ChannelSettings,
 }
 
 /// Channel attribution for this request (used when writing usage).

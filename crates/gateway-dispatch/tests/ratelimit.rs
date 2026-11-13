@@ -1,7 +1,9 @@
 //! Sliding-window rate-limit parsing and gating — parse boundaries / window sliding / per-key
 //! isolation / Dispatcher integration.
 
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::Dispatch;
 use gateway_dispatch::health::MemoryHealthTable;
 use gateway_dispatch::ratelimit::{RateLimitSpec, SlidingWindow};
@@ -222,7 +224,7 @@ fn channel(key: &str) -> ChannelRecord {
         max_concurrency: 10,
         status: 1,
         groups: vec!["default".to_string()],
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 

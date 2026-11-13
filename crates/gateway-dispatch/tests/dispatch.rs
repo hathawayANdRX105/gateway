@@ -1,6 +1,8 @@
 //! Behavioral tests for the dispatch health table / global P2C selection / failover budget.
 
-use gateway_core::records::{ChannelKey, ChannelRecord, RouteUnitRecord, SyncMeta};
+use gateway_core::records::{
+    ChannelKey, ChannelRecord, ChannelSettings, RouteUnitRecord, SyncMeta,
+};
 use gateway_dispatch::Dispatch;
 use gateway_dispatch::candidate::resolve_candidate;
 use gateway_dispatch::health::{AttemptReport, FailureClass, HealthTable, MemoryHealthTable};
@@ -53,7 +55,7 @@ fn channel(key: &str, secret: &str, base_url: &str) -> ChannelRecord {
         max_concurrency: 10,
         status: 1,
         groups: vec!["default".to_string()],
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 
@@ -366,7 +368,7 @@ fn retry_loop_succeeds_after_one_failover() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| {
@@ -433,7 +435,7 @@ fn retry_loop_exhausts_budget_with_retryable() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| async {
@@ -469,7 +471,7 @@ fn retry_loop_fatal_stops_immediately() {
                 base_url: "https://u".into(),
                 upstream_model: "m".into(),
                 provider_type: "openai".into(),
-                settings: serde_json::Value::Null,
+                settings: ChannelSettings::default(),
             })
         },
         |_: &gateway_dispatch::candidate::Candidate| {
@@ -922,6 +924,119 @@ fn dispatcher_missing_key_index_returns_no_candidate() {
     );
     assert!(matches!(
         dispatcher.select("g", "m", &[], None, None),
+        Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
+    ));
+}
+// ---------- fallback key selection (issue #11(a)) ----------
+
+// fallback_key_index = Some(1): no route unit for the model → the fallback channel's unit
+// carries key_index 1 and select resolves the key at index 1 ("sk-one").
+#[test]
+fn fallback_uses_settings_key_index_when_some() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![
+                ChannelKey {
+                    index: 0,
+                    secret: "sk-zero".to_string(),
+                    rpm_limit: 0,
+                },
+                ChannelKey {
+                    index: 1,
+                    secret: "sk-one".to_string(),
+                    rpm_limit: 0,
+                },
+            ],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: Some(1),
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    let c = dispatcher.select("default", "m", &[], None, None).unwrap();
+    assert_eq!(c.secret, "sk-one");
+    assert_eq!(c.unit.key_index, 1);
+}
+
+// fallback_key_index = None: the fallback unit keeps key_index 0 (old behavior).
+#[test]
+fn fallback_defaults_to_key_index_0_when_none() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![ChannelKey {
+                index: 0,
+                secret: "sk-zero".to_string(),
+                rpm_limit: 0,
+            }],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: None,
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    let c = dispatcher.select("default", "m", &[], None, None).unwrap();
+    assert_eq!(c.secret, "sk-zero");
+    assert_eq!(c.unit.key_index, 0);
+}
+
+// fallback_key_index = Some(5) with no key at that index: resolve_candidate finds no
+// candidate and select fails closed with AllUnavailable (channel skipped).
+#[test]
+fn fallback_out_of_range_key_index_yields_no_candidate() {
+    let mut channels: HashMap<String, ChannelRecord> = HashMap::new();
+    channels.insert(
+        "fb".to_string(),
+        ChannelRecord {
+            keys: vec![ChannelKey {
+                index: 0,
+                secret: "sk-zero".to_string(),
+                rpm_limit: 0,
+            }],
+            settings: ChannelSettings {
+                fallback: true,
+                fallback_key_index: Some(5),
+                ..ChannelSettings::default()
+            },
+            ..channel("fb", "unused", "https://upstream.example")
+        },
+    );
+    let snap = Arc::new(gateway_dispatch::Snapshot {
+        units: vec![],
+        channels,
+    });
+    let dispatcher = gateway_dispatch::Dispatcher::new(
+        Some(snap),
+        Arc::new(MemoryHealthTable::new()),
+        Arc::new(ConcurrencyState::default()),
+    );
+    assert!(matches!(
+        dispatcher.select("default", "m", &[], None, None),
         Err(gateway_dispatch::DispatchError::AllUnavailable { .. })
     ));
 }

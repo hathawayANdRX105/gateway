@@ -72,3 +72,69 @@ fn neighbouring_retryable_codes_are_unaffected() {
     assert_eq!(server_error.status, 503);
     assert!(server_error.retryable);
 }
+#[test]
+fn boundary_statuses_classify_per_table() {
+    // 408 sits inside 400..=499 but is not the catch-all: retryable upstream error,
+    // not channel-scoped; neighbouring 409 is a plain non-retryable 4xx.
+    let timeout = NormalizedError::from_status(408, "gateway timeout");
+    assert_eq!(timeout.code, code::UPSTREAM_ERROR);
+    assert_eq!(timeout.status, 408);
+    assert!(timeout.retryable);
+    assert!(!timeout.channel_scoped);
+
+    let conflict = NormalizedError::from_status(409, "conflict");
+    assert_eq!(conflict.code, code::INVALID_API_KEY);
+    assert_eq!(conflict.status, 409);
+    assert!(!conflict.retryable);
+    assert!(!conflict.channel_scoped);
+
+    // 401/403 share the INVALID_API_KEY read with other 4xx but are channel-scoped:
+    // another channel may succeed.
+    for status in [401u16, 403] {
+        let scoped = NormalizedError::from_status(status, "no auth");
+        assert_eq!(scoped.code, code::INVALID_API_KEY);
+        assert!(!scoped.retryable);
+        assert!(
+            scoped.channel_scoped,
+            "{status} must be channel-scoped: another channel may succeed"
+        );
+    }
+
+    // 5xx is retryable upstream; anything outside the table falls back to 502.
+    let server = NormalizedError::from_status(500, "internal");
+    assert_eq!(server.code, code::UPSTREAM_ERROR);
+    assert_eq!(server.status, 500);
+    assert!(server.retryable);
+    assert!(!server.channel_scoped);
+
+    // Range edges: 599 is the top of the retryable 5xx range; 600 and 399 are outside
+    // every specific rule and must hit the 502 fallback; 499 is the top of the 4xx
+    // range (non-retryable, not channel-scoped). These are exactly the edges where a
+    // first-match/reordering bug in STATUS_RULES would hide.
+    let top_5xx = NormalizedError::from_status(599, "gateway gone");
+    assert_eq!(top_5xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(top_5xx.status, 599);
+    assert!(top_5xx.retryable);
+
+    let above_5xx = NormalizedError::from_status(600, "weird");
+    assert_eq!(above_5xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(above_5xx.status, 502);
+    assert!(!above_5xx.retryable);
+
+    let below_4xx = NormalizedError::from_status(399, "early");
+    assert_eq!(below_4xx.code, code::UPSTREAM_ERROR);
+    assert_eq!(below_4xx.status, 502);
+    assert!(!below_4xx.retryable);
+
+    let top_4xx = NormalizedError::from_status(499, "client fat finger");
+    assert_eq!(top_4xx.code, code::INVALID_API_KEY);
+    assert_eq!(top_4xx.status, 499);
+    assert!(!top_4xx.retryable);
+    assert!(!top_4xx.channel_scoped);
+
+    let unknown = NormalizedError::from_status(700, "nope");
+    assert_eq!(unknown.code, code::UPSTREAM_ERROR);
+    assert_eq!(unknown.status, 502);
+    assert!(!unknown.retryable);
+    assert!(!unknown.channel_scoped);
+}

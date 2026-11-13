@@ -10,7 +10,7 @@ use gateway_protocol_bridge::FormatRegistry;
 use std::sync::Arc;
 use std::time::Duration;
 
-use gateway_core::records::{RouteUnitRecord, SyncMeta};
+use gateway_core::records::{ChannelSettings, RouteUnitRecord, SyncMeta};
 use gateway_dispatch::candidate::Candidate;
 use gateway_pipeline::ProtocolKind;
 
@@ -38,7 +38,7 @@ fn candidate(provider: &str) -> Candidate {
         base_url: "https://upstream.example".to_string(),
         upstream_model: "m".to_string(),
         provider_type: provider.to_string(),
-        settings: serde_json::Value::Null,
+        settings: ChannelSettings::default(),
     }
 }
 
