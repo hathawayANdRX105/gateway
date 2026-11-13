@@ -38,6 +38,7 @@ struct SpyEgress {
 impl Egress for SpyEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

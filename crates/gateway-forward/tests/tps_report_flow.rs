@@ -221,6 +221,7 @@ struct ScriptedSseEgress(SseScript);
 impl Egress for ScriptedSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -244,6 +245,7 @@ struct ScriptedJsonEgress(&'static [u8]);
 impl Egress for ScriptedJsonEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -600,6 +602,7 @@ impl SequencedEgress {
 impl Egress for SequencedEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

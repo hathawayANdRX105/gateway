@@ -26,7 +26,7 @@ pub struct UserRecord {
     pub status: u8,
     /// 1 user / 10 admin / 100 root.
     pub role: u16,
-    /// User creation timestamp. TODO(ferrite-#207, re-anchored: #18): auto-group policy — new-api `resolve_group.go`.
+    /// User creation timestamp.
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 

@@ -93,6 +93,7 @@ struct JsonEgress;
 impl Egress for JsonEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -121,6 +122,7 @@ impl Egress for JsonEgress {
 impl Egress for GatedSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

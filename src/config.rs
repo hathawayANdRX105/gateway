@@ -31,6 +31,9 @@ pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 /// Defaults live in the `Default` impl below (serde reads it via container-level
 /// `#[serde(default)]`). `catalog` is still required in practice — an omitted path
 /// loads as empty and the catalog file open fails at startup.
+/// `pool_shard_by_alias` defaults to `true` when the key is absent from the TOML
+/// (container-level `default` falls back to `Default::default()`).
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct DaemonConfig {
@@ -52,6 +55,16 @@ pub struct DaemonConfig {
     pub workers: usize,
     /// Graceful-shutdown drain budget in seconds.
     pub shutdown_timeout_secs: u64,
+    /// Shard the egress connection pool by the requested model alias (public model
+    /// name) instead of sharing one pool across all aliases. Many upstream channels
+    /// serve the same public alias, so requests aggregate per alias: a per-alias
+    /// pool isolates a hot alias from other aliases while reqwest still pools per
+    /// host inside each client. When `false`, every alias uses the single shared
+    /// pooled client (the old behavior). `true` by default; the key is documented
+    /// here because `DaemonConfig` uses `deny_unknown_fields`, so an unknown or
+    /// misspelled key fails config parsing instead of silently falling back.
+    pub pool_shard_by_alias: bool,
+
     /// Dispatch-stage configuration. Omitted = every default (P2C selection).
     pub dispatch: DispatchSection,
 }
@@ -66,6 +79,8 @@ impl Default for DaemonConfig {
             trusted_proxies: Vec::new(),
             workers: 0,
             shutdown_timeout_secs: DEFAULT_SHUTDOWN_TIMEOUT_SECS,
+            pool_shard_by_alias: true,
+
             dispatch: DispatchSection::default(),
         }
     }

@@ -179,6 +179,7 @@ async fn vless_reality_vision_live() {
 
         let resp = egress
             .execute(
+                "probe",
                 &format!("http://{http_addr}/"),
                 &[],
                 Bytes::new(),
@@ -221,6 +222,7 @@ async fn ss2022_live() {
 
         let resp = egress
             .execute(
+                "probe",
                 &format!("http://{http_addr}/"),
                 &[],
                 Bytes::new(),
@@ -263,6 +265,7 @@ async fn trojan_live() {
 
         let resp = egress
             .execute(
+                "probe",
                 &format!("http://{http_addr}/"),
                 &[],
                 Bytes::new(),
@@ -305,6 +308,7 @@ async fn vmess_live() {
 
         let resp = egress
             .execute(
+                "probe",
                 &format!("http://{http_addr}/"),
                 &[],
                 Bytes::new(),

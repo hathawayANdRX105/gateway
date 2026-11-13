@@ -57,6 +57,7 @@ impl CaptureEgress {
 impl Egress for CaptureEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         body: Bytes,

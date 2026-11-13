@@ -151,6 +151,10 @@ Transport notes:
 
 - Served scope is the data plane only (`/v1*`); `/healthz` and `/readyz` are
   separate routes. Unknown paths are 404 before the pipeline runs.
+- `/readyz` always carries a `billing` field (`"enabled"` / `"disabled"`,
+  mirroring whether a settlement sink is mounted), so an unbilled deployment
+  is visible to ops; the `calibration` object appears once real-traffic
+  samples exist.
 - The pipeline is the library's: admission chain → `ForwardStage` →
   protocol bridge. Response bodies stream frame by frame (SSE included); no
   full-response buffering.

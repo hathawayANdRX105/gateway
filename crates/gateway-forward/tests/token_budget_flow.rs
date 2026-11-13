@@ -95,6 +95,7 @@ impl GatedSseEgress {
 impl Egress for GatedSseEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,
@@ -119,6 +120,7 @@ struct UsageEgress;
 impl Egress for UsageEgress {
     fn execute<'a>(
         &'a self,
+        _alias: &str,
         _url: &'a str,
         _headers: &'a [(String, String)],
         _body: Bytes,

@@ -65,6 +65,7 @@ async fn main() {
     println!("=== 1) HTTPS via adapter dial + rustls ===");
     let resp = egress
         .execute(
+            "probe",
             "https://httpbin.org/post",
             &[("accept".into(), "application/json".into())],
             Bytes::new(),
