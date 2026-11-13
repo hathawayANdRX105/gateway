@@ -17,7 +17,11 @@ use crate::records::UsageEvent;
 ///
 /// Deserializable: the engine's config-backed table is built from deserialized values of
 /// this type, so callers do not need to redefine a struct carrying the same fields.
+/// Defaults live in the `Default` impl below (serde reads it via container-level
+/// `#[serde(default)]`); the zero price placeholders are not meaningful rates — real
+/// catalogs always set `input`/`output`.
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(default)]
 pub struct ModelPrice {
     /// $/M input tokens.
     pub input: f64,
@@ -25,13 +29,19 @@ pub struct ModelPrice {
     pub output: f64,
     /// $/M cached-read tokens.
     pub cache: f64,
-    /// Group multiplier (`GroupRecord.rate_multiplier`).
-    #[serde(default = "default_group_multiplier")]
+    /// Group multiplier (`GroupRecord.rate_multiplier`); `1.0` = no adjustment.
     pub group_multiplier: f64,
 }
 
-fn default_group_multiplier() -> f64 {
-    1.0
+impl Default for ModelPrice {
+    fn default() -> Self {
+        Self {
+            input: 0.0,
+            output: 0.0,
+            cache: 0.0,
+            group_multiplier: 1.0,
+        }
+    }
 }
 
 /// Price-table trait — a projection of the catalog snapshot.

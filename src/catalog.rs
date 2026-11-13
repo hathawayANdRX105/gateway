@@ -33,11 +33,9 @@ const UNLIMITED_BALANCE: i64 = i64::MAX / 2;
 
 /// Documented default values.
 ///
-/// `#[serde(default = "…")]` takes a function path, not a constant, so each value lives
-/// here and the serde hooks at the bottom of the file are thin wrappers over them
-/// (`const fn` where the return type allows it — `String` cannot be const-constructed).
-/// The hooks are complete, not placeholders: they change only when the documented
-/// default itself changes.
+/// Each spec implements `Default`; serde reads it via container-level
+/// `#[serde(default)]`, so these constants are the single source both for
+/// `Spec::default()` and for missing TOML keys.
 const DEFAULT_GROUP_NAME: &str = "default";
 const DEFAULT_PROVIDER_TYPE: &str = "openai";
 const DEFAULT_CHANNEL_MAX_CONCURRENCY: u32 = 32;
@@ -63,79 +61,116 @@ pub struct CatalogFile {
 
 /// Per-group policy: model allowlist, rate multiplier and the enable bit.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct GroupSpec {
     pub name: String,
-    #[serde(default)]
     pub allowed_models: Vec<String>,
-    #[serde(default = "default_group_multiplier")]
     pub multiplier: f64,
-    #[serde(default = "enabled")]
     pub enabled: bool,
+}
+
+impl Default for GroupSpec {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            allowed_models: Vec::new(),
+            multiplier: DEFAULT_GROUP_MULTIPLIER,
+            enabled: true,
+        }
+    }
 }
 
 /// User account. A token must point at one of these keys.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct UserSpec {
     pub key: String,
     pub username: String,
-    #[serde(default)]
     pub display_name: String,
-    #[serde(default)]
     pub email: String,
-    #[serde(default = "default_group")]
     pub group: String,
-    #[serde(default = "enabled_status")]
     pub status: u8,
-    #[serde(default = "user_role")]
     pub role: u16,
+}
+
+impl Default for UserSpec {
+    fn default() -> Self {
+        Self {
+            key: String::new(),
+            username: String::new(),
+            display_name: String::new(),
+            email: String::new(),
+            group: DEFAULT_GROUP_NAME.to_string(),
+            status: STATUS_ENABLED,
+            role: DEFAULT_USER_ROLE,
+        }
+    }
 }
 
 /// Client token. The plaintext key is accepted here because this file *is* the credential
 /// store for the standalone shape; only its SHA-256 reaches the snapshot.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct TokenSpec {
     pub key: String,
     pub user: String,
-    #[serde(default)]
     pub name: String,
     /// Fixed group; absent = follow the user's group.
-    #[serde(default)]
     pub group: Option<String>,
     /// `None` = all models allowed.
-    #[serde(default)]
     pub allowed_models: Option<Vec<String>>,
     /// Remaining balance in internal units. Absent = unlimited.
-    #[serde(default)]
     pub quota: Option<i64>,
-    #[serde(default = "enabled_status")]
     pub status: u8,
+}
+
+impl Default for TokenSpec {
+    fn default() -> Self {
+        Self {
+            key: String::new(),
+            user: String::new(),
+            name: String::new(),
+            group: None,
+            allowed_models: None,
+            quota: None,
+            status: STATUS_ENABLED,
+        }
+    }
 }
 
 /// Upstream channel.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct ChannelSpec {
     pub key: String,
     pub name: String,
-    #[serde(default = "default_provider")]
     pub provider_type: String,
     pub base_url: String,
-    #[serde(default = "default_channel_concurrency")]
     pub max_concurrency: u32,
-    #[serde(default = "enabled_status")]
     pub status: u8,
-    #[serde(default)]
     pub groups: Vec<String>,
     pub keys: Vec<KeySpec>,
-    #[serde(default)]
     pub models: Vec<ModelSpec>,
     /// Channel-level overrides (raw until load); unknown keys are preserved on the
     /// record via [`ChannelSettings::extra`].
-    #[serde(default)]
     pub settings: Option<Value>,
+}
+
+impl Default for ChannelSpec {
+    fn default() -> Self {
+        Self {
+            key: String::new(),
+            name: String::new(),
+            provider_type: DEFAULT_PROVIDER_TYPE.to_string(),
+            base_url: String::new(),
+            max_concurrency: DEFAULT_CHANNEL_MAX_CONCURRENCY,
+            status: STATUS_ENABLED,
+            groups: Vec::new(),
+            keys: Vec::new(),
+            models: Vec::new(),
+            settings: None,
+        }
+    }
 }
 
 /// One upstream credential. `index` is optional; omitted entries are numbered by position.
@@ -151,31 +186,49 @@ pub struct KeySpec {
 
 /// One public model served by a channel.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct ModelSpec {
     /// Public alias the client asks for.
     pub name: String,
     /// Upstream name; absent = the public alias.
-    #[serde(default)]
     pub upstream: Option<String>,
-    #[serde(default = "model_weight")]
     pub weight: u32,
     /// Group restriction; empty = every group the channel is visible in.
-    #[serde(default)]
     pub groups: Vec<String>,
+}
+
+impl Default for ModelSpec {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            upstream: None,
+            weight: DEFAULT_MODEL_WEIGHT,
+            groups: Vec::new(),
+        }
+    }
 }
 
 /// Price of one model (optionally per group), in dollars per million tokens.
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, default)]
 pub struct PriceSpec {
     pub model: String,
-    #[serde(default = "default_group")]
     pub group: String,
     pub input: f64,
     pub output: f64,
-    #[serde(default)]
     pub cache: f64,
+}
+
+impl Default for PriceSpec {
+    fn default() -> Self {
+        Self {
+            model: String::new(),
+            group: DEFAULT_GROUP_NAME.to_string(),
+            input: 0.0,
+            output: 0.0,
+            cache: 0.0,
+        }
+    }
 }
 
 /// Built snapshots plus the counts `/readyz` reports.
@@ -584,36 +637,4 @@ fn preview(key: &str) -> String {
         .rev()
         .collect::<String>();
     format!("{head}****{tail}")
-}
-
-const fn enabled() -> bool {
-    true
-}
-
-const fn enabled_status() -> u8 {
-    STATUS_ENABLED
-}
-
-const fn user_role() -> u16 {
-    DEFAULT_USER_ROLE
-}
-
-const fn model_weight() -> u32 {
-    DEFAULT_MODEL_WEIGHT
-}
-
-const fn default_channel_concurrency() -> u32 {
-    DEFAULT_CHANNEL_MAX_CONCURRENCY
-}
-
-const fn default_group_multiplier() -> f64 {
-    DEFAULT_GROUP_MULTIPLIER
-}
-
-fn default_group() -> String {
-    DEFAULT_GROUP_NAME.to_string()
-}
-
-fn default_provider() -> String {
-    DEFAULT_PROVIDER_TYPE.to_string()
 }
