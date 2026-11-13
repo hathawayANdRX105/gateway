@@ -1,5 +1,5 @@
-//! P1-B channel relevance classification scenario registry (#158 skeleton; the
-//! assertions were filled in once P1-B landed).
+//! P1-B channel relevance classification scenario registry (the assertions were
+//! filled in once P1-B landed).
 //!
 //! Expectation: 401/403 (credentials), 404 (the channel lacks this model) →
 //! [`FailureScope::Channel`] — another channel may succeed; 400/413/422 (the request

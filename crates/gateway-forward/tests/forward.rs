@@ -352,12 +352,10 @@ fn pipe_chunk_passthrough_preserves_bytes() {
 
 #[test]
 fn pipe_chunk_passthrough_and_scanner_contract() {
-    // protocol::SseScanner is currently a stub (the TODO#502 line state
-    // machine is not implemented): push always returns no events and finish always
-    // returns Truncated. This verifies that forward's call contract is correct:
-    // 1) passthrough is byte-for-byte faithful (forward's hard guarantee); 2)
-    // events is a Vec and is consumable; 3) finish returns SseEnd (consumed by the
-    // caller once the scanner completes; it must not be dropped).
+    // Forward's call contract with protocol::SseScanner: 1) passthrough is
+    // byte-for-byte faithful (forward's hard guarantee); 2) events is a Vec and is
+    // consumable (the first data line fires FirstToken); 3) finish returns SseEnd
+    // (consumed by the caller once the scanner completes; it must not be dropped).
     let mut ctx = SseContext::new();
     let frame = Bytes::from_static(b"data: {\"role\":\"assistant\"}\n\n");
     let out = pipe_chunk(&mut ctx, &frame);
