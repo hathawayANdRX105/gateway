@@ -15,13 +15,13 @@ pub const MAX_CONTEXT_WINDOW: u64 = 10_000_000;
 /// (the `gateway_protocol_bridge::ir` `extra`/`flatten` escape-hatch precedent).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ChannelSettings {
-    #[serde(default = "default_priority")]
+    #[serde(default)]
     pub priority: i32,
-    #[serde(default = "default_context_window")]
+    #[serde(default)]
     pub context_window: u64,
-    #[serde(default = "default_fallback")]
+    #[serde(default)]
     pub fallback: bool,
-    #[serde(default = "default_tpm_limit")]
+    #[serde(default)]
     pub tpm_limit: u32,
     /// Header overrides: header name → raw JSON value; non-string values are skipped
     /// by the consumer (`extra_headers_from_settings`), matching the old bag-read
@@ -35,22 +35,6 @@ pub struct ChannelSettings {
     /// Unknown settings keys preserved verbatim for lossless round-trip.
     #[serde(default, flatten, skip_serializing_if = "Map::is_empty")]
     pub extra: Map<String, Value>,
-}
-
-fn default_priority() -> i32 {
-    0
-}
-
-fn default_context_window() -> u64 {
-    0
-}
-
-fn default_fallback() -> bool {
-    false
-}
-
-fn default_tpm_limit() -> u32 {
-    0
 }
 
 impl ChannelSettings {

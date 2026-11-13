@@ -16,14 +16,18 @@ use bytes::Bytes;
 use gateway_gate::{InjectSpec, rewrite_body};
 
 /// Build an [`InjectSpec`] from `(key, value)` injection pairs and drop-field names.
-fn spec(pairs: &[(&str, serde_json::Value)], drop_fields: &[&str]) -> InjectSpec {
+/// Pairs are taken by value — the `json!()` values at the call sites are moved into the
+/// map without a per-pair deep clone.
+fn spec(
+    pairs: impl IntoIterator<Item = (&'static str, serde_json::Value)>,
+    drop_fields: impl IntoIterator<Item = &'static str>,
+) -> InjectSpec {
     InjectSpec {
         fields: pairs
-            .iter()
-            .cloned()
+            .into_iter()
             .map(|(key, value)| (key.to_string(), value))
             .collect(),
-        drop_fields: drop_fields.iter().copied().map(str::to_string).collect(),
+        drop_fields: drop_fields.into_iter().map(str::to_string).collect(),
     }
 }
 
@@ -42,11 +46,11 @@ fn injects_missing_keys_while_client_values_win() {
     // model passes through verbatim.
     let body = br#"{"model": "gpt-4", "temperature": 0.8}"#;
     let spec = spec(
-        &[
+        [
             ("temperature", serde_json::json!(0.7)),
             ("max_tokens", serde_json::json!(1024)),
         ],
-        &[],
+        [],
     );
     let got = rewritten(body, &spec);
     assert_eq!(
@@ -61,7 +65,7 @@ fn drop_fields_removed() {
     // Scenario: body carries a, b, c; spec drops b plus a name that is not present.
     // Acceptance: b is gone, a and c keep their values, unknown drop names are no-ops.
     let body = br#"{"a": 1, "b": 2, "c": 3}"#;
-    let spec = spec(&[], &["b", "nonexistent"]);
+    let spec = spec([], ["b", "nonexistent"]);
     let got = rewritten(body, &spec);
     assert_eq!(got, serde_json::json!({"a": 1, "c": 3}));
 }
@@ -73,7 +77,7 @@ fn non_object_bodies_pass_through_byte_for_byte() {
     // none of these is a JSON object.
     // Acceptance: each input is returned unchanged, byte for byte — best-effort adaptation
     // never turns an unparseable body into a 500.
-    let spec = spec(&[("temperature", serde_json::json!(0.7))], &[]);
+    let spec = spec([("temperature", serde_json::json!(0.7))], []);
     for body in [
         b"" as &[u8],
         b"{unclosed" as &[u8],
@@ -98,7 +102,7 @@ fn non_object_bodies_pass_through_byte_for_byte() {
 fn field_and_drop_on_same_key_drop_wins() {
     // Documented order: injection runs before `drop_fields` removal (drop runs last).
     // Acceptance: the key ends up removed in both cases.
-    let spec = spec(&[("timeout", serde_json::json!(30))], &["timeout"]);
+    let spec = spec([("timeout", serde_json::json!(30))], ["timeout"]);
 
     // Client did not send the key: injected with the default, then dropped.
     let got = rewritten(b"{}", &spec);
@@ -119,7 +123,7 @@ fn nested_object_values_inject() {
 
     let got = rewritten(
         br#"{"model": "gpt-4"}"#,
-        &spec(&[("config", default_config.clone())], &[]),
+        &spec([("config", default_config.clone())], []),
     );
     assert_eq!(
         got,
@@ -128,7 +132,7 @@ fn nested_object_values_inject() {
 
     let got = rewritten(
         br#"{"config": {"temperature": 0.9}}"#,
-        &spec(&[("config", default_config)], &[]),
+        &spec([("config", default_config)], []),
     );
     assert_eq!(got, serde_json::json!({"config": {"temperature": 0.9}}));
 }
