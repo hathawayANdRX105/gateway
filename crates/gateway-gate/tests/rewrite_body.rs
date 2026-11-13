@@ -121,15 +121,23 @@ fn nested_object_values_inject() {
     // Acceptance: `config` is injected when missing; a client-sent `config` stays verbatim.
     let default_config = serde_json::json!({"temperature": 0.7, "max_tokens": 1024});
 
+    // Injected case: build the expectation from the same literal shape the spec injects.
     let got = rewritten(
         br#"{"model": "gpt-4"}"#,
-        &spec([("config", default_config.clone())], []),
+        &spec(
+            [(
+                "config",
+                serde_json::json!({"temperature": 0.7, "max_tokens": 1024}),
+            )],
+            [],
+        ),
     );
     assert_eq!(
         got,
         serde_json::json!({"model": "gpt-4", "config": default_config})
     );
 
+    // Client-sent case: the same spec shape, a fresh Value — the client's own object wins.
     let got = rewritten(
         br#"{"config": {"temperature": 0.9}}"#,
         &spec([("config", default_config)], []),
