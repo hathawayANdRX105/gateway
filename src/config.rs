@@ -32,12 +32,7 @@ pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 /// `#[serde(default)]`). `catalog` is still required in practice — an omitted path
 /// loads as empty and the catalog file open fails at startup.
 /// `pool_shard_by_alias` defaults to `true` when the key is absent from the TOML
-/// (container-level `default` falls back to `Default::default()`); the helper is
-/// explicit so the field-level attribute reads plainly.
-#[allow(dead_code)]
-fn default_true() -> bool {
-    true
-}
+/// (container-level `default` falls back to `Default::default()`).
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, default)]
@@ -68,7 +63,6 @@ pub struct DaemonConfig {
     /// pooled client (the old behavior). `true` by default; the key is documented
     /// here because `DaemonConfig` uses `deny_unknown_fields`, so an unknown or
     /// misspelled key fails config parsing instead of silently falling back.
-    #[serde(default = "default_true")]
     pub pool_shard_by_alias: bool,
 
     /// Dispatch-stage configuration. Omitted = every default (P2C selection).
