@@ -531,15 +531,15 @@ impl Pipeline for ReqwestPipeline {
     }
 }
 
-/// Pre-scan of the request body — the input hook for metering's prompt-token
-/// estimate.
+/// Pre-scan hook on the transformed request body, kept as the body-level insertion
+/// point for metering.
 ///
 /// Called once after the request-side transform and before sending (only the
 /// transformed body is the real upstream body).
 ///
-/// Current V1 scope: passthrough semantics, no parsing (the metering interface is
-/// not finalized).
-/// Deferred (issue #19): wire up `gateway_metering::estimate::estimate_prompt_tokens`.
+/// Currently a pass-through: it returns that body unchanged. Prompt-token estimation
+/// is not wired here — the stages that need it read the request body they already hold
+/// and call `gateway_metering::estimate` (telemetry / retry / commit points).
 pub fn capture_prompt_body(body: &bytes::Bytes) -> bytes::Bytes {
     body.clone()
 }

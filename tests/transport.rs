@@ -25,8 +25,8 @@ use gateway_daemon::server::{
     is_hop_by_hop, readyz, to_actix_response,
 };
 use gateway_facade::Pipeline;
+use gateway_facade::calibration::CalibrationLog;
 
-use gateway_metering::calibration::CalibrationLog;
 fn ip(text: &str) -> IpAddr {
     text.parse().expect("test address must parse")
 }

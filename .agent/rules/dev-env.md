@@ -10,7 +10,7 @@ The probe script is `scripts/dev-env.sh` — read its header comment for why eac
 
 - `.cargo/config.toml` holds the shared baseline only: the `jobs` ceiling and the profile-scoped Cranelift backend (a workspace build contract, not a machine detail). Never hardcode `sccache` / `mold` into it — machines lacking the tool then fail to start cargo.
 - Per-machine optimizations (sccache, mold) are injected by sourcing `scripts/dev-env.sh`, which probes and exports env vars (env > project config in cargo's precedence). A machine with the tools enables them; a machine without them probes nothing and silently runs plain cargo.
-- Command-path choices (nextest vs `cargo test`, testless vs full run) happen at run time via `command -v` in justfile/scripts.
+- Test selection (testless-narrowed vs full run) happens at run time in `scripts/test-fast.sh`; the runner is always `nextest`, never `cargo test` (process-per-test isolation, see `testing-ci.md`).
 
 Before building or testing, verify what this machine enables:
 

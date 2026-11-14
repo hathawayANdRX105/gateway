@@ -30,9 +30,9 @@ pub use usage::UsageEvent;
 /// - `origin`: the node that first created the record ("center" when the center pushes
 ///   configuration).
 ///
-/// Record *identity the consumer assigns on persistence* (sync key / schema version /
-/// origin / timestamp) belongs to the consumer; this envelope is what the engines read
-/// and match on (chiefly `key`).
+/// The consumer's persistence identity (its own storage key, schema version, update
+/// timestamp) is not this envelope's concern: this envelope is what the engines read
+/// and match on (chiefly `key`), with `origin` naming the producer that built the record.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncMeta {

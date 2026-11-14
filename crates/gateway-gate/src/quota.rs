@@ -58,9 +58,8 @@ impl Gate for QuotaGate {
         // 2. Estimate the cost
         // Note: "default" here is the **pricing fallback bucket name**, not the "default
         // group": `PricingSnapshot::lookup` falls back to `(model, "default")` when the
-        // `(model, group)` row is absent, and production currently inserts every row
-        // under that bucket (see `api_gateway_state::snapshot::build_pricing_snapshot`),
-        // so renaming the default group does not affect this lookup.
+        // `(model, group)` row is absent, so renaming the default group does not affect
+        // this lookup.
         let max_tokens = ctx.requested_max_tokens.unwrap_or(4096);
         let group = ctx.group.as_deref().unwrap_or("default");
         let cost = self

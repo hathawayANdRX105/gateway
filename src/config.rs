@@ -29,8 +29,8 @@ pub const DEFAULT_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
 /// Listener and process settings.
 ///
 /// Defaults live in the `Default` impl below (serde reads it via container-level
-/// `#[serde(default)]`). `catalog` is still required in practice — an omitted path
-/// loads as empty and the catalog file open fails at startup.
+/// `#[serde(default)]`). `catalog` is still required in practice: an omitted path
+/// loads as empty and `validate` rejects it before any file is opened.
 /// `pool_shard_by_alias` defaults to `true` when the key is absent from the TOML
 /// (container-level `default` falls back to `Default::default()`).
 
@@ -42,8 +42,8 @@ pub struct DaemonConfig {
     /// Optional Unix-domain listener for co-located clients.
     pub uds_path: Option<PathBuf>,
     /// Catalog file: channels, groups, users, tokens, prices. A process with no catalog
-    /// has no route and no key: an omitted path loads as empty and the catalog file open
-    /// fails at startup.
+    /// has no route and no key: an omitted path loads as empty and `validate` rejects it
+    /// before any file is opened.
     pub catalog: PathBuf,
     /// Request body ceiling in bytes; larger requests get `413`.
     pub max_request_bytes: usize,

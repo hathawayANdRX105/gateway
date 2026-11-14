@@ -21,7 +21,7 @@ Read order: §1–§2 before writing a test, §3 when wiring a new dependency fo
 | Affected tests only (daily entry) | `just test-fast [base]` (default base `origin/main`) | `testless` selects affected cases, `nextest` runs them. Every fallback is loud — a degrade always runs the full workspace, never nothing. |
 | Verify compilation                | `cargo check -p <crate>`                             | Wrap in `.githooks/heavy` on multi-session machines.                                                                                      |
 | Debug a single failing case       | `cargo test -p <crate> -- <test name>`               | Debug only, not acceptance; must finish in ~3 seconds.                                                                                    |
-| Full check suite                  | `just verify`                                        | fmt + clippy + check + affected tests. The local "everything" entry.                                                                      |
+| Full check suite                  | `just verify`                                        | fmt + clippy + check + spec-check (no tests — run `just test-fast` / `just test` for those). The local "everything" entry.                     |
 | Full test run                     | `just test`                                          | `cargo nextest run --workspace`. The suite is small enough to run locally; CI runs it under `--cargo-profile ci` regardless.              |
 
 The local dev loop compiles with **Cranelift** (dev profile) for speed; CI and the shipped-quality gate compile with **LLVM** (`--profile ci`). A Cranelift-only pass locally is normal — CI is the LLVM verdict.
@@ -51,6 +51,6 @@ The local dev loop compiles with **Cranelift** (dev profile) for speed; CI and t
 
 ## 6. Hard constraints
 
-- Run `just verify` (fmt + clippy + check + affected tests) before committing; never bypass `.githooks/pre-push` with `--no-verify`.
+- Run `just verify` (fmt + clippy + check + spec-check) and the relevant test entry before committing; never bypass `.githooks/pre-push` with `--no-verify`.
 - When CI fails, fix on the same PR — do not open another PR.
 - Never hand-edit `.config/nextest.toml`'s path or move it into `.cargo/`: nextest discovers it only at `workspace-root/.config/nextest.toml`.

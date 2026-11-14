@@ -1,7 +1,7 @@
 //! Upstream request preparation — URL / auth header / channel policy.
 //!
-//! Covers the non-protocol part of the new-api adaptor five-method contract
-//! (relay/adaptor/interface.go): `GetRequestURL` + `SetupRequestHeader` + `ConvertRequest`.
+//! Covers the addressing + auth half of the new-api adaptor five-method contract
+//! (relay/adaptor/interface.go): `GetRequestURL` + `SetupRequestHeader` (2 of 5).
 //! Protocol body conversion lives in the protocol crate; this module only does
 //! **addressing and authentication**.
 

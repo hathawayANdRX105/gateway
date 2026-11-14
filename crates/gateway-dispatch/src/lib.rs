@@ -604,8 +604,9 @@ fn register_channel_limits(concurrency: &ConcurrencyState, snapshot: &Snapshot) 
 /// Register token budget caps from each snapshot channel's `settings.tpm_limit`
 /// (missing key falls back to `global_default`).
 ///
-/// Symmetric to [`register_channel_limits`], called at the same snapshot assembly points; `0`
-/// = unlimited, not registered. `settings.tpm_limit` is a channel-level override;
+/// Symmetric to [`register_channel_limits`], called at the same snapshot assembly points. A
+/// `0` override is not registered, so that channel follows `global_default`.
+/// `settings.tpm_limit` is a channel-level override;
 /// `global_default` is the default installed by `set_global_default`. Repeated registration is
 /// idempotent (`TokenBudgetState::register_channel` overwrites the same key).
 fn register_token_budgets(token: &TokenBudgetState, snapshot: &Snapshot) {

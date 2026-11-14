@@ -209,9 +209,11 @@ impl ForwardStage {
         }
         // Sticky-binding write at the non-streaming settlement commit point
         // (design §3.3, side path, the single billing write point is unchanged):
-        // the commit point's input is always 2xx (`forward_once`'s status guard
-        // rejects non-2xx earlier, so they never reach here — an existing decision
-        // point), so bind only when the measured `cached > 0`; no usage ⇒ fallback
+        // the commit point's input is always 2xx: the egress implementations reject non-2xx
+        // while finishing the response (`egress::finish_forwarded_response`, and
+        // `forward_once`'s streaming-branch guard for a custom `Egress` that passes one
+        // through), so a non-2xx never reaches here, so bind only when the measured
+        // `cached > 0`; no usage ⇒ fallback
         // count `cached = 0`, treated as a miss, no write.
         bind_sticky(self.sticky_bind(ctx, candidate, req_body).as_ref(), usage);
         // Non-streaming settlement point (before writing ctx.upstream; skipped

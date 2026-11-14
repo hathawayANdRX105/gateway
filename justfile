@@ -5,9 +5,9 @@
 
 default: check
 
-# Build check
+# Build check (same backend as CI: LLVM via --profile ci)
 check:
-    cargo check --workspace --all-targets
+    cargo check --workspace --all-targets --profile ci
 
 # Format
 fmt:

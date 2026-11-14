@@ -52,7 +52,7 @@ pub trait PriceTable: Send + Sync {
     /// return a different price per group. [`ModelPrice::group_multiplier`] in the returned
     /// value participates in the settlement arithmetic; the **authoritative request-side
     /// source** of the group multiplier (`GroupRecord.rate_multiplier`) is passed by the
-    /// caller as `group_ratio`, not through this table.
+    /// settlement caller, not through this table.
     fn lookup(&self, model: &str, group: &str) -> Option<ModelPrice>;
 }
 

@@ -102,7 +102,7 @@ struct Ring {
 }
 
 /// Process-global calibration log handle, installed once at daemon startup
-/// (see `src/server.rs`). The forward data plane records through this handle
+/// (the standalone daemon does it in its `src/server.rs`). The forward data plane records through this handle
 /// so no field on `ForwardStage` and no facade-builder plumbing is required;
 /// the readiness surface reads the same handle for the report.
 static CALIBRATION: OnceLock<Arc<CalibrationLog>> = OnceLock::new();

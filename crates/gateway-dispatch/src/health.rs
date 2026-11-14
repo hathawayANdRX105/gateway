@@ -9,8 +9,8 @@
 //! - **Five outcome classes**: Success / Fatal / Throttled (429) / Neutral (other
 //!   4xx) / `UnauthorizedRun` (401/403 escalated on consecutive hits, 3 → Fatal);
 //! - **EWMA continuous score**: `score = α×obs + (1-α)×score`, obs ∈
-//!   {1.0, 0.0, 0.7(429)}, not updated until `MinRequests` is exceeded, floored at
-//!   `MinScore`.
+//!   {1.0, 0.0, 0.7(429)}, not updated until `HealthSetting::min_requests` is exceeded,
+//!   floored at `HealthSetting::min_score`.
 //!   **No longer a weight multiplier**; it only feeds the P2C likelihood;
 //! - **Peak-latency EWMA**: `latency_ewma_ms` records upstream latency; increases
 //!   apply immediately, decreases are pulled toward the latest sample with a 10s
@@ -97,8 +97,9 @@ pub trait HealthTable: Send + Sync {
     ///   `Err(Retryable)` transport-layer failure → Fatal (the channel is
     ///   currently unavailable); `Err(Fatal)` client-side problem → Neutral (the
     ///   channel is not at fault);
-    /// - `report.latency_ms`: total duration or time-to-first-token of a successful
-    ///   request; `None` on failure or when unobserved;
+    /// - `report.latency_ms`: total duration or time-to-first-token of this attempt; a
+    ///   failed attempt may carry one too (a slow failure is real evidence about the
+    ///   channel), `None` only when unobserved;
     /// - `report.retry_after_ms`: wait duration (ms) parsed from an upstream 429
     ///   `Retry-After` header. Consumed only when outcome = `Ok(429)` (overrides
     ///   the separate 429 ladder and is clamped to `cooldown_max_ms`); the value is

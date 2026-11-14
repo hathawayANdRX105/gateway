@@ -55,7 +55,8 @@ pub enum TpsSample {
 /// Health record of a single `RouteUnit` — phase0 `ChannelHealthState`.
 #[derive(Debug, Clone, Copy)]
 pub struct HealthState {
-    /// EWMA continuous health score, range [`MinScore`, 1.0]; no history = 1.0.
+    /// EWMA continuous health score, range [`HealthSetting::min_score`, 1.0]; no
+    /// history = 1.0.
     pub ewma_score: f64,
     /// Peak-sensitive EWMA of upstream latency (ms); 0.0 = no latency observation
     /// yet.
@@ -68,11 +69,11 @@ pub struct HealthState {
     /// observation yet (the selector treats it as the neutral factor 1.0).
     /// Scalar, so `Copy` semantics remain intact.
     pub tps_ema: f64,
-    /// Observed request count; EWMA is not updated until `MinRequests` is exceeded
-    /// (trusting new channels).
+    /// Observed request count; the EWMA is not updated until
+    /// [`HealthSetting::min_requests`] is exceeded (trusting new channels).
     pub request_count: u32,
-    /// Consecutive 401/403 (credential-class) count; reaching
-    /// `UnauthorizedEscalationThreshold` → Fatal.
+    /// Consecutive 401/403 (credential-class) count; reaching the dispatch engine's
+    /// escalation threshold (`health::outcome::UNAUTHORIZED_ESCALATION_THRESHOLD`) → Fatal.
     pub unauthorized_run: u32,
     /// Leave the slow-start ramp after a real failure (no more gradual recovery).
     pub ramp_exited: bool,
@@ -267,8 +268,8 @@ impl HealthSetting {
     /// # Errors
     ///
     /// Returns a static message naming the first violated field: `alpha` or
-    /// `min_score` outside `[0, 1]` (or non-finite), or `cooldown_base_ms`
-    /// exceeding `cooldown_max_ms`.
+    /// `min_score` outside `[0, 1]` (or non-finite), or `cooldown_base_ms` exceeding
+    /// `cooldown_max_ms` or `throttle_max_ms`.
     pub fn validate(&self) -> Result<(), &'static str> {
         if !self.alpha.is_finite() || !(0.0..=1.0).contains(&self.alpha) {
             return Err("alpha must be finite and in [0, 1]");

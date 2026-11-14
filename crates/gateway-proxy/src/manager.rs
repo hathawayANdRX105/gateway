@@ -510,8 +510,7 @@ impl ProxyManager {
     /// bound to this channel are cooling down after failures" — i.e. direct is a
     /// degraded fallback rather than the expected path — and records the failure as
     /// Retryable on the route unit health (`gateway_forward::stage`; the bridge point
-    /// is in forward rather than in dispatch polling, see todo/gateway-resilience.md
-    /// P1-C).
+    /// is in forward rather than in dispatch polling — P1-C).
     ///
     /// Call timing: read only on the failure path (after an attempt errors), never on
     /// the success hot path. Lock discipline matches [`Self::node_stats`]: hold only

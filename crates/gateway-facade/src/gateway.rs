@@ -88,8 +88,9 @@ impl Gateway {
         self.pipeline.clone()
     }
 
-    /// Data-plane router: pipeline as fallback + path guard (only /healthz and
-    /// /v1* are served, see [`gateway_pipeline::data_plane_guard`]).
+    /// Data-plane router: pipeline as fallback + path guard (`/healthz`, `/v1`, `/v1/…`
+    /// and `/v1beta…` are served, everything else 404s before the pipeline, see
+    /// [`gateway_pipeline::data_plane_guard`]).
     pub fn router(&self) -> Router {
         self.router.clone()
     }

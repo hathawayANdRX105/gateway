@@ -1,7 +1,6 @@
 //! Windowed t-digest latency signal table — gives the P2C tie-break layer a distribution view
 //! over p50/p95.
 //!
-//! Design: `docs/design/tdigest-windowed-latency.md` §3.1.
 //! Each routing unit (`unit_key`) keeps one [`WindowedDigest`] made of two
 //! [`crate::tdigest::Tdigest`]s — `cur` accumulates the current window's samples, `prev` is the
 //! snapshot after the previous window rotation. Queries read only `prev`'s p50/p95 (an O(1) data

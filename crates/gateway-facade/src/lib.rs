@@ -116,3 +116,7 @@ pub use gateway_metering::pricing::price_of;
 // In-memory ledger: the standalone process has no database, so its admission ledger is the
 // engine's memory implementation seeded from the catalog's quota snapshot.
 pub use gateway_metering::ledger::MemoryLedger;
+// Calibration ring: process-level telemetry, not assembly policy. The standalone process
+// installs it and serves the report on /readyz, and it is re-exported here so that process
+// names no engine crate (see the daemon dependency rule in the root README).
+pub use gateway_metering::calibration;

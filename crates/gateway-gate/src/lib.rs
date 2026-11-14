@@ -2,7 +2,8 @@
 //! concurrency)
 //!
 //! The request main path's **filtering layer**, designed after the Tower / Axum middleware
-//! onion model. Any gate failure → `ShortCircuit(4xx)`, never entering dispatch.
+//! onion model. A gate failure → `ShortCircuit` and dispatch is never entered (only
+//! `Rejection::AuthSkipped`, an assembly bug, maps to 500).
 //!
 //! ## Module map (seven gates, all traversed in one call)
 //!
@@ -10,15 +11,15 @@
 //! |--------|------|--------------|
 //! | [`auth`]        | ① key-hash lookup + auth_version | INVALID_API_KEY / TOKEN_EXPIRED |
 //! | [`state`]       | ② enabled / expiry / IP allowlist / user disabled | USER_DISABLED / IP_NOT_ALLOWED |
-//! | [`quota`]       | ③ balance vs estimated cost | INSUFFICIENT_QUOTA |
-//! | [`ratelimit`]   | ④ per-key / per-channel RPM/TPM | RATE_LIMITED |
-//! | [`model`]       | ⑤ token.allowed_models allowlist | MODEL_FORBIDDEN |
+//! | [`model`]       | ③ token.allowed_models allowlist (plus the group-model gate) | MODEL_FORBIDDEN |
+//! | [`quota`]       | ④ balance vs estimated cost | INSUFFICIENT_QUOTA |
+//! | [`ratelimit`]   | ⑤ per-key / per-channel RPM/TPM | RATE_LIMITED |
 //! | [`graylist`]    | ⑥ consecutive-failure ban | GRAYLISTED |
 //! | [`concurrency`] | ⑦ post-dispatch, per-channel Semaphore (full slots do not queue; returned on ctx drop) | RATE_LIMITED (429) |
 //! | [`snapshot`]    | (data source) holds identity / quota / ip-policy | CATALOG_NOT_READY |
 //!
 //! ```text
-//! request → auth → state → quota → ratelimit → model → graylist
+//! request → auth → state → model → group_model → quota → ratelimit → graylist
 //!                                              ↓ (post-dispatch)
 //!                                       concurrency
 //!          ↑ all lookups hit the local in-memory snapshot, zero cross-network calls

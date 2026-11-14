@@ -70,12 +70,14 @@ pub struct BodyModel {
     pub max_completion_tokens: Option<u32>,
 }
 
-/// Shared body-parsing entry point (used by both quota and model).
+/// Shared body-parsing entry point (used by both quota and model): fills
+/// `requested_model` / `requested_max_tokens` in the gate context.
 ///
 /// # Errors
 ///
-/// Propagates a [`Rejection`] only when a parsed body violates the gate's constraints;
-/// a non-JSON or unparsable body is skipped with `Ok(())`.
+/// Never returns `Err`: an on-disk body is not parsed yet, a non-JSON or unparsable
+/// body is skipped, and a body without those fields changes nothing — all three
+/// return `Ok(())`.
 pub fn parse_body_model_into(body: &BodySource, ctx: &mut GateCtx) -> Result<(), Rejection> {
     let bytes = match body {
         BodySource::InMemory(b) => b.as_ref(),

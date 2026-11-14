@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# bench/scripts/bench_gateway.sh — Gateway 压测脚本
-# 用法：./scripts/bench_gateway.sh [scenario_name]
+# benches/bench_gateway.sh — Gateway 压测脚本
+# 用法：./benches/bench_gateway.sh [scenario_name]
 # 依赖：hey (https://github.com/rakyll/hey), jq, python3
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BENCH_DIR="$(dirname "$SCRIPT_DIR")"
+BENCH_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATA_DIR="$BENCH_DIR/data"
 RESULTS_DIR="$BENCH_DIR/results"
 SCENARIOS="$DATA_DIR/scenarios.yaml"

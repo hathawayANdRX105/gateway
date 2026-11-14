@@ -1,7 +1,7 @@
 //! Rotation behavior tests for the windowed t-digest (`with_clock` fake clock, deterministic
 //! reproduction).
 //!
-//! Pinned behavior (`docs/design/tdigest-windowed-latency.md` §3.1):
+//! Pinned behavior of the windowed t-digest:
 //! - Queries read only the `prev` window; `cur` samples from the current round stay out of
 //!   queries;
 //! - On rotation (`now - last_rotate > window`) `prev = merge(prev, cur)` unconditionally;

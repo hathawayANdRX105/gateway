@@ -250,9 +250,10 @@ impl ForwardStage {
         // this function's scope and is dropped when the attempt ends (Ok or Err), releasing the
         // slot — it does **not** go into ctx.drop_guards (the attempt ends then, not the whole
         // response). Slot full: a concurrency rejection is not an upstream error, so no
-        // submit_failed; health follows the Retryable arm with degraded semantics (same as P1-C:
-        // drives candidate switching, the health table records no real upstream failure); the
-        // error is stashed for a 429 passthrough when the budget is exhausted.
+        // submit_failed; health still goes through the Retryable arm, which the health table
+        // scores as a channel failure (EWMA sample 0 + cooldown start) — the local gate is
+        // full, not the channel, so this is a known over-penalty; the error is stashed for
+        // a 429 passthrough when the budget is exhausted.
         let _permit = match try_acquire_concurrency(self.concurrency.as_ref()) {
             Ok(permit) => permit,
             Err(e) => {
@@ -470,8 +471,9 @@ impl ForwardStage {
         }
     }
 
-    /// Failed-attempt classification: 429 → Throttled; retryable/degraded → Retryable;
-    /// channel-scoped 4xx → `FatalButSwitchable`; everything else → Fatal.
+    /// Failed-attempt classification: 429 → Throttled; context-window overflow →
+    /// `WindowOverflow` (checked before the retryable arm); retryable/degraded →
+    /// Retryable; channel-scoped 4xx → `FatalButSwitchable`; everything else → Fatal.
     fn failure_result(
         &self,
         task: &crate::ForwardTask,
