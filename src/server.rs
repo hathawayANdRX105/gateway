@@ -1,42 +1,39 @@
-//! actix-web transport over the assembled gateway pipeline.
+//! axum transport over the assembled gateway pipeline.
 //!
 //! One handler owns the whole request path: read the body under a hard limit, build the
-//! transport-neutral [`RequestCtx`], run the pipeline, then stream the resulting response
-//! back chunk by chunk. The library's axum router is deliberately not used here — the
-//! standalone process is the actix shape, while embedding consumers keep the axum exit.
-//!
-//! Two conversions are unavoidable and kept in this file: actix-web 4 speaks `http` 0.2
-//! while the pipeline speaks `http` 1, and the pipeline body is an `axum::body::Body`
-//! stream. Both are mechanical; no request logic lives here.
+//! transport-neutral [`RequestCtx`], run the pipeline, then hand the resulting response
+//! back unchanged (the body streams frame by frame). The transport is the same stack the
+//! library's [`gateway_facade::Gateway::router`] exit uses, so no `http`-version or body
+//! conversion sits in the request path; only the process-level concerns live here
+//! (body ceiling, trusted-proxy policy, `/healthz` + `/readyz`, hop-by-hop stripping,
+//! listener and drain budget).
 
-use std::io;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+use std::time::Duration;
 
-use actix_web::http::header::{HeaderName, HeaderValue};
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use anyhow::{Context as _, ensure};
+use axum::body::Body;
+use axum::extract::{ConnectInfo, State};
+use axum::http::{HeaderMap, Request, StatusCode};
+use axum::response::{IntoResponse, Json, Response};
+use axum::routing::get;
+use bytes::{Bytes, BytesMut};
 use futures_util::StreamExt;
+use serde_json::{Value, json};
+use tokio::sync::watch;
 
 use gateway_facade::calibration::{self, CalibrationLog};
 use gateway_facade::{
     Components, Config, Context, GatewayBuilder, Ledger, MemoryLedger, Pipeline, ProxyManager,
-    QuotaGate, RequestCtx, ReqwestEgress, Settle, SettleSink, State, UsageEvent, error_to_response,
+    QuotaGate, RequestCtx, ReqwestEgress, Settle, SettleSink, State as FacadeState, UsageEvent,
+    error_to_response,
 };
 
 use crate::catalog::{Catalog, CatalogCounts};
 use crate::config::DaemonConfig;
 
-/// What a run needs: the config file and whether to stop after validation.
-#[derive(Debug, Clone)]
-pub struct RunArgs {
-    pub config_path: std::path::PathBuf,
-    /// Load the config and catalog, log the summary, exit without binding.
-    pub check: bool,
-}
-
-/// Shared request state. One instance per process; actix clones the `Data` handle per
-/// worker, not the state itself.
+/// Shared request state. One instance per process, cloned as an `Arc` per request.
 ///
 /// Public (with a constructor) so integration tests can drive the transport handlers
 /// without booting a real gateway; the fields stay private.
@@ -74,14 +71,19 @@ impl AppState {
     }
 }
 
-/// Read the config and catalog, then serve until `SIGINT` / `SIGTERM`.
+/// Read the catalog, assemble the plane, then serve until `SIGINT` / `SIGTERM`.
+///
+/// `check` loads the config and catalog, logs the summary and returns without binding.
 ///
 /// # Errors
 ///
-/// Returns config/catalog loading errors and listener bind errors.
-pub async fn run(args: RunArgs) -> anyhow::Result<()> {
-    let config = DaemonConfig::load(&args.config_path)?;
-    let catalog = Catalog::load(&config.catalog_path(&args.config_path))?;
+/// Returns catalog loading errors and listener bind errors.
+pub async fn run(
+    config: DaemonConfig,
+    catalog_path: std::path::PathBuf,
+    check: bool,
+) -> anyhow::Result<()> {
+    let catalog = Catalog::load(&catalog_path)?;
     let counts = catalog.counts;
     let calibration = Arc::new(CalibrationLog::new());
     calibration::install(Arc::clone(&calibration));
@@ -95,7 +97,7 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         prices = counts.prices,
         "catalog loaded"
     );
-    if args.check {
+    if check {
         return Ok(());
     }
 
@@ -104,45 +106,32 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         config.dispatch.selector,
         config.pool_shard_by_alias,
     );
-    let pipeline = gateway.pipeline();
     // /readyz exposes billing so ops can tell an unbilled relay from one that
     // settles usage. The standalone shape always mounts the logging settle sink
     // (assemble → Settle), so this is fixed at true here; an embedded consumer
     // derives it from its own facade Config (settle.is_some()).
-    let billing_enabled = true;
-    let state = web::Data::new(AppState::new(
-        pipeline,
+    let state = Arc::new(AppState::new(
+        gateway.pipeline(),
         config.max_request_bytes,
         config.trusted_proxies.clone(),
-        calibration.clone(),
+        calibration,
         counts,
-        billing_enabled,
+        true,
     ));
 
-    let factory = {
-        let state = state.clone();
-        move || {
-            App::new()
-                .app_data(state.clone())
-                .route("/healthz", web::get().to(healthz))
-                .route("/readyz", web::get().to(readyz))
-                .default_service(web::to(dispatch))
-        }
-    };
-
-    let mut server = HttpServer::new(factory)
-        .shutdown_timeout(config.shutdown_timeout_secs)
-        .bind(&config.listen)
+    let tcp = tokio::net::TcpListener::bind(&config.listen)
+        .await
         .with_context(|| format!("bind {}", config.listen))?;
-    if config.workers > 0 {
-        server = server.workers(config.workers);
-    }
-    if let Some(path) = &config.uds_path {
-        remove_stale_socket(path)?;
-        server = server
-            .bind_uds(path)
-            .with_context(|| format!("bind uds {}", path.display()))?;
-    }
+    let uds = match &config.uds_path {
+        Some(path) => {
+            remove_stale_socket(path)?;
+            Some(
+                tokio::net::UnixListener::bind(path)
+                    .with_context(|| format!("bind uds {}", path.display()))?,
+            )
+        }
+        None => None,
+    };
 
     tracing::info!(
         listen = %config.listen,
@@ -150,11 +139,54 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
         workers = config.workers,
         "gatewayd serving"
     );
-    server
-        .run()
-        .await
-        .context("gatewayd server exited with an error")?;
+
+    let (stop_tx, stop_rx) = watch::channel(false);
+    tokio::spawn(async move {
+        wait_for_shutdown_signal().await;
+        let _ = stop_tx.send(true);
+    });
+
+    let tcp_serve = axum::serve(
+        tcp,
+        router(Arc::clone(&state)).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(until_stopped(stop_rx.clone()));
+    let uds_serve = uds.map(|listener| {
+        axum::serve(listener, router(state).into_make_service())
+            .with_graceful_shutdown(until_stopped(stop_rx.clone()))
+    });
+
+    // Drain budget: once the stop signal fires, in-flight requests (SSE streams
+    // included) get `shutdown_timeout_secs` before the process exits. Whichever
+    // future ends first wins; the deadline arm only starts counting after the
+    // signal, so a long-running server is never cut short.
+    let drain = drain_deadline(stop_rx, Duration::from_secs(config.shutdown_timeout_secs));
+    match uds_serve {
+        Some(uds_serve) => {
+            tokio::select! {
+                result = async { tokio::try_join!(tcp_serve, uds_serve) } => {
+                    result.context("gatewayd server exited with an error")?;
+                }
+                () = drain => tracing::warn!("drain budget exhausted; exiting with requests in flight"),
+            }
+        }
+        None => {
+            tokio::select! {
+                result = tcp_serve => result.context("gatewayd server exited with an error")?,
+                () = drain => tracing::warn!("drain budget exhausted; exiting with requests in flight"),
+            }
+        }
+    }
     Ok(())
+}
+
+/// The process router: probe endpoints plus the one data-plane fallback.
+pub fn router(state: Arc<AppState>) -> axum::Router {
+    axum::Router::new()
+        .route("/healthz", get(healthz))
+        .route("/readyz", get(readyz))
+        .fallback(dispatch)
+        .with_state(state)
 }
 
 /// Build the gateway once: one ledger seeded from the catalog, one quota gate, one
@@ -183,7 +215,7 @@ fn assemble(
             wire_proxy_pool: false,
             proxies: Arc::new(ProxyManager::new()),
             proxy_snapshot: gateway_facade::ProxySnapshot::default(),
-            state: State {
+            state: FacadeState {
                 dispatch: catalog.dispatch,
                 token_snapshot: Arc::new(arc_swap::ArcSwap::from_pointee(catalog.token_snapshot)),
                 user_snapshot: Arc::new(arc_swap::ArcSwap::from_pointee(catalog.user_snapshot)),
@@ -223,7 +255,7 @@ impl SettleSink for LogSettleSink {
 fn remove_stale_socket(path: &std::path::Path) -> anyhow::Result<()> {
     if let Err(err) = std::fs::remove_file(path) {
         ensure!(
-            err.kind() == io::ErrorKind::NotFound,
+            err.kind() == std::io::ErrorKind::NotFound,
             "remove stale socket {}: {err}",
             path.display()
         );
@@ -231,11 +263,11 @@ fn remove_stale_socket(path: &std::path::Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn healthz() -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({ "status": "ok" }))
+pub async fn healthz() -> Json<Value> {
+    Json(json!({ "status": "ok" }))
 }
 
-pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
+pub async fn readyz(State(state): State<Arc<AppState>>) -> Json<Value> {
     // Billing is always reported: an unbilled relay is invisible to ops
     // otherwise, unlike `calibration`, which only appears once samples have
     // been recorded. Additive for existing /readyz consumers.
@@ -244,7 +276,7 @@ pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
     } else {
         "disabled"
     };
-    let mut body = serde_json::json!({
+    let mut body = json!({
         "status": "ready",
         "billing": billing,
         "channels": state.counts.channels,
@@ -262,49 +294,54 @@ pub async fn readyz(state: web::Data<AppState>) -> HttpResponse {
     {
         body["calibration"] = value;
     }
-    HttpResponse::Ok().json(body)
+    Json(body)
 }
 
-/// The one request entry: path guard → body read → pipeline → actix response.
-pub async fn dispatch(
-    req: HttpRequest,
-    mut payload: web::Payload,
-    state: web::Data<AppState>,
-) -> HttpResponse {
-    if !is_data_plane_path(req.path()) {
-        return HttpResponse::NotFound().finish();
+/// The one request entry: path guard → body read → pipeline → response.
+async fn dispatch(State(state): State<Arc<AppState>>, req: Request<Body>) -> Response {
+    let path = req.uri().path().to_string();
+    if !is_data_plane_path(&path) {
+        return StatusCode::NOT_FOUND.into_response();
     }
 
-    let body = match read_body(&mut payload, state.max_request_bytes).await {
+    // The connect-info layer only exists on the TCP listener; a Unix-socket peer has no
+    // `SocketAddr`, so the extension is simply absent there.
+    let peer = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(addr)| addr.ip());
+
+    let (parts, body) = req.into_parts();
+    let body = match read_body(body, state.max_request_bytes).await {
         Ok(body) => body,
         Err(BodyError::TooLarge) => {
-            return HttpResponse::PayloadTooLarge().json(serde_json::json!({
-                "error": { "message": "request body too large", "type": "invalid_request_error" }
-            }));
+            return (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                Json(json!({
+                    "error": { "message": "request body too large", "type": "invalid_request_error" }
+                })),
+            )
+                .into_response();
         }
         Err(BodyError::Payload) => {
-            return HttpResponse::BadRequest().json(serde_json::json!({
-                "error": { "message": "request body read failed", "type": "invalid_request_error" }
-            }));
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": { "message": "request body read failed", "type": "invalid_request_error" }
+                })),
+            )
+                .into_response();
         }
     };
 
-    let Ok(method) = http::Method::from_bytes(req.method().as_str().as_bytes()) else {
-        return HttpResponse::MethodNotAllowed().finish();
-    };
-    let ctx = RequestCtx::from_parts(
-        &method,
-        req.path().to_string(),
-        convert_headers(req.headers()),
-        body,
-        client_ip(&state, &req),
-    );
+    let client_ip = client_addr(peer, &parts.headers, &state.trusted_proxies);
+    let ctx = RequestCtx::from_parts(&parts.method, path, parts.headers, body, client_ip);
 
     let response = match state.pipeline.run(ctx).await {
         Ok(response) => response,
         Err(err) => error_to_response(err),
     };
-    to_actix_response(response)
+    strip_hop_by_hop(response)
 }
 
 /// Body ceiling check per chunk: the process never buffers more than the configured limit.
@@ -314,19 +351,17 @@ pub async fn dispatch(
 ///
 /// [`BodyError::TooLarge`] when the accumulated bytes would exceed `limit`, and
 /// [`BodyError::Payload`] when the transport stream fails mid-body.
-pub async fn read_body(
-    payload: &mut web::Payload,
-    limit: usize,
-) -> Result<bytes::Bytes, BodyError> {
-    let mut body = web::BytesMut::with_capacity(8 * 1024);
-    while let Some(chunk) = payload.next().await {
+pub async fn read_body(body: Body, limit: usize) -> Result<Bytes, BodyError> {
+    let mut out = BytesMut::with_capacity(8 * 1024);
+    let mut stream = body.into_data_stream();
+    while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|_| BodyError::Payload)?;
-        if body.len() + chunk.len() > limit {
+        if out.len() + chunk.len() > limit {
             return Err(BodyError::TooLarge);
         }
-        body.extend_from_slice(&chunk);
+        out.extend_from_slice(&chunk);
     }
-    Ok(body.freeze())
+    Ok(out.freeze())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -335,31 +370,12 @@ pub enum BodyError {
     Payload,
 }
 
-/// Data-plane path scope: `/v1`, `/v1/…`, `/v1beta…` — the same set the axum guard
-/// accepts minus `/healthz` (`/readyz` is a registered route and never reaches this
-/// handler).
+/// Data-plane path scope: `/v1`, `/v1/…`, `/v1beta…` — the same set the library's
+/// `data_plane_guard` accepts minus `/healthz` (`/readyz` is a registered route and
+/// never reaches this handler).
 #[must_use]
 pub fn is_data_plane_path(path: &str) -> bool {
     path == "/v1" || path.starts_with("/v1/") || path.starts_with("/v1beta")
-}
-
-/// Convert actix's `http` 0.2 header map to the pipeline's `http` 1 map.
-///
-/// Header names/values that are not valid in `http` 1 are dropped rather than failing the
-/// request: a malformed optional header must not turn into a 500.
-#[must_use]
-pub fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::HeaderMap {
-    let mut headers = http::HeaderMap::with_capacity(source.len());
-    for (name, value) in source {
-        let Ok(name) = http::HeaderName::from_bytes(name.as_str().as_bytes()) else {
-            continue;
-        };
-        let Ok(value) = http::HeaderValue::from_bytes(value.as_bytes()) else {
-            continue;
-        };
-        headers.append(name, value);
-    }
-    headers
 }
 
 /// Client address: the socket peer unless it is an explicitly trusted proxy, in which case
@@ -369,22 +385,8 @@ pub fn convert_headers(source: &actix_web::http::header::HeaderMap) -> http::Hea
 /// Right-to-left is the only safe direction: every proxy appends to the chain, so the
 /// left-most entry is whatever the client sent and is trivially forgeable. The default
 /// (`trusted_proxies` empty) never reads the header at all.
-fn client_ip(state: &AppState, req: &HttpRequest) -> IpAddr {
-    client_addr(
-        req.peer_addr().map(|addr| addr.ip()),
-        req.headers(),
-        &state.trusted_proxies,
-    )
-}
-
-/// Pure address resolution, split from the request wrapper so the trust policy is
-/// testable without a socket.
 #[must_use]
-pub fn client_addr(
-    peer: Option<IpAddr>,
-    headers: &actix_web::http::header::HeaderMap,
-    trusted: &[IpAddr],
-) -> IpAddr {
+pub fn client_addr(peer: Option<IpAddr>, headers: &HeaderMap, trusted: &[IpAddr]) -> IpAddr {
     match peer {
         Some(peer) if trusted.contains(&peer) => forwarded_for(headers, trusted).unwrap_or(peer),
         Some(peer) => peer,
@@ -393,10 +395,7 @@ pub fn client_addr(
 }
 
 #[must_use]
-pub fn forwarded_for(
-    headers: &actix_web::http::header::HeaderMap,
-    trusted: &[IpAddr],
-) -> Option<IpAddr> {
+pub fn forwarded_for(headers: &HeaderMap, trusted: &[IpAddr]) -> Option<IpAddr> {
     headers
         .get("x-forwarded-for")?
         .to_str()
@@ -407,37 +406,24 @@ pub fn forwarded_for(
         .find(|ip| !trusted.contains(ip))
 }
 
-/// Pipeline response → actix response, streaming the body frame by frame.
-///
-/// Hop-by-hop headers are dropped: actix frames the body itself (`chunked`), so forwarding
-/// the upstream's `content-length` / `transfer-encoding` would describe the wrong bytes.
+/// Drop the upstream's framing headers before the response leaves the process: the
+/// transport frames the body itself (`chunked`), so forwarding `content-length` /
+/// `transfer-encoding` would describe bytes that no longer match.
 #[must_use]
-pub fn to_actix_response(response: http::Response<axum::body::Body>) -> HttpResponse {
-    let (parts, body) = response.into_parts();
-    let status = actix_web::http::StatusCode::from_u16(parts.status.as_u16())
-        .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
-    let mut builder = HttpResponse::build(status);
-    for (name, value) in &parts.headers {
-        if is_hop_by_hop(name.as_str()) {
-            continue;
-        }
-        let Ok(name) = HeaderName::from_bytes(name.as_str().as_bytes()) else {
-            continue;
-        };
-        let Ok(value) = HeaderValue::from_bytes(value.as_bytes()) else {
-            continue;
-        };
-        builder.append_header((name, value));
+pub fn strip_hop_by_hop(mut response: Response) -> Response {
+    let blocked: Vec<axum::http::HeaderName> = response
+        .headers()
+        .keys()
+        .filter(|name| is_hop_by_hop(name.as_str()))
+        .cloned()
+        .collect();
+    for name in blocked {
+        response.headers_mut().remove(&name);
     }
-
-    let stream = body
-        .into_data_stream()
-        .map(|chunk| chunk.map_err(io::Error::other));
-    builder.streaming(stream)
+    response
 }
 
-/// Headers actix must reframe itself: carrying the upstream's framing headers would
-/// describe bytes that no longer match the chunked body it emits.
+/// Headers the transport must reframe itself.
 const HOP_BY_HOP: [&str; 9] = [
     "content-length",
     "transfer-encoding",
@@ -457,4 +443,40 @@ pub fn is_hop_by_hop(name: &str) -> bool {
     HOP_BY_HOP
         .iter()
         .any(|blocked| name.eq_ignore_ascii_case(blocked))
+}
+
+/// Resolves once the shared stop flag is set.
+async fn until_stopped(mut rx: watch::Receiver<bool>) {
+    let _ = rx.wait_for(|stopped| *stopped).await;
+}
+
+/// Resolves `budget` after the shared stop flag is set — the hard drain deadline.
+async fn drain_deadline(mut rx: watch::Receiver<bool>, budget: Duration) {
+    let _ = rx.wait_for(|stopped| *stopped).await;
+    tokio::time::sleep(budget).await;
+}
+
+/// `SIGINT` / `SIGTERM`, whichever arrives first.
+async fn wait_for_shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut stream) => {
+                stream.recv().await;
+            }
+            // No SIGTERM support: park forever so `ctrl_c` decides.
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {}
+        () = terminate => {}
+    }
+    tracing::info!("shutdown signal received; draining in-flight requests");
 }

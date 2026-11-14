@@ -30,7 +30,7 @@ max_request_bytes = 33554432
 # forge the address the gates see.
 trusted_proxies = ["127.0.0.1"]
 
-# Actix worker count. `0` (default) = actix default (available parallelism).
+# Tokio worker-thread count. `0` (default) = available parallelism.
 workers = 0
 
 # Graceful-shutdown drain budget in seconds: after SIGINT/SIGTERM, in-flight requests
