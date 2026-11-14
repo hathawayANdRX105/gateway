@@ -154,7 +154,9 @@ Transport notes:
 - `/readyz` always carries a `billing` field (`"enabled"` / `"disabled"`,
   mirroring whether a settlement sink is mounted), so an unbilled deployment
   is visible to ops; the `calibration` object appears once real-traffic
-  samples exist.
+  samples exist and carries a `suggested_weights` fit (prior-centered ridge
+  over the non-fallback samples) once usable samples are in the ring — the
+  input for the #20 weight-table recalibration.
 - The pipeline is the library's: admission chain → `ForwardStage` →
   protocol bridge. Response bodies stream frame by frame (SSE included); no
   full-response buffering.

@@ -391,7 +391,7 @@ impl ForwardStage {
 
     /// Estimates this attempt's in-flight tokens (`est = prompt_est + fwd_est`),
     /// computed on the forward side so dispatch does not depend on metering:
-    /// - `prompt_est` = `gateway_metering::estimate::estimate_prompt_from_value`
+    /// - `prompt_est` = `gateway_metering::estimate::estimate_prompt_detail`
     ///   over the adapted body (the request body after protocol conversion, same
     ///   basis as `forward_once`); conversion failure ⇒ 0 (a soft budget only
     ///   under-estimates, never over-estimates, and `forward_once` rejects the
@@ -435,8 +435,10 @@ impl ForwardStage {
         let Ok(value) = serde_json::from_str::<serde_json::Value>(s) else {
             return (0, None);
         };
-        let prompt = gateway_metering::estimate::estimate_prompt_from_value(&value)
-            .unwrap_or_else(|| gateway_metering::estimate::raw_length_tokens(s));
+        let prompt = gateway_metering::estimate::estimate_prompt_detail(&value)
+            .map_or(gateway_metering::estimate::raw_length_tokens(s), |e| {
+                e.tokens
+            });
         // Output-bound dialects are not wired yet: Responses `max_output_tokens`
         // and Gemini `generationConfig.maxOutputTokens` fall back to the EMA, as
         // before this rewrite — tracked with the prompt-side carriers as issue #19.

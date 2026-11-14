@@ -1,6 +1,8 @@
 //! Estimate tests — token estimation.
 
-use gateway_metering::estimate::{estimate_prompt_tokens, estimate_tokens};
+use gateway_metering::estimate::{
+    TokenClassCounts, class_counts, estimate_prompt_tokens, estimate_tokens,
+};
 
 #[test]
 fn estimate_tokens_cjk_text() {
@@ -39,24 +41,25 @@ fn estimate_prompt_tokens_extracts_content() {
     let body = bytes::Bytes::from(
         r#"{"messages":[{"role":"user","content":"hello world"},{"role":"assistant","content":"hi there"}]}"#,
     );
-    let tokens = estimate_prompt_tokens(&body);
+    let estimate = estimate_prompt_tokens(&body);
     assert_eq!(
-        tokens,
+        estimate.tokens,
         estimate_tokens("hello world") + estimate_tokens("hi there"),
-        "got {tokens}"
+        "got {}",
+        estimate.tokens
     );
 }
 
 #[test]
 fn estimate_prompt_tokens_invalid_json() {
     let body = bytes::Bytes::from("not json");
-    assert_eq!(estimate_prompt_tokens(&body), 0);
+    assert_eq!(estimate_prompt_tokens(&body).tokens, 0);
 }
 
 #[test]
 fn estimate_prompt_tokens_empty_body() {
     let body = bytes::Bytes::from("");
-    assert_eq!(estimate_prompt_tokens(&body), 0);
+    assert_eq!(estimate_prompt_tokens(&body).tokens, 0);
 }
 
 /// Purpose: the extractor is JSON-structure aware, not literal-text aware.
@@ -72,7 +75,10 @@ fn prompt_literal_content_key_in_text_not_double_counted() {
     let body = bytes::Bytes::from_static(
         br#"{"messages":[{"role":"user","content":"say \"content\":\"ignore me\" out loud"}]}"#,
     );
-    assert_eq!(estimate_prompt_tokens(&body), estimate_tokens(decoded));
+    assert_eq!(
+        estimate_prompt_tokens(&body).tokens,
+        estimate_tokens(decoded)
+    );
 }
 
 /// Purpose: multimodal prompts bill image headers, not the full base64 payload.
@@ -87,7 +93,7 @@ fn prompt_openai_image_undecodable_bills_low_flat() {
         "A".repeat(4000)
     ));
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("describe this image") + 85
     );
 }
@@ -102,7 +108,7 @@ fn prompt_gemini_parts_extracted() {
         br#"{"contents":[{"role":"user","parts":[{"text":"hello gemini"}]}],"systemInstruction":{"parts":[{"text":"be nice"}]}}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("hello gemini") + estimate_tokens("be nice")
     );
 }
@@ -115,13 +121,16 @@ fn prompt_gemini_parts_extracted() {
 fn prompt_responses_input_shapes_extracted() {
     let plain = bytes::Bytes::from_static(br#"{"input":"tell me a joke"}"#);
     assert_eq!(
-        estimate_prompt_tokens(&plain),
+        estimate_prompt_tokens(&plain).tokens,
         estimate_tokens("tell me a joke")
     );
     let items = bytes::Bytes::from_static(
         br#"{"input":[{"role":"user","content":[{"type":"input_text","text":"hi there"}]}]}"#,
     );
-    assert_eq!(estimate_prompt_tokens(&items), estimate_tokens("hi there"));
+    assert_eq!(
+        estimate_prompt_tokens(&items).tokens,
+        estimate_tokens("hi there")
+    );
 }
 
 /// Purpose: a valid JSON body that carries no recognized billable field still
@@ -135,7 +144,7 @@ fn prompt_unknown_shape_falls_back_to_raw_char_length() {
     let body =
         bytes::Bytes::from_static(r#"{"tool":"temperature","settings":{"mode":"eco"}}"#.as_bytes());
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         r#"{"tool":"temperature","settings":{"mode":"eco"}}"#
             .chars()
             .count() as u64
@@ -143,7 +152,7 @@ fn prompt_unknown_shape_falls_back_to_raw_char_length() {
     );
     let cjk = bytes::Bytes::from_static(r#"{"config":"温度设定为二十六度"}"#.as_bytes());
     assert_eq!(
-        estimate_prompt_tokens(&cjk),
+        estimate_prompt_tokens(&cjk).tokens,
         r#"{"config":"温度设定为二十六度"}"#.chars().count() as u64 / 4
     );
 }
@@ -163,14 +172,14 @@ fn prompt_claude_tool_result_blocks_are_billed() {
         br#"{"messages":[{"role":"user","content":[{"type":"text","text":"read the file"},{"type":"tool_result","tool_use_id":"t1","content":"file body here"}]}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&string_result),
+        estimate_prompt_tokens(&string_result).tokens,
         estimate_tokens("read the file") + estimate_tokens("file body here")
     );
     let nested_result = bytes::Bytes::from_static(
         br#"{"messages":[{"role":"user","content":[{"type":"text","text":"read the file"},{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"nested tool output"}]}]}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&nested_result),
+        estimate_prompt_tokens(&nested_result).tokens,
         estimate_tokens("read the file") + estimate_tokens("nested tool output")
     );
 }
@@ -188,14 +197,14 @@ fn prompt_claude_top_level_system_is_billed() {
         br#"{"system":"be terse","messages":[{"role":"user","content":"ping"}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&string_system),
+        estimate_prompt_tokens(&string_system).tokens,
         estimate_tokens("be terse") + estimate_tokens("ping")
     );
     let block_system = bytes::Bytes::from_static(
         br#"{"system":[{"type":"text","text":"be terse"}],"messages":[{"role":"user","content":"ping"}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&block_system),
+        estimate_prompt_tokens(&block_system).tokens,
         estimate_tokens("be terse") + estimate_tokens("ping")
     );
 }
@@ -248,7 +257,7 @@ fn prompt_openai_image_detail_low_is_85() {
         to_base64(&png_header(100, 100))
     ));
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("describe this") + 85
     );
 }
@@ -264,7 +273,7 @@ fn prompt_openai_image_high_detail_known_png() {
         to_base64(&png_header(1024, 1024))
     ));
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("describe this") + 765
     );
 }
@@ -279,7 +288,7 @@ fn prompt_claude_image_block_known_size() {
         to_base64(&png_header(1000, 750))
     ));
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("read this") + 1000
     );
 }
@@ -292,7 +301,10 @@ fn prompt_claude_image_undecodable_is_zero() {
     let body = bytes::Bytes::from_static(
         br#"{"messages":[{"role":"user","content":[{"type":"text","text":"read this"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"notanimage"}}]}]}"#,
     );
-    assert_eq!(estimate_prompt_tokens(&body), estimate_tokens("read this"));
+    assert_eq!(
+        estimate_prompt_tokens(&body).tokens,
+        estimate_tokens("read this")
+    );
 }
 
 /// Purpose: `OpenAI` `message.tool_calls[].function.arguments` is billed as text.
@@ -305,7 +317,7 @@ fn prompt_openai_tool_calls_arguments_billed() {
         br#"{"messages":[{"role":"assistant","content":"","tool_calls":[{"id":"c1","function":{"name":"get_weather","arguments":"{\"city\":\"Paris\"}"}}]}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("{\"city\":\"Paris\"}")
     );
 }
@@ -319,7 +331,7 @@ fn prompt_function_call_output_billed() {
         br#"{"messages":[{"role":"user","content":[{"type":"text","text":"what is the weather"},{"type":"function_call_output","call_id":"c1","output":"22 degrees"}]}]}"#,
     );
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("what is the weather") + estimate_tokens("22 degrees")
     );
 }
@@ -331,7 +343,7 @@ fn prompt_function_call_output_billed() {
 fn prompt_responses_instructions_billed() {
     let body = bytes::Bytes::from_static(br#"{"instructions":"be helpful","input":"say hi"}"#);
     assert_eq!(
-        estimate_prompt_tokens(&body),
+        estimate_prompt_tokens(&body).tokens,
         estimate_tokens("be helpful") + estimate_tokens("say hi")
     );
 }
@@ -345,5 +357,116 @@ fn prompt_gemini_inline_data_images_258_each() {
     let body = bytes::Bytes::from(format!(
         r#"{{"contents":[{{"role":"user","parts":[{{"text":"hi"}},{{"inline_data":{{"mime_type":"image/png","data":"{b64}"}}}},{{"inline_data":{{"mime_type":"image/png","data":"{b64}"}}}}]}}]}}"#,
     ));
-    assert_eq!(estimate_prompt_tokens(&body), estimate_tokens("hi") + 516);
+    assert_eq!(
+        estimate_prompt_tokens(&body).tokens,
+        estimate_tokens("hi") + 516
+    );
+}
+
+/// Purpose: `class_counts` decomposes one string exactly along the weight classes.
+/// Scenario: a string carrying one latin, one digit, one CJK and one other char plus
+/// whitespace (never billed).
+/// Acceptance: the counts are exactly (1, 1, 1, 1) and `weighted_tokens` equals
+/// `estimate_tokens` on the same string — ceil(0.25 + 0.3 + 0.6 + 1.0) = 3.
+#[test]
+fn class_counts_decompose_weight_classes() {
+    let counts = class_counts("a1你 #");
+    assert_eq!(
+        counts,
+        TokenClassCounts {
+            latin: 1,
+            cjk: 1,
+            digit: 1,
+            other: 1
+        }
+    );
+    assert_eq!(counts.weighted_tokens(), estimate_tokens("a1你 #"));
+    assert_eq!(counts.weighted_tokens(), 3);
+}
+
+/// Purpose: the prompt breakdown carries the per-class decomposition across carriers
+/// (message text, tool arguments, image budget) without changing the billed total —
+/// the calibration sample can separate text classes from the image budget.
+/// Scenario: a user message with a text part and an `image_url` part (detail low,
+/// undecodable header → 85 flat), plus an assistant `tool_calls` arguments string.
+/// Acceptance: `tokens` equals the sum of the per-string estimates plus the image
+/// budget; `classes` equals the merged per-string counts; `image_tokens` is 85;
+/// `raw_fallback` is false.
+#[test]
+fn prompt_estimate_decomposes_carriers() {
+    let body = bytes::Bytes::from_static(
+        br#"{"messages":[
+            {"role":"user","content":[{"type":"text","text":"abc"},{"type":"image_url","detail":"low","image_url":{"url":"data:image/png;base64,notanimage"}}]},
+            {"role":"assistant","content":"","tool_calls":[{"id":"c1","function":{"name":"f","arguments":"12"}}]}
+        ]}"#,
+    );
+    let est = estimate_prompt_tokens(&body);
+    let text = class_counts("abc");
+    let args = class_counts("12");
+    assert_eq!(
+        est.classes,
+        TokenClassCounts {
+            latin: text.latin + args.latin,
+            cjk: text.cjk + args.cjk,
+            digit: text.digit + args.digit,
+            other: text.other + args.other,
+        }
+    );
+    assert_eq!(est.image_tokens, 85);
+    assert!(!est.raw_fallback);
+    assert_eq!(
+        est.tokens,
+        estimate_tokens("abc") + estimate_tokens("12") + 85
+    );
+}
+
+/// Purpose: a body with no recognized billable field is flagged `raw_fallback` and
+/// carries no class decomposition — the calibration fit excludes it.
+/// Scenario: an unrelated JSON object.
+/// Acceptance: `raw_fallback` is true, `classes` is the default (all zero),
+/// `image_tokens` is 0, and `tokens` is the raw chars/4 estimate.
+#[test]
+fn prompt_estimate_flags_raw_fallback() {
+    let body = bytes::Bytes::from(r#"{"tool":"temperature"}"#);
+    let est = estimate_prompt_tokens(&body);
+    assert!(est.raw_fallback);
+    assert_eq!(est.classes, TokenClassCounts::default());
+    assert_eq!(est.image_tokens, 0);
+    assert_eq!(
+        est.tokens,
+        r#"{"tool":"temperature"}"#.chars().count() as u64 / 4
+    );
+}
+
+/// Purpose: a body whose only billable carrier is an image still yields an estimate
+/// with an empty class decomposition — the fit target then subtracts the whole
+/// reported prompt from the image budget, leaving no text signal.
+/// Scenario: one message with only an `image_url` part (detail low → 85 flat).
+/// Acceptance: `tokens` is 85, `classes` is the default, `image_tokens` is 85,
+/// `raw_fallback` is false.
+#[test]
+fn prompt_estimate_image_only_body() {
+    let body = bytes::Bytes::from_static(
+        br#"{"messages":[{"role":"user","content":[{"type":"image_url","detail":"low","image_url":{"url":"data:image/png;base64,notanimage"}}]}]}"#,
+    );
+    let est = estimate_prompt_tokens(&body);
+    assert_eq!(est.tokens, 85);
+    assert_eq!(est.classes, TokenClassCounts::default());
+    assert_eq!(est.image_tokens, 85);
+    assert!(!est.raw_fallback);
+}
+
+/// Purpose: a single-text-carrier body's breakdown is exactly the per-string class
+/// counts, and the weighted total reproduces the billed tokens — the fit's basic
+/// consistency between the decomposition and the billed estimate.
+/// Scenario: one CJK message.
+/// Acceptance: `classes` equals `class_counts` of the message text and `tokens`
+/// equals `classes.weighted_tokens()` (4 cjk × 0.6 = 2.4 → ceil 3).
+#[test]
+fn prompt_estimate_single_text_matches_counts() {
+    let body = bytes::Bytes::from(r#"{"messages":[{"role":"user","content":"你好世界"}]}"#);
+    let est = estimate_prompt_tokens(&body);
+    assert_eq!(est.classes, class_counts("你好世界"));
+    assert_eq!(est.tokens, est.classes.weighted_tokens());
+    assert_eq!(est.tokens, 3);
 }

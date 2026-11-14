@@ -324,7 +324,7 @@ async fn next_stream_item(
     sink: Option<Arc<dyn gateway_metering::SettleSink>>,
     group_id: String,
     sticky_bind: Option<Arc<StickyBind>>,
-    prompt_estimate: u64,
+    prompt_estimate: gateway_metering::estimate::PromptEstimate,
 ) -> Option<(Result<Bytes, std::io::Error>, StreamCommitState)> {
     enum Step {
         Chunk(Bytes),
@@ -447,7 +447,7 @@ fn settle_timeout(
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
     reason: &'static str,
-    prompt_estimate: u64,
+    prompt_estimate: gateway_metering::estimate::PromptEstimate,
 ) -> (Result<Bytes, std::io::Error>, StreamCommitState) {
     finish_stream(
         &mut state,
@@ -476,7 +476,7 @@ fn finish_stream(
     sink: Option<&Arc<dyn gateway_metering::SettleSink>>,
     group_id: &str,
     sticky_bind: Option<&Arc<StickyBind>>,
-    prompt_estimate: u64,
+    prompt_estimate: gateway_metering::estimate::PromptEstimate,
     status_code: u16,
     error: Option<&str>,
 ) {
