@@ -1,19 +1,14 @@
-# gateway conventions
+# gateway — development constraints and workflow
 
-gateway is the public LLM-gateway data-plane workspace in Rust: contract
-vocabulary, engine stages (gate / dispatch / forward / metering / protocol /
-proxy / security), the assembly facade (`gateway-facade`) a consumer wires up,
-and the standalone actix-web process at the workspace root (`gatewayd`).
-The crates are libraries; the root package is the process shell and contains no
-admission logic. No database, no admin plane. A product assembles these parts;
-this repo must stay product-neutral.
+This file carries **development constraints and workflow rules only**. Project
+facts — the crate manifest, crate responsibilities, the transport, the current
+dependency edges, the config surface — are the README's job and are updated
+there in the same change that touches them. Expanded procedures live under
+`.agent/rules/`; look them up when needed instead of reading them end to end.
 
-This file carries hard constraints and the order of operations; expanded
-procedures live under `.agent/rules/` — look them up when needed instead of
-reading them end to end.
-
-| Scenario                                                | Read                         |
+| Scenario                                               | Read                         |
 | ------------------------------------------------------- | ---------------------------- |
+| Project facts (crates, transport, dependency edges, config) | `README.md` — single source of truth |
 | Rust public API / code style / investigation and review | `.agent/rules/rust-code.md`  |
 | Writing / running tests, CI policy                      | `.agent/rules/testing-ci.md` |
 | Local dev environment, build optimizations, worktrees   | `.agent/rules/dev-env.md`    |
@@ -29,12 +24,11 @@ reading them end to end.
 | Full workspace tests                                     | `just test`                               | `cargo nextest run --workspace`; the suite is small, CI also runs it                          |
 | Format / lint / compile                                  | `just fmt` / `just clippy` / `just check` | clippy/check use `--profile ci` (LLVM), same backend as CI                                    |
 
-## 1. Understand the project first
+## 1. Read before working
 
-Read these first (five minutes to a global picture):
-
-1. `README.md` crate manifest — the **single source of truth** for crate
-   responsibilities and the quick-start facade contract.
+1. `README.md` — the **single source of truth** for what the crates are, how
+   they depend on each other, and the quick-start facade contract. If README
+   and your mental model disagree, README wins; update your model, not the doc.
 2. Root `Cargo.toml` `[workspace.lints.clippy]` — the idiom lints this repo
    **denies** (hand-written combinators, if/else disguise, …). Skim before
    writing code so you do not run into them.
@@ -43,22 +37,26 @@ Read these first (five minutes to a global picture):
 
 ### Dependency direction (hard rule)
 
-```
-gateway-facade ──> all engines ──> gateway-contract ──> app-contract
-```
+The README states the current edges; the constraint itself does not move:
 
-- Engines depend **only** on the contract crates plus other engines, never the
-  reverse; the contract surface must not grow back into implementations.
-- `app-contract` / `gateway-contract` are pure vocabulary + minimal ports.
-  `app-contract` stays **wasm-safe**: only pure data / serialization deps
-  (serde / uuid / chrono / thiserror); tokio / axum / reqwest are forbidden in it.
-- The consumer depends on `gateway-facade` and need not name any engine crate;
-  keep `GatewayBuilder` insertion points the only extension surface.
-- `gateway-daemon` (root package) may depend on `gateway-facade` plus transport
-  crates (actix-web, axum body types, http, toml); it must never depend on an
-  engine crate directly.
-- A new crate or a new dependency edge means updating the `README.md` manifest
+- A consumer depends on the facade crate and names nothing else; the facade's
+  insertion points stay the only extension surface.
+- Engine crates depend on the shared vocabulary crate plus other engines,
+  never the reverse. The vocabulary surface must not grow back into
+  implementations, and it stays free of server-framework dependencies.
+- The standalone process depends on the facade plus its transport crates; it
+  must never name an engine crate directly. If a process-level need seems to
+  require an engine type, re-export it from the facade first.
+- A new crate or a new dependency edge updates the `README.md` manifest
   **and** the root `Cargo.toml` layout comment in the same change.
+
+### Transport (hard rule)
+
+One HTTP stack for every surface. The library's pipeline and every consumer
+that embeds it, and the standalone process, speak the same framework and the
+same `http` major. Introducing a second server framework or a second `http`
+major into the tree is a design decision that needs the maintainer's
+sign-off — not a convenience.
 
 ## 2. Prepare the development environment
 
@@ -70,10 +68,10 @@ gateway-facade ──> all engines ──> gateway-contract ──> app-contract
   never let them guess relative paths.
 - `rm -rf .wt/`, `rm -rf .wt/*`, and `git clean` are strictly forbidden.
 
-### Toolchain: pinned nightly, two codegen backends
+### Toolchain: pinned toolchain, two codegen backends
 
-`rust-toolchain.toml` pins `nightly-2026-08-20` and `.cargo/config.toml` selects
-the **Cranelift** backend for the `dev` profile (~2x faster codegen in the local
+`rust-toolchain.toml` pins the toolchain; `.cargo/config.toml` selects the
+**Cranelift** backend for the `dev` profile (~2x faster codegen in the local
 loop); the `ci` profile stays on **LLVM** — the backend CI validates and that
 ships. sccache caches Cranelift artifacts like LLVM's.
 
@@ -171,7 +169,7 @@ Follow `.agent/rules/testing-ci.md`. Highlights:
 - Title in plain English (conventional-commit style) with a type label; the
   body follows `.github/PULL_REQUEST_TEMPLATE.md` (English headings, Chinese content).
 - This is a **published library**: breaking changes to a public API
-  (`gateway-facade` surface, contract types) must be called out in the PR body
+  (the facade surface, vocabulary types) must be called out in the PR body
   (`## Changelog` block) with the migration line for consumers.
 - When CI fails, pull the logs (`gh run view <id> --log-failed`) and fix on the
   same PR.
