@@ -170,6 +170,49 @@ fn admit_window_unregistered_allows_full_rejects_and_recovers() {
     );
 }
 
+// ---------- Global default: channels without an override follow it ----------
+
+#[test]
+fn unregistered_channel_follows_global_default() {
+    // Purpose: the global default installed by `set_global_default` is the cap for every
+    // channel without a `tpm_limit` override — the documented contract of the knob
+    // (`Config::token_tpm_default`).
+    // Scenarios: no default installed → unlimited; default installed → unregistered
+    // channel follows it (cap / load / window); per-channel override still wins.
+    // Acceptance: cap and the window decision track the default, and the override wins.
+    // bug: `cap` ignores `global_default` (knob stored but never enforced) → the channel
+    // stays unlimited after `set_global_default` and these assertions go red.
+    let now = Arc::new(AtomicU64::new(0));
+    let clock = {
+        let n = Arc::clone(&now);
+        move || n.load(Ordering::Relaxed)
+    };
+    let state = TokenBudgetState::with_clock(clock);
+
+    assert_eq!(state.cap("ch"), 0, "no override and no default = unlimited");
+    assert!(
+        state.admit_window("ch", 1_000_000),
+        "no cap in effect should always pass"
+    );
+
+    state.set_global_default(1_000);
+    assert_eq!(state.cap("ch"), 1_000, "no override → global default");
+    assert_eq!(state.load("ch"), Some(0.0), "no in-flight → load 0");
+    assert!(state.admit_window("ch", 600), "600 < 1000 passes");
+    assert!(!state.admit_window("ch", 500), "600 + 500 > 1000 rejected");
+
+    state.register_channel("ch", 2_000);
+    assert_eq!(state.cap("ch"), 2_000, "per-channel override wins");
+    assert!(
+        !state.admit_window("ch", 1_500),
+        "600 already in window + 1500 > 2000 rejected"
+    );
+    assert!(
+        state.admit_window("ch", 1_000),
+        "600 + 1000 = 1600 < 2000 passes"
+    );
+}
+
 // ---------- Concurrency without leaks (imitating the 8-thread shape of concurrency.rs) ----------
 
 #[test]

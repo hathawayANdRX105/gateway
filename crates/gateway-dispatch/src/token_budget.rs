@@ -16,7 +16,8 @@
 //! - `ema`: exponential moving average of measured completion per channel (`settle_actual`
 //!   calibrates with α=0.3), initial value [`COMPLETION_EMA_INIT`];
 //! - `caps`: per-channel token cap (TPM), `0` = unlimited (the same assembly convention
-//!   as `channel_max_concurrency`), defaulting to `global_default`.
+//!   as `channel_max_concurrency`); a channel with no override falls back to
+//!   `global_default`.
 //!
 //! Shape matches `gateway_gate::concurrency::ConcurrencyState` (`DashMap` + atomics) with no
 //! background thread; the clock matches `ratelimit` (default `chrono`, tests inject
@@ -112,9 +113,13 @@ impl TokenBudgetState {
         self.caps.insert(channel_key.to_string(), cap);
     }
 
-    /// Channel token cap; unregistered = `0` (= unlimited).
+    /// Channel token cap: the per-channel override, else [`Self::global_default`];
+    /// `0` = unlimited. An explicit `tpm_limit = 0` is not registered, so it also follows
+    /// the global default (the catalog cannot express "override to unlimited").
     pub fn cap(&self, channel_key: &str) -> u64 {
-        self.caps.get(channel_key).map_or(0, |v| *v)
+        self.caps
+            .get(channel_key)
+            .map_or_else(|| self.global_default(), |v| *v)
     }
 
     /// Current estimated in-flight tokens for the channel (unregistered/no in-flight = `0`).
@@ -125,7 +130,7 @@ impl TokenBudgetState {
     }
 
     /// Current in-flight token occupancy for the channel: `Some(min(1.0, inflight / cap))`;
-    /// `cap == 0` (unregistered or no cap) ⇒ `None`. P2C discounts channels about to
+    /// `cap == 0` (no override and no global default) ⇒ `None`. P2C discounts channels about to
     // In-flight tokens and the cap are u64 counters; the ratio is an f64 for P2C discounting
     // and channel token counts stay far below 2^53, so the conversion is exact in practice.
     #[allow(clippy::cast_precision_loss)]
@@ -145,7 +150,7 @@ impl TokenBudgetState {
     }
 
     /// Minute-level token window check: whether this channel still has room for the
-    /// estimated tokens accumulated within 60s. `cap == 0` (unregistered/unlimited) ⇒ pass
+    /// estimated tokens accumulated within 60s. `cap == 0` (no cap in effect) ⇒ pass
     /// immediately (`true`); otherwise delegates to [`SlidingWindow::admits_weighted`]
     /// (weight = estimated token count, strict side rejects over-limit).
     pub fn admit_window(&self, channel_key: &str, est_tokens: u64) -> bool {
