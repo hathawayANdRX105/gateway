@@ -1568,7 +1568,6 @@ dependencies = [
  "clap",
  "futures-util",
  "gateway-facade",
- "gateway-metering",
  "hex",
  "http 1.5.0",
  "serde",

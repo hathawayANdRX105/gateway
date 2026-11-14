@@ -18,11 +18,11 @@ use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use anyhow::{Context as _, ensure};
 use futures_util::StreamExt;
 
+use gateway_facade::calibration::{self, CalibrationLog};
 use gateway_facade::{
     Components, Config, Context, GatewayBuilder, Ledger, MemoryLedger, Pipeline, ProxyManager,
     QuotaGate, RequestCtx, ReqwestEgress, Settle, SettleSink, State, UsageEvent, error_to_response,
 };
-use gateway_metering::calibration::CalibrationLog;
 
 use crate::catalog::{Catalog, CatalogCounts};
 use crate::config::DaemonConfig;
@@ -84,7 +84,7 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
     let catalog = Catalog::load(&config.catalog_path(&args.config_path))?;
     let counts = catalog.counts;
     let calibration = Arc::new(CalibrationLog::new());
-    gateway_metering::calibration::install(Arc::clone(&calibration));
+    calibration::install(Arc::clone(&calibration));
 
     tracing::info!(
         channels = counts.channels,
@@ -335,8 +335,9 @@ pub enum BodyError {
     Payload,
 }
 
-/// Data-plane path scope, matching the axum router's guard: `/v1*` plus the two probe
-/// endpoints (which are registered routes and never reach this handler).
+/// Data-plane path scope: `/v1`, `/v1/…`, `/v1beta…` — the same set the axum guard
+/// accepts minus `/healthz` (`/readyz` is a registered route and never reaches this
+/// handler).
 #[must_use]
 pub fn is_data_plane_path(path: &str) -> bool {
     path == "/v1" || path.starts_with("/v1/") || path.starts_with("/v1beta")

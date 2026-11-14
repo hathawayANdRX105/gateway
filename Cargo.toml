@@ -17,14 +17,18 @@
 #   crates/gateway-proxy         Egress proxy pool (reqwest + meow-rs).
 #   crates/gateway-cache         Bounded store primitive + response cache (moka).
 #   crates/gateway-security      Sensitive-word filter (Aho-corasick).
-#   crates/gateway-metering      Prehold / settle / price arithmetic.
+#   crates/gateway-metering      Ledger ports, price arithmetic, token estimation, calibration.
 #
 # Dependency direction is one-way: the facade and the engines depend on
 # gateway-core, never the reverse; the facade depends on the engines, never the
 # other way around. A consumer depends on gateway-facade only. The daemon
-# depends on the facade plus its own transport crates (actix-web). Engine-to-engine
-# edges: dispatch → forward (retry-mode integration) and dispatch → metering
-# (context-fit token estimation at the dispatch stage).
+# depends on the facade plus its own transport crates (actix-web) and names no
+# engine crate. Engine-to-engine edges (all in [dependencies], so the shipped
+# graph stays acyclic): forward → dispatch (retry loop reports FailureClass),
+# forward → gate / protocol-bridge / proxy / security / metering / cache,
+# gate → metering (ledger ports), dispatch → gate / cache / metering (context-fit
+# token estimation). dispatch → forward and dispatch → protocol-bridge are
+# test-only and live in dispatch's [dev-dependencies].
 
 [package]
 name = "gateway-daemon"
@@ -40,7 +44,6 @@ path = "src/main.rs"
 
 [dependencies]
 gateway-facade = { path = "crates/gateway-facade" }
-gateway-metering = { path = "crates/gateway-metering" }
 actix-web = "4"
 axum = { workspace = true }
 arc-swap = { workspace = true }
