@@ -192,8 +192,9 @@ impl Stage for GateChain {
         }
 
         // All gates passed: promote the token and model name into `RequestCtx`.
-        // The model name is overridden only when ModelGate parsed one (assemblies without
-        // ModelGate keep the preset value).
+        // The model name is set only when a gate parsed one out of the request
+        // (`ModelGate` in the relay chain, `ModelParseGate` in the open chain);
+        // `RequestCtx::new` starts it at `None`, so nothing else supplies a value.
         if let Some(model) = gate_ctx.requested_model.take() {
             ctx.requested_model = Some(model);
         }

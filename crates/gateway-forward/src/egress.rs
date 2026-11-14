@@ -1,8 +1,8 @@
-//! Egress client pool — connection reuse / proxy / timeouts.
+//! Egress client pool — connection reuse / timeouts for direct upstream calls.
 //!
-//! References: new-api internal/egress (client pool / HTTP2 sharding / proxy),
-//! wildtoken (per-upstream timeouts). V1 scope: direct + HTTP(S) proxy;
-//! SOCKS/sing-box/TLS camouflage deferred (account-pool scenarios).
+//! References: new-api internal/egress (client pool / HTTP2 sharding),
+//! wildtoken (per-upstream timeouts). Scope: direct clients only — proxied egress is
+//! dialed through `adapter_egress` (`gateway-proxy` `ProxyAdapter`), not from this pool.
 
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
@@ -52,9 +52,10 @@ pub(crate) fn body_preview(bytes: &[u8]) -> String {
 
 /// Egress executor — holder of a pooled reqwest Client.
 ///
-/// V1 scope: a single direct pool, redirect following disabled (upstream 3xx is
-/// treated as an error, never followed silently). SOCKS/HTTP proxying is deferred
-/// to a later phase; issue #14 shards the pool by the requested model alias
+/// Scope: a single direct pool, redirect following disabled (upstream 3xx is
+/// treated as an error, never followed silently); proxied egress goes through
+/// `adapter_egress`, not through this pool. Issue #14 shards the pool by the requested
+/// model alias
 /// (public name): many upstream channels serve the same public alias and requests
 /// aggregate per alias, so a per-alias pool isolates a hot alias from other
 /// aliases while reqwest still pools per host inside each client.

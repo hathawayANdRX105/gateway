@@ -2,9 +2,10 @@
 
 The public home of the gateway: contract vocabulary, engine stages, the
 assembly facade a consumer wires up, and the standalone process entry. The
-crates are libraries — a product embeds the facade; the root package is
-`gatewayd`, an actix-web process that serves the same pipeline from a TOML
-config plus a file catalog. No database, no admin plane.
+`crates` are libraries — a product embeds the facade; the root package
+`gateway-daemon` ships the `gatewayd` binary, an actix-web process that serves
+the same pipeline from a TOML config plus a file catalog. No database, no admin
+plane.
 
 ## Crate manifest
 
@@ -17,11 +18,11 @@ config plus a file catalog. No database, no admin plane.
 | `crates/gateway-gate`            | Admission gates: token auth, user state, model allow-lists, quota (with prehold), rate limits, gray list, plus the gate primitives a consumer composes with.                                                                                                                                                                     |
 | `crates/gateway-dispatch`        | Catalog selection: pluggable strategies (`Selector` trait — P2C by default, weighted random / priority tiers / context-fit filters are data-driven) with health accounting, cooldowns, token budgets, sticky routing and latency digests.                                                                                                                                                             |
 | `crates/gateway-forward`         | Upstream forwarding and IO orchestration: build the request, send it, stream the response back; retry and per-channel concurrency live on this stage.                                                                                                                                                                            |
-| `crates/gateway-protocol-bridge` | Inbound protocol dialects (OpenAI / Gemini / Claude message) and streaming codecs.                                                                                                                                                                                                                                               |
+| `crates/gateway-protocol-bridge` | Inbound protocol dialects (OpenAI Chat + Responses, Gemini, Claude Messages) and streaming codecs.                                                                                                                                                                                                                        |
 | `crates/gateway-proxy`           | Egress proxy pool: node parsing, selection, leased clients; protocol assembly via `meow-rs`.                                                                                                                                                                                                                                     |
 | `crates/gateway-cache`           | Bounded concurrent store primitive (moka: LRU + TTL / idle / weighted size) + response cache. The only `moka` owner.                                                                                                                                                                                                             |
 | `crates/gateway-security`        | Sensitive-word filter (Aho-corasick). Leaf crate, no gateway dependencies.                                                                                                                                                                                                                                                       |
-| `crates/gateway-metering`        | Metering engine: prehold / settle / release ledger ports and the price arithmetic (`price_of`).                                                                                                                                                                                                                                  |
+| `crates/gateway-metering`        | Metering engine: prehold / settle / release ledger ports, price arithmetic (`price_of`), prompt-token estimation plus the streaming token scanner, and the calibration ring behind `/readyz`.                                                                                                                                                                                                        |
 
 ## What `gateway-facade` owns (and does not)
 
@@ -100,11 +101,14 @@ data plane. Paths are resolved relative to the config file.
 # gateway.toml (abridged; config/gateway.toml carries the full default)
 listen = "127.0.0.1:8080"
 uds_path = "/run/gatewayd.sock"   # optional; same pipeline on a Unix socket
-catalog = "gateway.catalog.toml"
+catalog = "catalog.toml"          # resolved against this file's directory
 max_request_bytes = 33554432      # 413 above this; the body is read into memory
 trusted_proxies = ["127.0.0.1"]   # only these peers may set x-forwarded-for
 workers = 0                       # 0 = actix default
 shutdown_timeout_secs = 30
+
+# [dispatch]
+# selector = "p2c"                # p2c (default) | weighted_random; boot-fixed
 ```
 
 The catalog mirrors the admin plane's loader: channels × keys × groups × models
@@ -149,8 +153,8 @@ cache = 1.25
 
 Transport notes:
 
-- Served scope is the data plane only (`/v1*`); `/healthz` and `/readyz` are
-  separate routes. Unknown paths are 404 before the pipeline runs.
+- Served scope is the data plane only (`/v1`, `/v1/`, `/v1beta`); `/healthz` and
+  `/readyz` are separate routes. Unknown paths are 404 before the pipeline runs.
 - `/readyz` always carries a `billing` field (`"enabled"` / `"disabled"`,
   mirroring whether a settlement sink is mounted), so an unbilled deployment
   is visible to ops; the `calibration` object appears once real-traffic
@@ -184,11 +188,27 @@ Two disjoint value sets, one rule: **everything a consumer can set lives in
 ## Dependency direction (hard rule)
 
 ```
-gateway-facade ──> all engines ──> gateway-core ──> (nothing)
-       └──────────────────────────┘
 gateway-daemon ──> gateway-facade (+ actix-web / toml; no engine crate)
-gateway-dispatch ──> gateway-forward (retry loop), gateway-metering (context-fit estimate)
+gateway-facade ──> every engine
+gateway-core   ──> (no gateway dependency)
+
+# engine-to-engine edges, as declared in each [dependencies]
+gateway-pipeline        ──> gateway-core
+gateway-metering        ──> gateway-core
+gateway-proxy           ──> gateway-core
+gateway-gate            ──> gateway-pipeline, gateway-metering
+gateway-protocol-bridge ──> gateway-pipeline
+gateway-cache           ──> (leaf)
+gateway-security        ──> (leaf)
+gateway-dispatch        ──> gateway-pipeline, gateway-gate, gateway-cache, gateway-metering
+gateway-forward         ──> gateway-pipeline, gateway-dispatch, gateway-gate,
+                            gateway-protocol-bridge, gateway-proxy, gateway-security,
+                            gateway-metering, gateway-cache
 ```
+
+Every engine except the two leaves also depends on `gateway-core`. Test-only edges
+(`gateway-dispatch` → `gateway-forward` / `gateway-protocol-bridge`) stay in
+`[dev-dependencies]`, so the shipped graph is acyclic.
 
 - Engines depend only on `gateway-core` plus other engines, never the reverse;
   the vocabulary surface must not grow back into implementations.

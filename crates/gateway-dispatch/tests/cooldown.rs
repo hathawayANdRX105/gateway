@@ -1,5 +1,4 @@
-//! P1-A outcome-driven differentiated cooldown behavior tests (spec:
-//! todo/gateway-resilience.md P1-A).
+//! P1-A outcome-driven differentiated cooldown behavior tests.
 //!
 //! What is tested — cooldown duration is tiered by the triggering outcome, all through the
 //! public `MemoryHealthTable` API plus an injected clock asserting `cooldown_until_ms - now`

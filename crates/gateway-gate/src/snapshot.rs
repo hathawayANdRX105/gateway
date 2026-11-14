@@ -1,7 +1,7 @@
 //! `snapshot` — data sources: identity / quota / ip-policy / pricing storage
 //!
-//! Every gate's read-only snapshot comes from here, pushed by the snapshot reload in
-//! `api-gateway-state`.
+//! Every gate's read-only snapshot comes from here: the consumer builds the snapshots
+//! (catalog load / reload) and hands them to the gates at assembly time.
 //!
 //! The snapshot containers themselves are vocabulary shared with the admin plane and
 //! live on the injection surface (`gateway_core::gate`); this module re-exports
@@ -9,9 +9,8 @@
 //! gate-local view helpers: the IP allowlist and the contract-record projections the
 //! gates read.
 //!
-//! `TokenEntry` wraps the contract's [`TokenRecord`] + the gate-only `allowed_models`;
-//! it does not reuse the contract `TokenRecord` because the latter does not list allowed
-//! models (a gate-only concept).
+//! `TokenEntry` composes the contract's [`TokenRecord`] and adds the gate-only
+//! `allowed_models`, which the contract record deliberately does not carry.
 
 use std::net::IpAddr;
 

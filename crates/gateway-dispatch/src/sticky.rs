@@ -1,5 +1,4 @@
-//! `sticky` — prefix-cache sticky binding table (design
-//! `docs/design/prompt-cache-sticky-routing.md` §3.1)
+//! `sticky` — prefix-cache sticky binding table.
 //!
 //! Once the same (session × public model) pair has hit the upstream prefix cache, the channel
 //! is bound into this table; later requests receive a boost in the **prior layer** (the boost

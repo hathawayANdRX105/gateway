@@ -63,9 +63,9 @@ pub fn pipe_chunk(ctx: &mut SseContext, chunk: &Bytes) -> PipedChunk {
     }
 }
 
-/// Terminates the scanners and returns `SseEnd` + `TokenCounts`; when `price_table` is `Some`
-/// this **actually** settles and returns the product to the caller (`None` = no billing,
-/// matching the behavior before billing existed).
+/// Terminates the scanners and returns `SseEnd` + `TokenCounts` + the settlement event;
+/// when `price_table` is `Some` that event is the priced product for the settle sink
+/// (`None` = no billing, matching the behavior before billing existed).
 ///
 /// The caller injects the terminal state through `status_code` / `error`: pass `200, None`
 /// when the stream finishes normally; on a mid-stream failure (upstream disconnect) pass

@@ -22,8 +22,9 @@
 //!
 //! ## Configuration
 //!
-//! [`FilterConfig`] is deserialized from `config.api.security` (env
-//! `FERRITE_SECURITY_JSON`); the read site is `crates/app-assembly/src/config.rs`.
+//! [`FilterConfig`] is a boot value on the facade `Config` (`Config::security`): the
+//! consumer builds it from its own configuration source and hands it over at assembly
+//! time. An empty word list leaves the filter dormant.
 
 pub mod scan;
 pub mod wordlist;

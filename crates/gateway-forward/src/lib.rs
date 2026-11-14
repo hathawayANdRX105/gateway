@@ -10,9 +10,9 @@
 //! |------|------|
 //! | [`pipeline`] | full forwarding pipeline for one attempt (build request → send → stream back) |
 //! | [`stage`]    | `ForwardStage`: single/retry orchestration (hooks in stage_* modules) |
-//! | [`adapter`]  | upstream request prep: URL/headers/auth (3 of new-api adaptor's five methods) |
+//! | [`adapter`]  | upstream request prep: URL/headers/auth (2 of new-api adaptor's five methods) |
 //! | [`adapter_egress`] | protocol egress: `StreamDialer` + `AdapterDialer` (meow) + TLS/proxy dial |
-//! | [`egress`]   | egress client pool: proxy/timeout/HTTP2 shards |
+//! | [`egress`]   | direct egress client pool: timeouts/HTTP2 shards/alias shards (proxy dial is [`adapter_egress`]) |
 //! | [`stream`]   | SSE pipe: frames → `SseScanner` → `StreamScanner` → client; `body_wants_stream` |
 //! | [`stream_resilience`] | P2 resilience: buffer window/heartbeat/disconnect classification |
 //!

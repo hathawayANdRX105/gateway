@@ -15,7 +15,7 @@
 //!   on FailureClass::Retryable: report; failover.mark_tried(&candidate); continue
 //!   on 429 (Throttled): report Ok(429)+Retry-After hint; mark_tried; continue
 //! }
-//! return 502   # budget exhausted
+//! return BudgetExhausted → 504 (a cooldown hint exists) / 503 (no hint)
 //! ```
 //!
 //! sticky = the sticky channel bound to this request (None = not sticky): passed through
@@ -280,7 +280,8 @@ impl Failover {
         self.min_context = Some(self.min_context.map_or(next, |current| current.max(next)));
     }
 
-    /// Advance to the next attempt; attempt budget exhausted → None (the upper layer returns 502).
+    /// Advance to the next attempt; attempt budget exhausted → `None` (the loop then ends
+    /// in `BudgetExhausted`, which the transport maps to 504/503).
     pub fn next_attempt(&mut self) -> Option<u32> {
         if self.attempts >= self.policy.max_attempts {
             return None;

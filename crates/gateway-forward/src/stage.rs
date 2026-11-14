@@ -113,15 +113,15 @@ pub struct ForwardStage {
     /// exactly like the original call. `None` = not mounted, every request
     /// forwards upstream byte-for-byte as before.
     pub(crate) response_cache: Option<Arc<gateway_cache::ResponseCache>>,
-    /// Filter word list (`config.api.security` `words`, env
-    /// `FERRITE_SECURITY_JSON`; empty list dormant by default): `handle` filters
+    /// Filter word list (facade `Config::security` `words`; empty list dormant by
+    /// default): `handle` filters
     /// the materialized request body once, against the client's original text.
     /// `None` or an empty list ⇒ the whole request-side filter is skipped at zero
     /// hot-path cost (byte-for-byte passthrough, identical to no filter).
     /// Response / streaming-side filtering (`StreamFilter` wiring) awaits a later
     /// enhancement PR and is not implemented this round.
     pub(crate) word_filter: Option<Arc<gateway_security::WordFilter>>,
-    /// Request-side filter switch (`config.api.security` `filter_request`,
+    /// Request-side filter switch (facade `Config::security` `filter_request`,
     /// defaults to true): forms a double gate with the word list — when `false`,
     /// request-side filtering is skipped entirely even with a mounted list
     /// (`filter_response` is response-side and not consumed this round).

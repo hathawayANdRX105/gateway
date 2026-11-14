@@ -162,8 +162,8 @@ pub struct PriceRow {
 ///
 /// Unit convention: `output_per_m` is internal units per million (`$1/500_000 =
 /// 500_000` internal units/M), `max_tokens` is a token count, and dividing by 1e6
-/// yields internal units. `ceil` guarantees a nonzero consumption of at least 1 unit,
-/// matching the round-up semantics of the metering layer.
+/// yields internal units. `ceil` rounds up to whole units (a zero `output_per_m` or a
+/// zero `max_tokens` still yields `0`), matching the metering layer's round-up.
 #[must_use]
 #[allow(clippy::cast_possible_truncation)]
 pub fn estimate_cost(price: &PriceRow, max_tokens: u32) -> i64 {

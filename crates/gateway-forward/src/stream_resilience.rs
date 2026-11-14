@@ -10,7 +10,7 @@
 //! candidate and retry, invisibly to the client (= api-hub `buffer_stream`, same as flo2
 //! buffer-before-forward).
 //!
-//! Parameter health (todo/gateway-resilience.md P2): a 2s window instead of api-hub's 60s,
+//! Parameter health (P2): a 2s window instead of api-hub's 60s,
 //! retry max 3 instead of 100, heartbeat 15s (industry 10–15s).
 //!
 //! ## Wiring status (Window phase)

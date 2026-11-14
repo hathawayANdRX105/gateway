@@ -18,7 +18,7 @@
 //! ## File layout
 //!
 //! - [`probe`] — active probing (liveness via TCP dial, reusing meow `ProxyHealth`)
-//! - [`node`] — `reqwest::Proxy` projection of a node (the only reqwest-dependent half)
+//! - [`node`] — `reqwest::Proxy` projection of a node
 //! - [`adapter`] — node → meow `ProxyAdapter` mapping (protocol handshake inside
 //!   `dial_tcp`)
 //! - [`pool`] — `ProxyPool`: indexed by `channel_key` + priority-tiered node selection

@@ -136,8 +136,7 @@ impl FormatCodec for GeminiCodec {
 ///
 /// The old implementation passed the uppercase Gemini enum through into the `OpenAI`
 /// shape verbatim, which clients could not recognize; this table is the
-/// authoritative mapping (compare the implementation in
-/// `todo/ref/ferryllm/src/adapters/gemini.rs`).
+/// authoritative mapping.
 fn gemini_finish_reason(reason: &str) -> StopReason {
     match reason {
         // STOP is a normal end; unlisted values fall through to Other below.

@@ -51,7 +51,10 @@ impl GrayListGate {
         Self { state }
     }
 
-    /// Records one result (called by forward after completion).
+    /// Records one attempt result. Nothing in this workspace calls it: the gate itself
+    /// only reads the block set (see the [`Gate::check`] impl below), so the consumer that wants streak
+    /// tracking drives this from its own completion path (the state is reachable through
+    /// `Gateway::graylist`).
     ///
     /// Success: resets the streak.
     /// Failure: streak +1; reaching the threshold bans the key for `BLOCK_DURATION`.
