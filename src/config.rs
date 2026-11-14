@@ -51,7 +51,7 @@ pub struct DaemonConfig {
     /// (the socket peer address is used). Add the reverse proxy's address, not the
     /// client's.
     pub trusted_proxies: Vec<IpAddr>,
-    /// Actix worker count; `0` uses the actix default (available parallelism).
+    /// Tokio worker-thread count; `0` uses the runtime default (available parallelism).
     pub workers: usize,
     /// Graceful-shutdown drain budget in seconds.
     pub shutdown_timeout_secs: u64,

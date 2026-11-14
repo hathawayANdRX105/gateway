@@ -1,28 +1,30 @@
 //! Transport and process-config behavior.
 //!
-//! Purpose: the standalone process converts between actix's `http` 0.2 and the pipeline's
-//! `http` 1, decides the client address, guards the served path scope and bounds the
-//! request body. A mistake in any of these reaches every request, so each is asserted
-//! directly rather than through compilation alone.
+//! Purpose: the standalone process decides the client address, guards the served path
+//! scope, bounds the request body and drops the upstream's framing headers before the
+//! response leaves the process. A mistake in any of these reaches every request, so each
+//! is asserted directly rather than through compilation alone.
 //!
-//! Scenarios: config defaults + required catalog, header conversion, right-to-left
-//! `x-forwarded-for` selection, path scope, hop-by-hop stripping and status mapping, and
-//! the handler's 413 / 404 / probe responses.
+//! Scenarios: config defaults + required catalog, right-to-left `x-forwarded-for`
+//! selection, path scope, hop-by-hop stripping, the body ceiling (exact limit / over
+//! limit / stream failure), and the router's 413 / 404 / probe responses.
 //!
-//! Acceptance: every conversion preserves the intended value, untrusted peers cannot
-//! forge their address, oversized bodies are rejected before the pipeline, and probe
-//! endpoints answer without a token.
+//! Acceptance: every value survives the path unchanged, untrusted peers cannot forge
+//! their address, oversized bodies are rejected before the pipeline, and probe endpoints
+//! answer without a token.
 
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use actix_web::http::header::{HeaderName, HeaderValue};
-use actix_web::{App, web};
+use axum::body::Body;
+use axum::http::{HeaderMap, HeaderName, HeaderValue, Request, StatusCode};
+use tower::ServiceExt;
+
 use gateway_daemon::catalog::CatalogCounts;
 use gateway_daemon::config::DaemonConfig;
 use gateway_daemon::server::{
-    AppState, client_addr, convert_headers, dispatch, forwarded_for, healthz, is_data_plane_path,
-    is_hop_by_hop, readyz, to_actix_response,
+    AppState, BodyError, client_addr, forwarded_for, is_data_plane_path, is_hop_by_hop, read_body,
+    router, strip_hop_by_hop,
 };
 use gateway_facade::Pipeline;
 use gateway_facade::calibration::CalibrationLog;
@@ -31,7 +33,7 @@ fn ip(text: &str) -> IpAddr {
     text.parse().expect("test address must parse")
 }
 
-fn forwarded(headers: &mut actix_web::http::header::HeaderMap, value: &'static str) {
+fn forwarded(headers: &mut HeaderMap, value: &'static str) {
     headers.append(
         HeaderName::from_static("x-forwarded-for"),
         HeaderValue::from_static(value),
@@ -40,7 +42,7 @@ fn forwarded(headers: &mut actix_web::http::header::HeaderMap, value: &'static s
 
 #[test]
 fn client_address_uses_rightmost_untrusted_hop() {
-    let mut headers = actix_web::http::header::HeaderMap::new();
+    let mut headers = HeaderMap::new();
     forwarded(&mut headers, "9.9.9.9, 1.2.3.4, 10.0.0.7");
     let trusted = [ip("10.0.0.7")];
 
@@ -54,7 +56,7 @@ fn client_address_uses_rightmost_untrusted_hop() {
 
 #[test]
 fn untrusted_peer_ignores_forwarded_header() {
-    let mut headers = actix_web::http::header::HeaderMap::new();
+    let mut headers = HeaderMap::new();
     forwarded(&mut headers, "1.2.3.4");
 
     assert_eq!(
@@ -70,7 +72,7 @@ fn untrusted_peer_ignores_forwarded_header() {
 
 #[test]
 fn missing_peer_falls_back_to_unspecified() {
-    let headers = actix_web::http::header::HeaderMap::new();
+    let headers = HeaderMap::new();
     assert_eq!(
         client_addr(None, &headers, &[]),
         ip("0.0.0.0"),
@@ -79,35 +81,11 @@ fn missing_peer_falls_back_to_unspecified() {
 }
 
 #[test]
-fn header_conversion_preserves_names_and_duplicates() {
-    let mut source = actix_web::http::header::HeaderMap::new();
-    source.append(
-        HeaderName::from_static("content-type"),
-        HeaderValue::from_static("application/json"),
-    );
-    source.append(
-        HeaderName::from_static("x-request-id"),
-        HeaderValue::from_static("abc"),
-    );
-    source.append(
-        HeaderName::from_static("x-request-id"),
-        HeaderValue::from_static("def"),
-    );
-
-    let converted = convert_headers(&source);
-    assert_eq!(
-        converted.get("content-type").and_then(|v| v.to_str().ok()),
-        Some("application/json")
-    );
-    assert_eq!(converted.get_all("x-request-id").iter().count(), 2);
-}
-
-#[test]
-fn path_scope_matches_the_axum_guard() {
+fn path_scope_matches_the_library_guard() {
     for served in ["/v1", "/v1/chat/completions", "/v1beta/models/gpt-4o"] {
         assert!(is_data_plane_path(served), "{served} must be served");
     }
-    for rejected in ["/healthz", "/v2/chat", "/v1x", "/"] {
+    for rejected in ["/healthz", "/readyz", "/v2/chat", "/v1x", "/"] {
         assert!(
             !is_data_plane_path(rejected),
             "{rejected} must not reach the pipeline"
@@ -132,29 +110,56 @@ fn hop_by_hop_headers_are_stripped() {
 }
 
 #[test]
-fn response_conversion_maps_status_and_drops_framing_headers() {
+fn response_strip_keeps_status_and_drops_framing_headers() {
     let mut response = http::Response::new(axum::body::Body::from("hi"));
-    *response.status_mut() = http::StatusCode::IM_A_TEAPOT;
+    *response.status_mut() = StatusCode::IM_A_TEAPOT;
     response.headers_mut().insert(
         http::header::CONTENT_TYPE,
-        http::HeaderValue::from_static("text/plain"),
+        HeaderValue::from_static("text/plain"),
     );
+    response
+        .headers_mut()
+        .insert(http::header::CONTENT_LENGTH, HeaderValue::from_static("2"));
     response.headers_mut().insert(
-        http::header::CONTENT_LENGTH,
-        http::HeaderValue::from_static("2"),
+        http::header::CONNECTION,
+        HeaderValue::from_static("keep-alive"),
     );
 
-    let converted = to_actix_response(response);
-    assert_eq!(converted.status().as_u16(), 418);
-    assert!(converted.headers().get("content-type").is_some());
+    let stripped = strip_hop_by_hop(response);
+    assert_eq!(stripped.status(), StatusCode::IM_A_TEAPOT);
     assert!(
-        converted.headers().get("content-length").is_none(),
-        "actix frames the body itself; the upstream length would be wrong"
+        stripped.headers().get("content-type").is_some(),
+        "an end-to-end header must survive"
     );
+    assert!(
+        stripped.headers().get("content-length").is_none(),
+        "the transport frames the body itself; the upstream length would be wrong"
+    );
+    assert!(stripped.headers().get("connection").is_none());
 }
 
-fn test_state(max_request_bytes: usize, billing_enabled: bool) -> web::Data<AppState> {
-    web::Data::new(AppState::new(
+#[tokio::test]
+async fn body_reader_bounds_at_the_exact_limit() {
+    // Scenario: a body exactly at the ceiling, one byte over it, and a body stream that
+    // fails mid-read.
+    // Acceptance: the exact limit passes; one byte over is TooLarge; a stream error is
+    // Payload (never silently truncated).
+    let exact = read_body(Body::from(vec![b'a'; 8]), 8).await;
+    assert_eq!(exact.expect("limit is inclusive").len(), 8);
+
+    assert_eq!(
+        read_body(Body::from(vec![b'a'; 9]), 8).await,
+        Err(BodyError::TooLarge)
+    );
+
+    let failing = Body::from_stream(futures_util::stream::once(async {
+        Err::<bytes::Bytes, std::io::Error>(std::io::Error::other("boom"))
+    }));
+    assert_eq!(read_body(failing, 8).await, Err(BodyError::Payload));
+}
+
+fn test_state(max_request_bytes: usize, billing_enabled: bool) -> Arc<AppState> {
+    Arc::new(AppState::new(
         Arc::new(Pipeline::new()),
         max_request_bytes,
         Vec::new(),
@@ -164,126 +169,75 @@ fn test_state(max_request_bytes: usize, billing_enabled: bool) -> web::Data<AppS
     ))
 }
 
-#[actix_web::test]
-async fn probes_answer_without_a_token() {
-    let app = actix_web::test::init_service(
-        App::new()
-            .app_data(test_state(1024, false))
-            .route("/healthz", web::get().to(healthz))
-            .route("/readyz", web::get().to(readyz))
-            .default_service(web::to(dispatch)),
-    )
-    .await;
-
-    let health = actix_web::test::call_service(
-        &app,
-        actix_web::test::TestRequest::get()
-            .uri("/healthz")
-            .to_request(),
-    )
-    .await;
-    assert_eq!(health.status().as_u16(), 200);
-
-    let ready = actix_web::test::call_service(
-        &app,
-        actix_web::test::TestRequest::get()
-            .uri("/readyz")
-            .to_request(),
-    )
-    .await;
-    assert_eq!(ready.status().as_u16(), 200);
-    let body = actix_web::test::read_body(ready).await;
-    let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
-    assert_eq!(json["status"], "ready");
+async fn get(state: Arc<AppState>, path: &str) -> (StatusCode, serde_json::Value) {
+    let request = Request::builder()
+        .uri(path)
+        .body(Body::empty())
+        .expect("request builds");
+    let response = router(state)
+        .oneshot(request)
+        .await
+        .expect("router answers");
+    let status = response.status();
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body collects");
+    let json = serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+    (status, json)
 }
-#[actix_web::test]
+
+#[tokio::test]
+async fn probes_answer_without_a_token() {
+    let (health_status, health) = get(test_state(1024, false), "/healthz").await;
+    assert_eq!(health_status, StatusCode::OK);
+    assert_eq!(health["status"], "ok");
+
+    let (ready_status, ready) = get(test_state(1024, false), "/readyz").await;
+    assert_eq!(ready_status, StatusCode::OK);
+    assert_eq!(ready["status"], "ready");
+}
+
+#[tokio::test]
 async fn readyz_reports_billing_enabled() {
     // Scenario: the deployment mounted a settlement sink (billing_enabled = true).
     // Acceptance: /readyz always returns "billing": "enabled" in the parsed body.
-    let app = actix_web::test::init_service(
-        App::new()
-            .app_data(test_state(1024, true))
-            .route("/healthz", web::get().to(healthz))
-            .route("/readyz", web::get().to(readyz))
-            .default_service(web::to(dispatch)),
-    )
-    .await;
-
-    let ready = actix_web::test::call_service(
-        &app,
-        actix_web::test::TestRequest::get()
-            .uri("/readyz")
-            .to_request(),
-    )
-    .await;
-    assert_eq!(ready.status().as_u16(), 200);
-    let body = actix_web::test::read_body(ready).await;
-    let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
-    assert_eq!(json["status"], "ready");
+    let (status, json) = get(test_state(1024, true), "/readyz").await;
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(json["billing"], "enabled");
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn readyz_reports_billing_disabled() {
     // Scenario: the deployment mounted no settlement sink (billing_enabled = false).
     // Acceptance: /readyz always returns "billing": "disabled" in the parsed body.
-    let app = actix_web::test::init_service(
-        App::new()
-            .app_data(test_state(1024, false))
-            .route("/healthz", web::get().to(healthz))
-            .route("/readyz", web::get().to(readyz))
-            .default_service(web::to(dispatch)),
-    )
-    .await;
-
-    let ready = actix_web::test::call_service(
-        &app,
-        actix_web::test::TestRequest::get()
-            .uri("/readyz")
-            .to_request(),
-    )
-    .await;
-    assert_eq!(ready.status().as_u16(), 200);
-    let body = actix_web::test::read_body(ready).await;
-    let json: serde_json::Value = serde_json::from_slice(&body).expect("readyz must return JSON");
-    assert_eq!(json["status"], "ready");
+    let (status, json) = get(test_state(1024, false), "/readyz").await;
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(json["billing"], "disabled");
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn unknown_path_is_404_before_the_pipeline() {
-    let app = actix_web::test::init_service(
-        App::new()
-            .app_data(test_state(1024, false))
-            .default_service(web::to(dispatch)),
-    )
-    .await;
-
-    let response = actix_web::test::call_service(
-        &app,
-        actix_web::test::TestRequest::get()
-            .uri("/nope")
-            .to_request(),
-    )
-    .await;
-    assert_eq!(response.status().as_u16(), 404);
+    let (status, _) = get(test_state(1024, false), "/nope").await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn oversized_body_is_rejected_before_the_pipeline() {
-    let app = actix_web::test::init_service(
-        App::new()
-            .app_data(test_state(8, false))
-            .default_service(web::to(dispatch)),
-    )
-    .await;
-
-    let request = actix_web::test::TestRequest::post()
+    let request = Request::builder()
+        .method(http::Method::POST)
         .uri("/v1/chat/completions")
-        .set_payload(vec![b'a'; 64])
-        .to_request();
-    let response = actix_web::test::call_service(&app, request).await;
-    assert_eq!(response.status().as_u16(), 413);
+        .body(Body::from(vec![b'a'; 64]))
+        .expect("request builds");
+    let response = router(test_state(8, false))
+        .oneshot(request)
+        .await
+        .expect("router answers");
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("body collects");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).expect("413 carries JSON");
+    assert_eq!(json["error"]["type"], "invalid_request_error");
 }
 
 #[test]

@@ -282,7 +282,7 @@ impl RequestCtx {
     ///
     /// Any HTTP server adapter can produce these values: method, path, headers, the
     /// fully-read body and the peer address. Kept separate from [`Self::from_axum`] so a
-    /// non-axum transport (the standalone actix-web process) assembles the same context
+    /// transport (the standalone daemon) assembles the same context
     /// instead of re-implementing protocol inference.
     pub fn from_parts(
         method: &http::Method,
