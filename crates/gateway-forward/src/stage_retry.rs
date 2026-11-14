@@ -208,7 +208,11 @@ impl ForwardStage {
         let min_context = match &ctx.request.body {
             gateway_pipeline::BodySource::InMemory(bytes) => {
                 let prompt = gateway_metering::estimate::estimate_prompt_tokens(bytes);
-                Some(prompt.saturating_add(u64::from(ctx.requested_max_tokens.unwrap_or(4096))))
+                Some(
+                    prompt
+                        .tokens
+                        .saturating_add(u64::from(ctx.requested_max_tokens.unwrap_or(4096))),
+                )
             }
             gateway_pipeline::BodySource::OnDisk { .. } => None,
         };

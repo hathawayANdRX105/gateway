@@ -100,7 +100,7 @@ impl Stage for DispatchStage {
             BodySource::InMemory(bytes) => {
                 let prompt = gateway_metering::estimate::estimate_prompt_tokens(bytes);
                 let max_tokens = u64::from(ctx.requested_max_tokens.unwrap_or(4096));
-                Some(prompt.saturating_add(max_tokens))
+                Some(prompt.tokens.saturating_add(max_tokens))
             }
             BodySource::OnDisk { .. } => None,
         };

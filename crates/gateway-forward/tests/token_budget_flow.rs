@@ -194,7 +194,7 @@ fn data_stream(pipe: gateway_pipeline::PipeStream) -> impl Stream<Item = Bytes> 
 /// hard-coding literals — a basis drift turns this red.
 fn est_for(body: &'static [u8], max_tokens: Option<u64>, ema: u64) -> u64 {
     let prompt = gateway_metering::estimate::estimate_prompt_tokens(&Bytes::from_static(body));
-    prompt + max_tokens.unwrap_or(ema).min(ema)
+    prompt.tokens + max_tokens.unwrap_or(ema).min(ema)
 }
 
 // ---------- case 1a: unconsumed stream holds inflight; full read returns it ----------

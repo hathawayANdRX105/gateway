@@ -292,7 +292,7 @@ pub(crate) fn counts_or_estimate(
     usage.unwrap_or_else(|| {
         tracing::debug!("usage unavailable, falling back to token estimate");
         gateway_metering::scanner::TokenCounts {
-            prompt: gateway_metering::estimate::estimate_prompt_tokens(req_body),
+            prompt: gateway_metering::estimate::estimate_prompt_tokens(req_body).tokens,
             completion: resp_body.len() as u64 / 4,
             cached: 0,
             cache_creation: 0,
@@ -306,7 +306,7 @@ pub(crate) fn counts_or_estimate(
 /// absent; never disturbs the settlement flow it wraps.
 pub(crate) fn record_calibration(
     log: Option<&Arc<gateway_metering::calibration::CalibrationLog>>,
-    estimated_prompt: u64,
+    estimate: gateway_metering::estimate::PromptEstimate,
     reported_prompt: u64,
 ) {
     let Some(log) = log else {
@@ -314,7 +314,7 @@ pub(crate) fn record_calibration(
     };
     // A reported prompt of 0 means the upstream gave no usage; `CalibrationLog::record`
     // ignores such samples (no calibration signal, avoids division by zero).
-    log.record(estimated_prompt, reported_prompt);
+    log.record(estimate, reported_prompt);
 }
 /// Milliseconds duration → `u32`, saturating at the limit (about 49.7 days).
 pub(crate) fn millis_saturating(elapsed: Duration) -> u32 {
