@@ -31,7 +31,7 @@ Gateway 压测工具。测 `gatewayd` 数据面本身（gate / dispatch / forwar
 {"id": "...", "source": "...", "name": "...", "stream?": true, "messages": [{"role": "user", "content": "..."}]}
 ```
 
-`benches/scripts/bench_gateway.sh` 的 `random_prompt` 随机抽一条，并用场景里的
+`benches/bench_gateway.sh` 的 `random_prompt` 随机抽一条，并用场景里的
 `model` / `stream` 覆盖语料里的同名字段——语料只提供问题，不绑定部署的模型别名，
 也不决定是否走 SSE。语料不进编译，改完直接重跑即可。
 
@@ -40,10 +40,9 @@ Gateway 压测工具。测 `gatewayd` 数据面本身（gate / dispatch / forwar
 ```text
 benches/
 ├── README.md           # 本文件
+├── bench_gateway.sh    # 压测脚本（路径相对脚本自身，可从任意目录调用）
 ├── data/
 │   └── scenarios.yaml  # 场景定义 + 速率控制 + global
-├── scripts/
-│   └── bench_gateway.sh
 └── results/            # gitignore，原始结果 + 分析
 
 config/
@@ -56,13 +55,13 @@ config/
 
 ```bash
 # 列出场景
-./benches/scripts/bench_gateway.sh
+./benches/bench_gateway.sh
 
 # 运行单个场景
-./benches/scripts/bench_gateway.sh baseline
+./benches/bench_gateway.sh baseline
 
 # 运行所有启用的场景
-./benches/scripts/bench_gateway.sh all
+./benches/bench_gateway.sh all
 ```
 
 `global.gateway_url` 默认 `http://127.0.0.1:8080`；gatewayd 换了端口时同步改这里。
