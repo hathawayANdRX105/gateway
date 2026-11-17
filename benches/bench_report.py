@@ -183,20 +183,21 @@ def render(
         ]
     )
     if perf_path is None:
+        note = Path("benches/perf-status.txt")
+        reason = (
+            note.read_text().strip()
+            if note.is_file() and note.read_text().strip()
+            else "No CPU sampling was run for this report."
+        )
         lines.extend(
             [
-                "Not collected on this host. `perf`, `flamegraph`, and `valgrind` are not",
-                "installed and `/proc/sys/kernel/perf_event_paranoid` is 2. To fill this table:",
+                "Not collected. Reason from the sampling step:",
                 "",
-                "```bash",
-                "cargo bench --bench <name> -- --profile-time 20",
-                "# in a second shell, while the bench runs:",
-                "perf record -F 99 -g -p <bench-pid> -- sleep 20",
-                "perf script | stackcollapse-perf.pl > benches/perf-folded.txt",
-                "python3 benches/bench_report.py --perf-folded benches/perf-folded.txt",
-                "```",
+                f"> {reason}",
                 "",
-                "The table then lists leaf functions by sample count and share of samples.",
+                "On a host with perf_event permission, `bash scripts/bench-cpu.sh` fills this",
+                "table with leaf functions ranked by sample count. CI runners commonly set",
+                "perf_event_paranoid=4 (denied), so this table stays empty there by design.",
             ]
         )
     else:

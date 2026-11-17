@@ -13,15 +13,20 @@ set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
 bench="${1:-cache_ops}"
-seconds="${2:-15}"
+crate="${2:-gateway-cache}"
+seconds="${3:-15}"
 out="benches/perf-folded.txt"
+status="benches/perf-status.txt"
 : > "$out"
+status_note() { printf '%s\n' "$1" > "$status"; }
+status_note "pending"
 
 log() { echo "[bench-cpu] $*"; }
 
 if ! command -v perf >/dev/null 2>&1; then
-    log "perf not installed; CPU sample table stays empty (java/Linux perf tools)."
-    log "On a runner: sudo apt-get install -y linux-tools-common linux-tools-generic"
+    msg="perf is not installed on this host; CPU sample table left empty."
+    log "$msg"
+    status_note "$msg"
     exit 0
 fi
 
@@ -34,28 +39,53 @@ if [ "$paranoid" != "unknown" ] && [ "$paranoid" -gt 1 ] 2>/dev/null; then
     fi
 fi
 
-log "compiling bench target: $bench"
-cargo bench --bench "$bench" --no-run >/dev/null 2>&1 || {
-    log "cannot compile bench $bench; skipping CPU sampling"
+log "compiling bench $crate/$bench"
+cargo bench -p "$crate" --bench "$bench" --no-run >/tmp/bench-cpu-build.log 2>&1 || {
+    msg="cannot compile bench $crate/$bench; CPU sample table left empty."
+    log "$msg"
+    status_note "$msg"
     exit 0
 }
+# Resolve the exact test binary Cargo built (an isolated filename avoids guessing hashes).
+bin=$(cargo test -p "$crate" --bench "$bench" --no-run --message-format=json 2>/dev/null \
+    | python3 -c 'import json,sys
+for line in sys.stdin:
+    try: obj=json.loads(line)
+    except ValueError: continue
+    if obj.get("profile", {}).get("test") and obj.get("executable"):
+        print(obj["executable"]); break' || true)
+# Fall back to the bench artifact under target, preferring a standalone binary.
+if [ -z "$bin" ]; then
+    bin=$(find target -type f -name "${bench}-*" -perm -u+x \
+        -path '*release*' 2>/dev/null | head -1)
+fi
+if [ -z "$bin" ] || [ ! -x "$bin" ]; then
+    msg="cannot locate compiled bench binary for $bench; CPU sample table left empty."
+    log "$msg"
+    status_note "$msg"
+    exit 0
+fi
+log "bench binary: $bin"
 
 # --profile-time keeps Criterion in its measurement loop so perf has a live target.
 log "starting $bench with --profile-time ${seconds}s"
-cargo bench --bench "$bench" -- --profile-time "$seconds" >/tmp/bench-cpu-run.log 2>&1 &
+"$bin" --profile-time "$seconds" >/tmp/bench-cpu-run.log 2>&1 &
 bench_pid=$!
 sleep 3
 
 if ! kill -0 "$bench_pid" 2>/dev/null; then
-    log "bench process exited before sampling; see /tmp/bench-cpu-run.log"
+    msg="bench process exited before sampling; see /tmp/bench-cpu-run.log"
+    log "$msg"
+    status_note "$msg"
     exit 0
 fi
 
 perf_data=/tmp/bench-cpu-$bench.data
 log "recording ${seconds}s of call-graph samples"
 if ! perf record -F 99 -g -o "$perf_data" -p "$bench_pid" -- sleep "$seconds" >/tmp/bench-cpu-perf.log 2>&1; then
-    log "perf record failed; reason:"
-    cat /tmp/bench-cpu-perf.log || true
+    msg="perf record failed (perf_event_paranoid=$paranoid): $(tr '\n' ' ' < /tmp/bench-cpu-perf.log | cut -c1-200)"
+    log "perf record failed; reason: $msg"
+    status_note "$msg"
     wait "$bench_pid" 2>/dev/null || true
     exit 0
 fi
@@ -67,12 +97,17 @@ if command -v stackcollapse-perf.pl >/dev/null 2>&1; then
 elif command -v inferno-collapse-perf >/dev/null 2>&1; then
     perf script -i "$perf_data" 2>/dev/null | inferno-collapse-perf > "$out"
 else
-    log "no stack collapsing tool found; install FlameGraph or inferno to fill the table"
+    msg="no stack collapsing tool found (need stackcollapse-perf.pl or inferno); table left empty"
+    log "$msg"
+    status_note "$msg"
     exit 0
 fi
 
 if [ -s "$out" ]; then
     log "wrote $(wc -l < "$out") folded stacks to $out"
+    status_note "CPU samples from perf on $crate/$bench ($(wc -l < "$out") folded stacks)."
 else
-    log "perf produced no stacks (permission or kernel restriction); table stays empty"
+    msg="perf produced no samples (perf_event_paranoid=$paranoid or kernel restriction); table left empty"
+    log "$msg"
+    status_note "$msg"
 fi

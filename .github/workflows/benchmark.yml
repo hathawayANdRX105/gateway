@@ -66,12 +66,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq linux-tools-common linux-tools-generic >/dev/null
           cargo install inferno --locked -q || true
-          bash scripts/bench-cpu.sh cache_ops 15
+          bash scripts/bench-cpu.sh cache_ops gateway-cache 15
+          # Regenerate the report either way: with folded stacks when sampling
+          # succeeded, or with the diagnostic reason from perf-status.txt.
+          args=(--out benches/REPORT.md)
           if [ -s benches/perf-folded.txt ]; then
-            python3 benches/bench_report.py \
-              --perf-folded benches/perf-folded.txt \
-              --out benches/REPORT.md
+            args+=(--perf-folded benches/perf-folded.txt)
           fi
+          python3 benches/bench_report.py "${args[@]}"
       - name: Save baseline snapshot
         run: |
           # Criterion stored this run under new/; promote it to base/ so the next

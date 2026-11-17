@@ -5,12 +5,12 @@ from benchmark tool output; this script does not estimate or invent values.
 
 ## Environment
 
-- Generated: 2026-11-17 13:40:04 UTC
-- Commit: 731dcea
+- Generated: 2026-11-17 13:52:08 UTC
+- Commit: 4ecf902
 - Runner: unknown
 - CPU: Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz
-- CPU scaling MHz: 90%
-- Load average (1m): 3.76
+- CPU scaling MHz: 98%
+- Load average (1m): 4.72
 - Toolchain: rustc 1.100.0-nightly (f7d782a3b 2026-08-19)
 - Benchmark profile: Cargo default bench profile (inherits release, LLVM).
 - Source: `target/criterion/*/*/new/estimates.json`.
@@ -71,15 +71,10 @@ are per sequence, not per chunk.
 
 ## CPU sample breakdown
 
-Not collected on this host. `perf`, `flamegraph`, and `valgrind` are not
-installed and `/proc/sys/kernel/perf_event_paranoid` is 2. To fill this table:
+Not collected. Reason from the sampling step:
 
-```bash
-cargo bench --bench <name> -- --profile-time 20
-# in a second shell, while the bench runs:
-perf record -F 99 -g -p <bench-pid> -- sleep 20
-perf script | stackcollapse-perf.pl > benches/perf-folded.txt
-python3 benches/bench_report.py --perf-folded benches/perf-folded.txt
-```
+> perf is not installed locally; CPU sample table left empty.
 
-The table then lists leaf functions by sample count and share of samples.
+On a host with perf_event permission, `bash scripts/bench-cpu.sh` fills this
+table with leaf functions ranked by sample count. CI runners commonly set
+perf_event_paranoid=4 (denied), so this table stays empty there by design.
