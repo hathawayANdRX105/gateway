@@ -34,33 +34,28 @@ paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo "unknown
 log "perf_event_paranoid=$paranoid"
 if [ "$paranoid" != "unknown" ] && [ "$paranoid" -gt 1 ] 2>/dev/null; then
     if command -v sudo >/dev/null 2>&1; then
-        sudo sysctl -w kernel.perf_event_paranoid=1 >/dev/null 2>&1 || \
-            log "could not lower perf_event_paranoid; samples may be empty"
+        sudo sysctl -w kernel.perf_event_paranoid=1 >/dev/null 2>&1 || true
     fi
+    paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo "unknown")
 fi
-
-log "compiling bench $crate/$bench"
-cargo bench -p "$crate" --bench "$bench" --no-run >/tmp/bench-cpu-build.log 2>&1 || {
-    msg="cannot compile bench $crate/$bench; CPU sample table left empty."
+if [ "$paranoid" != "unknown" ] && [ "$paranoid" -gt 1 ] 2>/dev/null; then
+    msg="perf_event_paranoid=$paranoid denies unprivileged sampling and could not be lowered; CPU sample table left empty"
     log "$msg"
     status_note "$msg"
     exit 0
-}
-# Resolve the exact test binary Cargo built (an isolated filename avoids guessing hashes).
-bin=$(cargo test -p "$crate" --bench "$bench" --no-run --message-format=json 2>/dev/null \
+fi
+
+log "compiling bench $crate/$bench and resolving its release binary"
+bin=$(cargo bench -p "$crate" --bench "$bench" --no-run --message-format=json 2>/dev/null \
     | python3 -c 'import json,sys
 for line in sys.stdin:
     try: obj=json.loads(line)
     except ValueError: continue
-    if obj.get("profile", {}).get("test") and obj.get("executable"):
-        print(obj["executable"]); break' || true)
-# Fall back to the bench artifact under target, preferring a standalone binary.
-if [ -z "$bin" ]; then
-    bin=$(find target -type f -name "${bench}-*" -perm -u+x \
-        -path '*release*' 2>/dev/null | head -1)
-fi
+    exe=obj.get("executable")
+    if exe and obj.get("profile", {}).get("test") and "release" in exe:
+        print(exe); break' || true)
 if [ -z "$bin" ] || [ ! -x "$bin" ]; then
-    msg="cannot locate compiled bench binary for $bench; CPU sample table left empty."
+    msg="cannot locate release bench binary for $crate/$bench; CPU sample table left empty."
     log "$msg"
     status_note "$msg"
     exit 0

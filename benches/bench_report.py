@@ -121,14 +121,15 @@ def environment(root: Path) -> list[str]:
     loadavg = Path("/proc/loadavg")
     load = loadavg.read_text().split()[0] if loadavg.is_file() else "unknown"
     scaling = "unknown"
-    lscpu = Path("/proc/cpuinfo")
-    if lscpu.is_file() and "model name" in lscpu.read_text():
-        try:
-            scaling = subprocess.check_output(
-                ["lscpu"], text=True, stderr=subprocess.DEVNULL
-            ).split("CPU(s) scaling MHz:")[-1].split()[0].strip()
-        except (OSError, subprocess.CalledProcessError, IndexError):
-            pass
+    try:
+        for line in subprocess.check_output(
+            ["lscpu"], text=True, stderr=subprocess.DEVNULL
+        ).splitlines():
+            if line.startswith("CPU(s) scaling MHz:"):
+                scaling = line.split(":", 1)[1].strip()
+                break
+    except (OSError, subprocess.CalledProcessError):
+        pass
     commit = subprocess.check_output(
         ["git", "rev-parse", "--short", "HEAD"], cwd=root, text=True
     ).strip()

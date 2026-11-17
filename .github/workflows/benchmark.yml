@@ -4,9 +4,6 @@ name: Benchmark (manual)
 # for numbers that may be shared in a PR or issue; the same scripts/bench.sh entry
 # produces the same table locally via `just bench`.
 on:
-  # TEMP-TEST trigger to validate the new workflow steps on the feature branch.
-  push:
-    branches: [chore/benchmark-ci-entry]
   workflow_dispatch:
     inputs:
       destination:
