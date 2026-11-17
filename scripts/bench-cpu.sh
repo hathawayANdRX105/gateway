@@ -89,13 +89,13 @@ for line in open(src, errors="replace"):
     if not match:
         continue
     cost = int(match.group(1).replace(",", ""))
-    symbol = re.sub(r"\s*\(\d+x\)\s*$", "", match.group(2).strip())
-    symbol = re.sub(r"\s*\[[^\]]*\]\s*$", "", symbol).strip()
-    if symbol.lower().startswith("0x"):
+    raw = match.group(2).strip()
+    if "/ld-linux" in raw or "/libc.so" in raw or "/dl-machine" in raw or "/dl-new-hash" in raw:
         continue
-    if "/ld-linux" in match.group(2) or "/libc.so" in match.group(2):
-        continue
-    if symbol.lower() in NOISE:
+    symbol = re.sub(r"\s*\[[^\]]*\]\s*$", "", raw)
+    # Keep the last two segments (e.g. ResponseCache::store) for useful context.
+    symbol = "::".join(symbol.rsplit("::", 2)[-2:]).strip()
+    if symbol.lower().startswith("0x") or symbol.lower() in NOISE:
         continue
     aggregated[symbol] = aggregated.get(symbol, 0) + cost
 with open(dst, "w") as fh:

@@ -5,12 +5,12 @@ from benchmark tool output; this script does not estimate or invent values.
 
 ## Environment
 
-- Generated: 2026-11-17 14:23:23 UTC
-- Commit: 079b27b
+- Generated: 2026-11-17 15:23:14 UTC
+- Commit: 9aedfda
 - Runner: unknown
 - CPU: Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz
 - CPU scaling MHz: 98%
-- Load average (1m): 2.63
+- Load average (1m): 2.22
 - Toolchain: rustc 1.100.0-nightly (f7d782a3b 2026-08-19)
 - Benchmark profile: Cargo default bench profile (inherits release, LLVM).
 - Source: `target/criterion/*/*/new/estimates.json`.
@@ -71,10 +71,24 @@ are per sequence, not per chunk.
 
 ## CPU sample breakdown
 
-Not collected. Reason from the sampling step:
+Source: `benches/perf-folded.txt` (callgrind Ir instructions on gateway-cache/cache_ops (CI run 44111173874).).
+`share` is the fraction of the profiler's total cost.
 
-> perf is not installed on this host; CPU sample table left empty.
-
-On a host with perf_event permission, `bash scripts/bench-cpu.sh` fills this
-table with leaf functions ranked by sample count. CI runners commonly set
-perf_event_paranoid=4 (denied), so this table stays empty there by design.
+| Function | Cost | Share (%) |
+| --- | ---: | ---: |
+| `sha256::compress256` | 2063200 | 68.49 |
+| `string::String>` | 313908 | 10.42 |
+| `format::format_inner` | 89744 | 2.98 |
+| `fmt::write` | 77280 | 2.57 |
+| `TinyTemplate>::add_template` | 74176 | 2.46 |
+| `Formatter>::pad_integral` | 64400 | 2.14 |
+| `Hasher>::write` | 60760 | 2.02 |
+| `Display>::fmt` | 48310 | 1.60 |
+| `Write>::write_str` | 39990 | 1.33 |
+| `StrSearcher>::new` | 32376 | 1.07 |
+| `TemplateCompiler>::consume_tag` | 30936 | 1.03 |
+| `pad_integral::write_prefix` | 27048 | 0.90 |
+| `./malloc/./malloc/arena.c:free` | 26847 | 0.89 |
+| `Guard>::flush` | 23614 | 0.78 |
+| `response::CacheKey>` | 20368 | 0.68 |
+| `ResponseCache>::store` | 19579 | 0.65 |
