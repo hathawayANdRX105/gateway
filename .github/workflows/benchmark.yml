@@ -4,9 +4,6 @@ name: Benchmark (manual)
 # for numbers that may be shared in a PR or issue; the same scripts/bench.sh entry
 # produces the same table locally via `just bench`.
 on:
-  # TEMP-TEST: push trigger only to exercise this workflow before it lands on main.
-  push:
-    branches: [chore/benchmark-ci-entry]
   workflow_dispatch:
     inputs:
       destination:
@@ -48,8 +45,38 @@ jobs:
         run: |
           echo "::error::number is required when destination is issue or pr"
           exit 1
+      # Persist Criterion's `base/` baseline across runs so the report's `vs base`
+      # column carries a real regression signal. Each run restores the prior cache
+      # (latest by prefix) and writes a fresh one keyed by run id.
+      - name: Restore baseline
+        uses: actions/cache@v4
+        with:
+          path: target/criterion
+          key: criterion-baseline-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            criterion-baseline-${{ runner.os }}-
       - name: Run benchmarks and build report
         run: bash scripts/bench.sh benches/REPORT.md
+      - name: CPU sampling (best effort)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq linux-tools-common linux-tools-generic >/dev/null
+          cargo install inferno --locked -q || true
+          bash scripts/bench-cpu.sh cache_ops 15
+          if [ -s benches/perf-folded.txt ]; then
+            python3 benches/bench_report.py \
+              --perf-folded benches/perf-folded.txt \
+              --out benches/REPORT.md
+          fi
+      - name: Save baseline snapshot
+        run: |
+          # Criterion stored this run under new/; promote it to base/ so the next
+          # run compares against it. Target/criterion is restored by the cache step.
+          mkdir -p target/criterion
+          find target/criterion -mindepth 3 -maxdepth 3 -type d -name new | while read -r d; do
+            cp -a "$d" "$(dirname "$d")/base"
+          done
       - name: Upload benchmark report
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +84,7 @@ jobs:
           path: |
             benches/REPORT.md
             target/criterion/*/*/new/estimates.json
+            benches/perf-folded.txt
           if-no-files-found: error
       - name: Publish table to job summary
         run: |

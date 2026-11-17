@@ -138,6 +138,13 @@ just bench-report --perf-folded benches/perf-folded.txt   # 附上 CPU 采样函
 - 本地和 CI 共用 `scripts/bench.sh`：本地 `just bench`，CI 直接调脚本，表格格式一致，区别只是机器环境。
 - CI 表格不会自动提交进仓库；要把 CI 数字固化到文档，下载 artifact 覆盖 `benches/REPORT.md` 再提交。
 
+CI 还会做两件事：
+
+- **基线对比**：`target/criterion` 通过 `actions/cache` 跨 run 保存。每当次 run 起，报告的 `vs base` 列就是 Criterion
+  自己算出的回归百分比；首轮显示 `-`。本地也可复现：先跑一次 `just bench`（产出 `base/`），之后每次跑都会带上对比列。
+- **CPU 采样**：`scripts/bench-cpu.sh` 用 perf 采样一个 bench 进程，折叠栈交给报告脚本生成函数级热点表。
+  这是尽力而为步骤：perf 权限或折叠工具不可用时，CPU 表留空并在日志里写原因，不影响主 benchmark。
+
 `benches/REPORT.md` 是提交进仓库的分析表：每行数值来自 Criterion 写出的
 `target/criterion/<group>/<function>/new/estimates.json`，脚本不估算、不造数。
 把新机器的结果贴进 PR / issue 时，重新跑 `just bench` 即可。

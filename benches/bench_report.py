@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -55,9 +56,13 @@ def group_to_package(root: Path) -> dict[str, str]:
 
 def criterion_rows(
     criterion_dir: Path, groups: dict[str, str]
-) -> list[tuple[str, str, float, float]]:
-    """Read (crate, bench id, mean ns, median ns) from Criterion estimates."""
-    rows: list[tuple[str, str, float, float]] = []
+) -> list[tuple[str, str, float, float, str]]:
+    """Read (crate, bench id, mean ns, median ns, vs-base %) from Criterion output.
+
+    The vs-base column comes from Criterion's own `change/estimates.json`, written
+    only when a persisted `base/` baseline exists for that benchmark.
+    """
+    rows: list[tuple[str, str, float, float, str]] = []
     for estimates in sorted(criterion_dir.glob("*/*/new/estimates.json")):
         group, name, _, _ = estimates.relative_to(criterion_dir).parts
         data = json.loads(estimates.read_text())
@@ -65,12 +70,19 @@ def criterion_rows(
         median = data.get("median", {}).get("point_estimate")
         if mean is None:
             continue
+        change = criterion_dir / group / name / "change" / "estimates.json"
+        change_text = "-"
+        if change.is_file():
+            delta = json.loads(change.read_text()).get("mean", {}).get("point_estimate")
+            if delta is not None:
+                change_text = f"{float(delta):+.1f}%"
         rows.append(
             (
                 groups.get(group, "unknown"),
                 f"{group}/{name}",
                 float(mean),
                 float(median) if median is not None else 0.0,
+                change_text,
             )
         )
     return sorted(rows, key=lambda row: row[2], reverse=True)
@@ -106,9 +118,28 @@ def environment(root: Path) -> list[str]:
         0
     ]
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    loadavg = Path("/proc/loadavg")
+    load = loadavg.read_text().split()[0] if loadavg.is_file() else "unknown"
+    scaling = "unknown"
+    lscpu = Path("/proc/cpuinfo")
+    if lscpu.is_file() and "model name" in lscpu.read_text():
+        try:
+            scaling = subprocess.check_output(
+                ["lscpu"], text=True, stderr=subprocess.DEVNULL
+            ).split("CPU(s) scaling MHz:")[-1].split()[0].strip()
+        except (OSError, subprocess.CalledProcessError, IndexError):
+            pass
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"], cwd=root, text=True
+    ).strip()
+    runner = os.environ.get("RUNNER_NAME") or os.environ.get("HOSTNAME") or "unknown"
     return [
         f"- Generated: {timestamp}",
+        f"- Commit: {commit}",
+        f"- Runner: {runner}",
         f"- CPU: {cpu_model}",
+        f"- CPU scaling MHz: {scaling}",
+        f"- Load average (1m): {load}",
         f"- Toolchain: {rustc}",
         "- Benchmark profile: Cargo default bench profile (inherits release, LLVM).",
         "- Source: `target/criterion/*/*/new/estimates.json`.",
@@ -117,7 +148,7 @@ def environment(root: Path) -> list[str]:
 
 def render(
     root: Path,
-    rows: list[tuple[str, str, float, float]],
+    rows: list[tuple[str, str, float, float, str]],
     perf: list[tuple[str, int, float]],
     perf_path: Path | None,
 ) -> str:
@@ -137,11 +168,13 @@ def render(
         "Stream benchmarks run a full chunk sequence in one iteration, so their numbers",
         "are per sequence, not per chunk.",
         "",
-        "| Crate | Benchmark | Mean (ns) | Median (ns) |",
-        "| --- | --- | ---: | ---: |",
+        "| Crate | Benchmark | Mean (ns) | Median (ns) | vs base |",
+        "| --- | --- | ---: | ---: | ---: |",
     ]
-    for crate, name, mean, median in rows:
-        lines.append(f"| {crate} | `{name}` | {mean:.1f} | {median:.1f} |")
+    for crate, name, mean, median, change in rows:
+        lines.append(
+            f"| {crate} | `{name}` | {mean:.1f} | {median:.1f} | {change} |"
+        )
     lines.extend(
         [
             "",

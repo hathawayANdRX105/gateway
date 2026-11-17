@@ -12,6 +12,14 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 
 out="${1:-benches/REPORT.md}"
 
+# Drop stale measurement dirs from prior runs so renamed/removed benchmarks do not
+# linger in the report. Keep `base/` — that is the cross-run comparison baseline.
+echo "==> clearing stale criterion new/ and change/ dirs"
+if [ -d target/criterion ]; then
+    find target/criterion -mindepth 3 -maxdepth 3 -type d \
+        \( -name new -o -name change \) -prune -exec rm -rf {} +
+fi
+
 echo "==> cargo bench --workspace"
 cargo bench --workspace
 

@@ -5,8 +5,12 @@ from benchmark tool output; this script does not estimate or invent values.
 
 ## Environment
 
-- Generated: 2026-11-17 09:17:54 UTC
+- Generated: 2026-11-17 13:40:04 UTC
+- Commit: 731dcea
+- Runner: unknown
 - CPU: Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz
+- CPU scaling MHz: 90%
+- Load average (1m): 3.76
 - Toolchain: rustc 1.100.0-nightly (f7d782a3b 2026-08-19)
 - Benchmark profile: Cargo default bench profile (inherits release, LLVM).
 - Source: `target/criterion/*/*/new/estimates.json`.
@@ -17,51 +21,53 @@ Per-call latency from Criterion. `mean` and `median` are nanoseconds per iterati
 Stream benchmarks run a full chunk sequence in one iteration, so their numbers
 are per sequence, not per chunk.
 
-| Crate | Benchmark | Mean (ns) | Median (ns) |
-| --- | --- | ---: | ---: |
-| gateway-security | `word_filter/stream_push_small_chunks` | 52519.2 | 51799.9 |
-| gateway-dispatch | `selector_latency/pick_digest_mounted` | 44311.6 | 43438.4 |
-| gateway-dispatch | `selector_latency/pick_ewma_baseline` | 31525.1 | 31253.8 |
-| gateway-security | `word_filter/filter` | 19816.0 | 19568.6 |
-| gateway-cache | `cache_ops/response_key` | 18802.6 | 17980.4 |
-| gateway-metering | `metering_ops/estimate_tokens` | 4182.9 | 4112.3 |
-| gateway-protocol-bridge | `codec_ops/translate_response` | 4060.5 | 3974.5 |
-| gateway-metering | `metering_ops/stream_scan` | 3801.0 | 3738.6 |
-| gateway-proxy | `proxy_ops/adapter_for_vless` | 2347.6 | 2264.8 |
-| gateway-protocol-bridge | `codec_ops/translate_request` | 1828.0 | 1794.6 |
-| gateway-protocol-bridge | `codec_ops/sse_push` | 1377.4 | 1355.7 |
-| gateway-metering | `metering_ops/estimate_prompt_tokens` | 1106.9 | 1054.3 |
-| gateway-cache | `cache_ops/response_cache_store` | 768.7 | 754.1 |
-| gateway-cache | `cache_ops/ttl_insert` | 743.4 | 701.1 |
-| gateway-metering | `metering_ops/extract_usage` | 717.4 | 709.1 |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_from_body` | 585.0 | 564.9 |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_json` | 574.5 | 570.6 |
-| gateway-proxy | `proxy_ops/manager_acquire` | 546.8 | 551.2 |
-| gateway-protocol-bridge | `codec_ops/map_error` | 495.7 | 489.8 |
-| gateway-dispatch | `state_ops/tdigest_quantile` | 328.1 | 322.6 |
-| gateway-cache | `cache_ops/response_cache_lookup` | 228.9 | 225.3 |
-| gateway-forward | `pipeline_ops/sanitize_client_headers` | 183.0 | 181.6 |
-| gateway-dispatch | `state_ops/sticky_lookup` | 166.6 | 166.2 |
-| gateway-cache | `cache_ops/ttl_get_hit` | 158.4 | 156.3 |
-| gateway-dispatch | `state_ops/latency_digest_quantiles_with_weight` | 120.8 | 120.1 |
-| gateway-dispatch | `state_ops/token_budget_admit_window` | 111.8 | 108.9 |
-| gateway-dispatch | `state_ops/tdigest_add` | 70.1 | 68.4 |
-| gateway-dispatch | `state_ops/sliding_window_admits_weighted` | 68.4 | 67.8 |
-| gateway-proxy | `proxy_ops/pool_pick` | 67.2 | 65.3 |
-| gateway-forward | `pipeline_ops/classify_status_401` | 53.4 | 53.2 |
-| gateway-forward | `pipeline_ops/classify_status_429` | 47.5 | 46.4 |
-| gateway-forward | `pipeline_ops/classify_status_502` | 45.6 | 45.2 |
-| gateway-security | `word_filter/has_match` | 30.2 | 29.0 |
-| gateway-protocol-bridge | `codec_ops/resolve` | 26.8 | 26.4 |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_override` | 24.5 | 22.7 |
-| gateway-proxy | `proxy_ops/tcp_metadata` | 21.6 | 21.2 |
-| gateway-proxy | `proxy_ops/validate_url_ip_literal` | 13.8 | 13.4 |
-| gateway-metering | `metering_ops/price_of` | 11.6 | 11.5 |
-| gateway-proxy | `proxy_ops/validate_url_domain` | 11.4 | 11.2 |
-| gateway-proxy | `proxy_ops/check_ip_public_v4` | 6.6 | 6.5 |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_passthrough` | 5.1 | 4.9 |
-| gateway-forward | `pipeline_ops/capture_prompt_body` | 4.8 | 5.0 |
-| gateway-proxy | `proxy_ops/adapter_for_socks5` | 3.4 | 3.4 |
+| Crate | Benchmark | Mean (ns) | Median (ns) | vs base |
+| --- | --- | ---: | ---: | ---: |
+| gateway-security | `word_filter/stream_push_small_chunks` | 64834.3 | 64020.1 | +0.0% |
+| gateway-dispatch | `selector_latency/pick_digest_mounted` | 52372.4 | 50121.4 | +0.2% |
+| gateway-dispatch | `selector_latency/pick_ewma_baseline` | 42805.2 | 41263.0 | +0.6% |
+| gateway-cache | `cache_ops/response_key_large` | 20389.6 | 20305.7 | -0.1% |
+| gateway-security | `word_filter/filter` | 19980.4 | 19597.3 | -0.0% |
+| gateway-protocol-bridge | `codec_ops/translate_response` | 5844.4 | 5640.7 | +0.1% |
+| gateway-metering | `metering_ops/estimate_tokens` | 5081.7 | 4952.6 | +0.2% |
+| gateway-cache | `cache_ops/response_key_medium` | 3730.3 | 3624.0 | +0.3% |
+| gateway-metering | `metering_ops/stream_scan` | 3697.5 | 3680.3 | -0.0% |
+| gateway-protocol-bridge | `codec_ops/translate_request` | 2450.3 | 2252.3 | +0.4% |
+| gateway-proxy | `proxy_ops/adapter_for_vless` | 2327.7 | 2295.3 | +0.2% |
+| gateway-cache | `cache_ops/response_key_small` | 1497.9 | 1438.0 | +0.4% |
+| gateway-protocol-bridge | `codec_ops/sse_push` | 1387.7 | 1346.1 | -0.0% |
+| gateway-metering | `metering_ops/estimate_prompt_tokens` | 1279.0 | 1273.2 | -0.1% |
+| gateway-cache | `cache_ops/response_cache_store` | 1247.1 | 1206.6 | +0.5% |
+| gateway-cache | `cache_ops/ttl_insert` | 848.4 | 823.7 | +0.4% |
+| gateway-metering | `metering_ops/extract_usage` | 717.8 | 708.7 | +0.2% |
+| gateway-forward | `pipeline_ops/rewrite_upstream_model_json` | 581.1 | 575.4 | -0.5% |
+| gateway-dispatch | `state_ops/tdigest_quantile` | 571.3 | 503.6 | -0.1% |
+| gateway-forward | `pipeline_ops/resolve_upstream_model_from_body` | 537.5 | 545.2 | -0.2% |
+| gateway-protocol-bridge | `codec_ops/map_error` | 520.5 | 517.1 | -0.0% |
+| gateway-proxy | `proxy_ops/manager_acquire` | 464.9 | 462.4 | -0.2% |
+| gateway-forward | `pipeline_ops/sanitize_client_headers` | 238.0 | 234.4 | -0.6% |
+| gateway-dispatch | `state_ops/sticky_lookup` | 237.6 | 217.3 | +0.3% |
+| gateway-cache | `cache_ops/response_cache_lookup` | 212.0 | 214.0 | +0.3% |
+| gateway-dispatch | `state_ops/latency_digest_quantiles_with_weight` | 188.7 | 173.0 | -0.3% |
+| gateway-dispatch | `state_ops/token_budget_admit_window` | 163.9 | 196.0 | -0.4% |
+| gateway-cache | `cache_ops/ttl_get_hit` | 159.4 | 162.0 | +0.2% |
+| gateway-dispatch | `state_ops/tdigest_add` | 116.7 | 113.6 | +0.7% |
+| gateway-dispatch | `state_ops/sliding_window_admits_weighted` | 78.3 | 72.2 | +0.1% |
+| gateway-proxy | `proxy_ops/pool_pick` | 63.8 | 62.2 | -0.1% |
+| gateway-forward | `pipeline_ops/classify_status_401` | 53.9 | 53.4 | -0.6% |
+| gateway-forward | `pipeline_ops/classify_status_429` | 47.4 | 46.2 | -0.8% |
+| gateway-forward | `pipeline_ops/classify_status_502` | 47.2 | 45.7 | -0.5% |
+| gateway-security | `word_filter/has_match` | 35.5 | 35.2 | +0.2% |
+| gateway-forward | `pipeline_ops/resolve_upstream_model_override` | 28.8 | 28.3 | +0.2% |
+| gateway-protocol-bridge | `codec_ops/resolve` | 22.9 | 22.4 | +0.0% |
+| gateway-proxy | `proxy_ops/tcp_metadata` | 21.5 | 21.0 | +0.1% |
+| gateway-proxy | `proxy_ops/validate_url_ip_literal` | 17.1 | 16.5 | +0.0% |
+| gateway-metering | `metering_ops/price_of` | 14.3 | 13.9 | -0.0% |
+| gateway-proxy | `proxy_ops/validate_url_domain` | 12.4 | 11.7 | +0.1% |
+| gateway-proxy | `proxy_ops/check_ip_public_v4` | 7.4 | 7.4 | +0.1% |
+| gateway-forward | `pipeline_ops/rewrite_upstream_model_passthrough` | 4.6 | 4.8 | -0.1% |
+| gateway-proxy | `proxy_ops/adapter_for_socks5` | 3.2 | 3.2 | -0.0% |
+| gateway-forward | `pipeline_ops/capture_prompt_body` | 2.3 | 2.3 | -0.6% |
 
 ## CPU sample breakdown
 

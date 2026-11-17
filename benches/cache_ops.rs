@@ -10,20 +10,21 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use gateway_cache::{
     CacheKey, CacheScope, CachedResponse, CachedUsage, ResponseCache, TtlCache, response_key,
 };
 
 const N: usize = 256;
 const TTL_CAPACITY: u64 = 4096;
-const BODY_PADDING: usize = 4096;
+// Three realistic request sizes; a single fixed 4 KB body inflated the key-derivation bench.
+const BODY_SIZES: [(&str, usize); 3] = [("small", 0), ("medium", 448), ("large", 4096)];
 
 struct Harness {
     scope: CacheScope,
     model: String,
     protocol: String,
-    body: Vec<u8>,
+    bodies: Vec<(&'static str, Vec<u8>)>,
     ttl: TtlCache<String, u32>,
     ttl_keys: Vec<String>,
     insert_keys: Vec<String>,
@@ -39,9 +40,9 @@ fn bench_scope() -> CacheScope {
     }
 }
 
-fn request_body() -> Vec<u8> {
+fn request_body(padding: usize) -> Vec<u8> {
     let mut body = br#"{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}"#.to_vec();
-    body.resize(body.len() + BODY_PADDING, b' ');
+    body.resize(body.len() + padding, b' ');
     body
 }
 
@@ -62,7 +63,15 @@ fn build_harness() -> Harness {
     let scope = bench_scope();
     let model = "gpt-4o".to_string();
     let protocol = "openai".to_string();
-    let body = request_body();
+    let bodies: Vec<(&'static str, Vec<u8>)> = BODY_SIZES
+        .iter()
+        .map(|(name, padding)| (*name, request_body(*padding)))
+        .collect();
+    let body = bodies
+        .last()
+        .expect("body sizes are non-empty")
+        .1
+        .as_slice();
 
     let ttl: TtlCache<String, u32> = TtlCache::bounded(TTL_CAPACITY);
     let ttl_keys: Vec<String> = (0..N).map(|i| format!("key-{i}")).collect();
@@ -74,7 +83,7 @@ fn build_harness() -> Harness {
     let keys: Vec<CacheKey> = (0..N)
         .map(|i| response_key(&scope, &model, &protocol, format!("req-{i}").as_bytes()))
         .collect();
-    let responses: Vec<CachedResponse> = (0..N).map(|i| cached_response(&body, i)).collect();
+    let responses: Vec<CachedResponse> = (0..N).map(|i| cached_response(body, i)).collect();
 
     let cache = ResponseCache::with_limits(Duration::from_secs(300), 64 * 1024 * 1024, 1024 * 1024);
     for (key, response) in keys.iter().zip(&responses) {
@@ -85,7 +94,7 @@ fn build_harness() -> Harness {
         scope,
         model,
         protocol,
-        body,
+        bodies,
         ttl,
         ttl_keys,
         insert_keys,
@@ -102,17 +111,19 @@ fn cache_ops_bench(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(2));
     group.warm_up_time(Duration::from_secs(1));
 
-    group.bench_function("response_key", |b| {
-        b.iter(|| {
-            let key = response_key(
-                &h.scope,
-                h.model.as_str(),
-                h.protocol.as_str(),
-                h.body.as_slice(),
-            );
-            black_box(key)
+    for (name, body) in &h.bodies {
+        group.bench_function(format!("response_key_{name}"), |b| {
+            b.iter(|| {
+                let key = response_key(
+                    &h.scope,
+                    h.model.as_str(),
+                    h.protocol.as_str(),
+                    body.as_slice(),
+                );
+                black_box(key)
+            });
         });
-    });
+    }
 
     group.bench_function("ttl_get_hit", |b| {
         let mut i = 0usize;
@@ -126,22 +137,29 @@ fn cache_ops_bench(c: &mut Criterion) {
 
     group.bench_function("ttl_insert", |b| {
         let mut i = 0usize;
-        b.iter(|| {
-            let key = &h.insert_keys[i];
-            i = i.wrapping_add(1) % h.insert_keys.len();
-            h.ttl.insert(black_box(key.clone()), black_box(7u32));
-        });
+        b.iter_batched(
+            || {
+                let key = &h.insert_keys[i];
+                i = i.wrapping_add(1) % h.insert_keys.len();
+                (black_box(key.clone()), 7u32)
+            },
+            |(key, value)| h.ttl.insert(key, value),
+            BatchSize::SmallInput,
+        );
     });
 
     group.bench_function("response_cache_store", |b| {
         let mut i = 0usize;
-        b.iter(|| {
-            let key = &h.keys[i];
-            let response = &h.responses[i];
-            i = i.wrapping_add(1) % h.keys.len();
-            h.cache
-                .store(black_box(key.clone()), black_box(response.clone()));
-        });
+        b.iter_batched(
+            || {
+                let key = &h.keys[i];
+                let response = &h.responses[i];
+                i = i.wrapping_add(1) % h.keys.len();
+                (black_box(key.clone()), black_box(response.clone()))
+            },
+            |(key, response)| h.cache.store(key, response),
+            BatchSize::SmallInput,
+        );
     });
 
     group.bench_function("response_cache_lookup", |b| {
