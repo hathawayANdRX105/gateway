@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
-# scripts/bench-cpu.sh — best-effort CPU sampling for the benchmark suite.
+# scripts/bench-cpu.sh — best-effort function-level CPU hotspots for the benchmarks.
 #
-# Profiles one Criterion bench process with `perf record`, converts the samples to
-# folded stacks, and writes benches/perf-folded.txt for benches/bench_report.py.
-# This answers "which function inside the hot bench is expensive", which the
-# latency table alone cannot. Sampling needs perf_event access: GitHub runners
-# allow lowering perf_event_paranoid with sudo; desktop hosts may not. The script
-# degrades with a clear reason instead of failing the benchmark run.
+# Primary profiler: valgrind/callgrind. It is pure user-mode instrumentation, so it
+# works on GitHub-hosted runners where perf_event_paranoid=4 forbids perf. It needs
+# symbol names, which [profile.bench] in Cargo.toml keeps via strip=false/debug=1.
+# Perf is kept as a secondary option for hosts that allow unprivileged sampling.
 #
-# Usage: bash scripts/bench-cpu.sh [bench-name] [sample-seconds]
+# Output: benches/perf-folded.txt with "<leaf function> <Ir cost>" rows.
+# benches/bench_report.py reads it and renders the CPU sample table. Every failure
+# path writes the reason into benches/perf-status.txt and exits 0 — CPU sampling is
+# best effort and never fails the benchmark run.
+#
+# Usage: bash scripts/bench-cpu.sh [bench-name] [crate] [iterations]
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
 bench="${1:-cache_ops}"
 crate="${2:-gateway-cache}"
-seconds="${3:-15}"
+iters="${3:-40}"
 out="benches/perf-folded.txt"
 status="benches/perf-status.txt"
 : > "$out"
@@ -23,29 +26,8 @@ status_note "pending"
 
 log() { echo "[bench-cpu] $*"; }
 
-if ! command -v perf >/dev/null 2>&1; then
-    msg="perf is not installed on this host; CPU sample table left empty."
-    log "$msg"
-    status_note "$msg"
-    exit 0
-fi
-
-paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo "unknown")
-log "perf_event_paranoid=$paranoid"
-if [ "$paranoid" != "unknown" ] && [ "$paranoid" -gt 1 ] 2>/dev/null; then
-    if command -v sudo >/dev/null 2>&1; then
-        sudo sysctl -w kernel.perf_event_paranoid=1 >/dev/null 2>&1 || true
-    fi
-    paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo "unknown")
-fi
-if [ "$paranoid" != "unknown" ] && [ "$paranoid" -gt 1 ] 2>/dev/null; then
-    msg="perf_event_paranoid=$paranoid denies unprivileged sampling and could not be lowered; CPU sample table left empty"
-    log "$msg"
-    status_note "$msg"
-    exit 0
-fi
-
-log "compiling bench $crate/$bench and resolving its release binary"
+# Locate the release bench binary Cargo built (symbols come from [profile.bench]).
+log "compiling bench $crate/$bench and resolving its binary"
 bin=$(cargo bench -p "$crate" --bench "$bench" --no-run --message-format=json 2>/dev/null \
     | python3 -c 'import json,sys
 for line in sys.stdin:
@@ -55,54 +37,69 @@ for line in sys.stdin:
     if exe and obj.get("profile", {}).get("test") and "release" in exe:
         print(exe); break' || true)
 if [ -z "$bin" ] || [ ! -x "$bin" ]; then
-    msg="cannot locate release bench binary for $crate/$bench; CPU sample table left empty."
+    msg="cannot locate bench binary for $crate/$bench; CPU table left empty."
     log "$msg"
     status_note "$msg"
     exit 0
 fi
 log "bench binary: $bin"
 
-# --profile-time keeps Criterion in its measurement loop so perf has a live target.
-log "starting $bench with --profile-time ${seconds}s"
-"$bin" --profile-time "$seconds" >/tmp/bench-cpu-run.log 2>&1 &
-bench_pid=$!
-sleep 3
-
-if ! kill -0 "$bench_pid" 2>/dev/null; then
-    msg="bench process exited before sampling; see /tmp/bench-cpu-run.log"
+if ! command -v valgrind >/dev/null 2>&1 || ! command -v callgrind_annotate >/dev/null 2>&1; then
+    msg="valgrind/callgrind_annotate not installed; CPU table left empty (CI: apt install valgrind)."
     log "$msg"
     status_note "$msg"
     exit 0
 fi
 
-perf_data=/tmp/bench-cpu-$bench.data
-log "recording ${seconds}s of call-graph samples"
-if ! perf record -F 99 -g -o "$perf_data" -p "$bench_pid" -- sleep "$seconds" >/tmp/bench-cpu-perf.log 2>&1; then
-    msg="perf record failed (perf_event_paranoid=$paranoid): $(tr '\n' ' ' < /tmp/bench-cpu-perf.log | cut -c1-200)"
-    log "perf record failed; reason: $msg"
-    status_note "$msg"
-    wait "$bench_pid" 2>/dev/null || true
-    exit 0
-fi
-wait "$bench_pid" 2>/dev/null || true
-
-# Prefer stackcollapse-perf.pl (FlameGraph), else use perf report stdio as folded-ish input.
-if command -v stackcollapse-perf.pl >/dev/null 2>&1; then
-    perf script -i "$perf_data" 2>/dev/null | stackcollapse-perf.pl > "$out"
-elif command -v inferno-collapse-perf >/dev/null 2>&1; then
-    perf script -i "$perf_data" 2>/dev/null | inferno-collapse-perf > "$out"
-else
-    msg="no stack collapsing tool found (need stackcollapse-perf.pl or inferno); table left empty"
+# Run one short measurement under callgrind. IR counts (instructions read) are the
+# cost unit; callgrind is ~20x slower, so keep the sample set small.
+cg_out="/tmp/bench-cpu-${bench}.out"
+log "profiling $bench under callgrind (sample-size $iters)"
+if ! valgrind --tool=callgrind --callgrind-out-file="$cg_out" --quiet \
+        "$bin" --sample-size "$iters" --warm-up-time 0.1 --measurement-time 0.2 \
+        >/tmp/bench-cpu-run.log 2>&1; then
+    msg="callgrind run failed; see /tmp/bench-cpu-run.log"
     log "$msg"
     status_note "$msg"
     exit 0
 fi
+if [ ! -s "$cg_out" ]; then
+    msg="callgrind produced no profile data; CPU table left empty."
+    log "$msg"
+    status_note "$msg"
+    exit 0
+fi
+
+# callgrind_annotate prints a sorted table: "Ir  file:function".
+# Convert it into "<leaf> <Ir>" rows for the report's folded-stack reader.
+annotate="/tmp/bench-cpu-${bench}.annotate.txt"
+callgrind_annotate --inclusive=yes --auto=no --threshold=100 "$cg_out" > "$annotate" 2>/dev/null
+python3 - "$annotate" "$out" <<'PY'
+import re
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+rows = []
+for line in open(src, errors="replace"):
+    # e.g. "  12,345,678 ( 30.00%) /path/crate.rs:fn::name (40x)"
+    match = re.match(r"\s*([\d,]+)\s+\([\d.]+%\)\s+(.+)", line)
+    if not match:
+        continue
+    cost = int(match.group(1).replace(",", ""))
+    symbol = re.sub(r"\s*\(\d+x\)\s*$", "", match.group(2).strip())
+    leaf = symbol.rsplit(":", 1)[-1].strip()
+    if leaf and cost > 0:
+        rows.append((leaf, cost))
+with open(dst, "w") as fh:
+    for leaf, cost in rows[:25]:
+        fh.write(f"{leaf} {cost}\n")
+PY
 
 if [ -s "$out" ]; then
-    log "wrote $(wc -l < "$out") folded stacks to $out"
-    status_note "CPU samples from perf on $crate/$bench ($(wc -l < "$out") folded stacks)."
+    log "wrote $(wc -l < "$out") function rows from callgrind"
+    status_note "callgrind Ir instructions on $crate/$bench ($(wc -l < "$out") functions)."
 else
-    msg="perf produced no samples (perf_event_paranoid=$paranoid or kernel restriction); table left empty"
+    msg="callgrind produced no annotated functions; CPU table left empty."
     log "$msg"
     status_note "$msg"
 fi

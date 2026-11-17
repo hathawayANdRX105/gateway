@@ -90,13 +90,20 @@ def criterion_rows(
 
 
 def folded_stack_rows(path: Path) -> list[tuple[str, int, float]]:
-    """Count leaf frames in `perf script | stackcollapse-perf.pl` output."""
+    """Rank leaf functions from a folded-stack file.
+
+    Accepts perf's `A;B;leaf 123` and callgrind's `leaf 123456` (written by
+    scripts/bench-cpu.sh). The count unit differs by profiler; the header carries
+    the source note from perf-status.txt.
+    """
     counts: dict[str, int] = {}
     for line in path.read_text().splitlines():
-        stack, separator, count_text = line.strip().rpartition(" ")
-        if not separator or not count_text.isdigit() or ";" not in stack:
+        name, separator, count_text = line.strip().rpartition(" ")
+        if not separator or not count_text.isdigit():
             continue
-        leaf = stack.rsplit(";", 1)[-1]
+        leaf = name.rsplit(";", 1)[-1]
+        if not leaf:
+            continue
         counts[leaf] = counts.get(leaf, 0) + int(count_text)
     total = sum(counts.values())
     return [
@@ -203,11 +210,14 @@ def render(
             ]
         )
     else:
+        note = Path("benches/perf-status.txt")
+        source = note.read_text().strip() if note.is_file() else "CPU profiler output"
         lines.extend(
             [
-                f"Source: `{perf_path}` (folded stacks). `share` is the fraction of all samples.",
+                f"Source: `{perf_path}` ({source}).",
+                "`share` is the fraction of the profiler's total cost.",
                 "",
-                "| Function | Samples | Share (%) |",
+                "| Function | Cost | Share (%) |",
                 "| --- | ---: | ---: |",
             ]
         )

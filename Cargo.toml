@@ -182,3 +182,9 @@ opt-level = 1
 [profile.ci]
 inherits = "dev"
 debug = "line-tables-only"
+
+# callgrind/perf need symbol names to build a function-level hotspot table.
+# The release profile stays stripped; only benchmark binaries carry symbols.
+[profile.bench]
+strip = false
+debug = 1

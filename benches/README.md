@@ -142,8 +142,11 @@ CI 还会做两件事：
 
 - **基线对比**：`target/criterion` 通过 `actions/cache` 跨 run 保存。每当次 run 起，报告的 `vs base` 列就是 Criterion
   自己算出的回归百分比；首轮显示 `-`。本地也可复现：先跑一次 `just bench`（产出 `base/`），之后每次跑都会带上对比列。
-- **CPU 采样**：`scripts/bench-cpu.sh` 用 perf 采样一个 bench 进程，折叠栈交给报告脚本生成函数级热点表。
-  这是尽力而为步骤：perf 权限或折叠工具不可用时，CPU 表留空并在日志里写原因，不影响主 benchmark。
+- **CPU 采样**：`scripts/bench-cpu.sh` 用 callgrind 对 bench 进程做用户态插桩，产出函数级热点表
+  （cost = 指令数 Ir，与延迟列互补）。callgrind 不需要内核 perf 权限，适合 GitHub hosted runner；
+  `Cargo.toml` 的 `[profile.bench]` 保留符号供 `callgrind_annotate` 反查函数名。
+  这是尽力而为步骤：valgrind 不可用或采样失败时，CPU 表写明原因，不影响主 benchmark。
+  本机若有 perf 权限，也可用 perf 采样，报告对两种来源的成本行都兼容。
 
 `benches/REPORT.md` 是提交进仓库的分析表：每行数值来自 Criterion 写出的
 `target/criterion/<group>/<function>/new/estimates.json`，脚本不估算、不造数。
