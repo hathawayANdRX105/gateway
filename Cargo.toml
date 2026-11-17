@@ -36,6 +36,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
+# Bench sources live in the shared root benches/ directory and belong to the
+# engine crates via explicit [[bench]] path entries; disable root auto-discovery.
+autobenches = false
 description = "Standalone gateway process: axum transport over the gateway-facade data plane"
 
 [[bin]]

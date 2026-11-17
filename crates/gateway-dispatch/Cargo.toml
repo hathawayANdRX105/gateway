@@ -40,6 +40,12 @@ criterion = "0.5"  # bench harness: not a workspace dep
 # P2C latency-factor benchmark (EWMA baseline vs mounted t-digest). Local only, not run in CI.
 [[bench]]
 name = "selector_latency"
+path = "../../benches/selector_latency.rs"
+harness = false
+
+[[bench]]
+name = "state_ops"
+path = "../../benches/state_ops.rs"
 harness = false
 
 [lints]

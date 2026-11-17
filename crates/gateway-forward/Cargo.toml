@@ -48,6 +48,12 @@ tokio = { workspace = true }
 futures-util = { workspace = true }
 http = { workspace = true }
 uuid = { workspace = true }
+criterion = "0.5" # bench harness: not a workspace dep
+
+[[bench]]
+name = "pipeline_ops"
+path = "../../benches/pipeline_ops.rs"
+harness = false
 
 [lints]
 workspace = true

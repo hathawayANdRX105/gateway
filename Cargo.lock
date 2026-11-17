@@ -1224,6 +1224,7 @@ name = "gateway-cache"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "criterion",
  "hex",
  "moka",
  "sha2",
@@ -1335,6 +1336,7 @@ dependencies = [
  "axum",
  "bytes",
  "chrono",
+ "criterion",
  "futures-util",
  "gateway-cache",
  "gateway-core",
@@ -1394,6 +1396,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
+ "criterion",
  "gateway-core",
  "parking_lot",
  "serde",
@@ -1428,6 +1431,7 @@ dependencies = [
  "axum",
  "bytes",
  "chrono",
+ "criterion",
  "gateway-core",
  "gateway-pipeline",
  "http",
@@ -1443,6 +1447,7 @@ version = "0.1.0"
 dependencies = [
  "arc-swap",
  "base64 0.22.1",
+ "criterion",
  "futures-util",
  "gateway-cache",
  "gateway-core",
@@ -1464,6 +1469,7 @@ name = "gateway-security"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
+ "criterion",
  "serde",
 ]
 
