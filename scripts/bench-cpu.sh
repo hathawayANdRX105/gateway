@@ -73,26 +73,34 @@ fi
 # callgrind_annotate prints a sorted table: "Ir  file:function".
 # Convert it into "<leaf> <Ir>" rows for the report's folded-stack reader.
 annotate="/tmp/bench-cpu-${bench}.annotate.txt"
-callgrind_annotate --inclusive=yes --auto=no --threshold=100 "$cg_out" > "$annotate" 2>/dev/null
+callgrind_annotate --inclusive=no --auto=no --threshold=100 "$cg_out" > "$annotate" 2>/dev/null
 python3 - "$annotate" "$out" <<'PY'
 import re
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
-rows = []
+# callgrind_annotate prints "cost (pct%) name [path]" where name may be demangled
+# and the path is bracketed. Keep only the short function name, merge duplicates,
+# and drop callgrind/loader/libc records that are not code under test.
+NOISE = {"program totals", "(below main)", "__libc_start_main@@glibc_2.34"}
+aggregated: dict[str, int] = {}
 for line in open(src, errors="replace"):
-    # e.g. "  12,345,678 ( 30.00%) /path/crate.rs:fn::name (40x)"
-    match = re.match(r"\s*([\d,]+)\s+\([\d.]+%\)\s+(.+)", line)
+    match = re.match(r"\s*([\d,]+)\s+\(\s*[\d.]+%\s*\)\s+(.+)", line)
     if not match:
         continue
     cost = int(match.group(1).replace(",", ""))
     symbol = re.sub(r"\s*\(\d+x\)\s*$", "", match.group(2).strip())
-    leaf = symbol.rsplit(":", 1)[-1].strip()
-    if leaf and cost > 0:
-        rows.append((leaf, cost))
+    symbol = re.sub(r"\s*\[[^\]]*\]\s*$", "", symbol).strip()
+    if symbol.lower().startswith("0x"):
+        continue
+    if "/ld-linux" in match.group(2) or "/libc.so" in match.group(2):
+        continue
+    if symbol.lower() in NOISE:
+        continue
+    aggregated[symbol] = aggregated.get(symbol, 0) + cost
 with open(dst, "w") as fh:
-    for leaf, cost in rows[:25]:
-        fh.write(f"{leaf} {cost}\n")
+    for name, cost in sorted(aggregated.items(), key=lambda kv: -kv[1])[:25]:
+        fh.write(f"{name} {cost}\n")
 PY
 
 if [ -s "$out" ]; then

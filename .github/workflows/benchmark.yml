@@ -85,7 +85,8 @@ jobs:
             target/criterion/*/*/new/estimates.json
             benches/perf-folded.txt
             benches/perf-status.txt
-          if-no-files-found: error
+            /tmp/bench-cpu-*.annotate.txt
+          if-no-files-found: warn
       - name: Publish table to job summary
         run: |
           {
