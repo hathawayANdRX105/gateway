@@ -4,6 +4,9 @@ name: Benchmark (manual)
 # for numbers that may be shared in a PR or issue; the same scripts/bench.sh entry
 # produces the same table locally via `just bench`.
 on:
+  # TEMP-TEST: push trigger only to exercise this workflow before it lands on main.
+  push:
+    branches: [chore/benchmark-ci-entry]
   workflow_dispatch:
     inputs:
       destination:
@@ -41,7 +44,7 @@ jobs:
           # Same cache namespace as ci.yml, so dependency compilation is reused.
           key: cargo-shared
       - name: Validate comment inputs
-        if: inputs.destination != 'none' && inputs.number == ''
+        if: github.event_name == 'workflow_dispatch' && inputs.destination != 'none' && inputs.number == ''
         run: |
           echo "::error::number is required when destination is issue or pr"
           exit 1
@@ -65,7 +68,7 @@ jobs:
             cat benches/REPORT.md
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Comment on issue or PR
-        if: inputs.destination != 'none'
+        if: github.event_name == 'workflow_dispatch' && inputs.destination != 'none'
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
