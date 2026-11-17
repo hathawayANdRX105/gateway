@@ -45,9 +45,10 @@ jobs:
         run: |
           echo "::error::number is required when destination is issue or pr"
           exit 1
-      # Persist Criterion's `base/` baseline across runs so the report's `vs base`
-      # column carries a real regression signal. Each run restores the prior cache
-      # (latest by prefix) and writes a fresh one keyed by run id.
+      # Criterion's default Baseline::Save writes each run into `base/` itself; we
+      # only persist that directory across runs so the report's `vs base` column
+      # carries a real regression signal. Each run restores the prior cache (latest
+      # by prefix) and writes a fresh one keyed by run id.
       - name: Restore baseline
         uses: actions/cache@v4
         with:
@@ -71,14 +72,6 @@ jobs:
             args+=(--perf-folded benches/perf-folded.txt)
           fi
           python3 benches/bench_report.py "${args[@]}"
-      - name: Save baseline snapshot
-        run: |
-          # Criterion stored this run under new/; promote it to base/ so the next
-          # run compares against it. Target/criterion is restored by the cache step.
-          mkdir -p target/criterion
-          find target/criterion -mindepth 3 -maxdepth 3 -type d -name new | while read -r d; do
-            cp -a "$d" "$(dirname "$d")/base"
-          done
       - name: Upload benchmark report
         uses: actions/upload-artifact@v4
         with:

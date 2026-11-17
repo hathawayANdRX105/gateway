@@ -5,12 +5,12 @@ from benchmark tool output; this script does not estimate or invent values.
 
 ## Environment
 
-- Generated: 2026-11-17 14:02:22 UTC
-- Commit: 4b56bf4
-- Runner: GitHub Actions 1000023205
-- CPU: AMD EPYC 7763 64-Core Processor
-- CPU scaling MHz: Architecture:
-- Load average (1m): 3.36
+- Generated: 2026-11-17 14:23:23 UTC
+- Commit: 079b27b
+- Runner: unknown
+- CPU: Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz
+- CPU scaling MHz: 98%
+- Load average (1m): 2.63
 - Toolchain: rustc 1.100.0-nightly (f7d782a3b 2026-08-19)
 - Benchmark profile: Cargo default bench profile (inherits release, LLVM).
 - Source: `target/criterion/*/*/new/estimates.json`.
@@ -23,57 +23,57 @@ are per sequence, not per chunk.
 
 | Crate | Benchmark | Mean (ns) | Median (ns) | vs base |
 | --- | --- | ---: | ---: | ---: |
-| gateway-security | `word_filter/stream_push_small_chunks` | 61378.6 | 61227.6 | +0.2% |
-| gateway-dispatch | `selector_latency/pick_digest_mounted` | 33878.6 | 33810.6 | +0.1% |
-| gateway-dispatch | `selector_latency/pick_ewma_baseline` | 26025.9 | 25934.8 | +0.1% |
-| gateway-security | `word_filter/filter` | 20835.3 | 20748.8 | +0.1% |
-| gateway-protocol-bridge | `codec_ops/translate_response` | 4997.4 | 4956.6 | +0.2% |
-| gateway-metering | `metering_ops/estimate_tokens` | 3352.2 | 3349.0 | -0.1% |
-| gateway-metering | `metering_ops/stream_scan` | 3078.9 | 3043.6 | +0.2% |
-| gateway-cache | `cache_ops/response_key_large` | 2876.0 | 2874.9 | -0.1% |
-| gateway-protocol-bridge | `codec_ops/translate_request` | 2190.4 | 2179.2 | +0.2% |
-| gateway-proxy | `proxy_ops/adapter_for_vless` | 1908.1 | 1897.4 | +0.1% |
-| gateway-metering | `metering_ops/estimate_prompt_tokens` | 975.2 | 967.7 | +0.2% |
-| gateway-protocol-bridge | `codec_ops/sse_push` | 947.1 | 943.1 | +0.1% |
-| gateway-cache | `cache_ops/response_cache_store` | 686.9 | 685.7 | -0.2% |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_json` | 592.5 | 590.9 | +0.2% |
-| gateway-cache | `cache_ops/response_key_medium` | 589.6 | 588.0 | +0.0% |
-| gateway-metering | `metering_ops/extract_usage` | 542.0 | 540.4 | +0.2% |
-| gateway-protocol-bridge | `codec_ops/map_error` | 509.5 | 506.1 | +0.2% |
-| gateway-cache | `cache_ops/ttl_insert` | 506.1 | 502.3 | -0.2% |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_from_body` | 443.2 | 440.8 | +0.1% |
-| gateway-proxy | `proxy_ops/manager_acquire` | 373.2 | 371.8 | -0.3% |
-| gateway-dispatch | `state_ops/tdigest_quantile` | 336.3 | 336.3 | +0.3% |
-| gateway-cache | `cache_ops/response_key_small` | 302.4 | 301.7 | +0.1% |
-| gateway-forward | `pipeline_ops/sanitize_client_headers` | 197.2 | 196.5 | +0.1% |
-| gateway-cache | `cache_ops/response_cache_lookup` | 141.2 | 140.8 | -0.2% |
-| gateway-dispatch | `state_ops/sticky_lookup` | 122.9 | 122.1 | -0.2% |
-| gateway-dispatch | `state_ops/latency_digest_quantiles_with_weight` | 111.1 | 110.7 | +0.3% |
-| gateway-cache | `cache_ops/ttl_get_hit` | 107.2 | 107.1 | -0.3% |
-| gateway-dispatch | `state_ops/token_budget_admit_window` | 79.1 | 78.7 | -0.0% |
-| gateway-dispatch | `state_ops/tdigest_add` | 61.8 | 61.7 | +0.1% |
-| gateway-proxy | `proxy_ops/pool_pick` | 53.2 | 53.2 | -0.1% |
-| gateway-dispatch | `state_ops/sliding_window_admits_weighted` | 52.9 | 52.8 | -0.1% |
-| gateway-security | `word_filter/has_match` | 51.9 | 52.0 | +1.2% |
-| gateway-forward | `pipeline_ops/classify_status_401` | 48.2 | 48.1 | +0.1% |
-| gateway-forward | `pipeline_ops/classify_status_429` | 43.6 | 43.5 | +0.1% |
-| gateway-forward | `pipeline_ops/classify_status_502` | 42.4 | 42.2 | +0.1% |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_override` | 24.1 | 24.0 | +0.1% |
-| gateway-proxy | `proxy_ops/tcp_metadata` | 19.9 | 19.9 | +0.1% |
-| gateway-protocol-bridge | `codec_ops/resolve` | 17.0 | 17.0 | -0.2% |
-| gateway-proxy | `proxy_ops/validate_url_ip_literal` | 14.7 | 14.6 | +0.2% |
-| gateway-proxy | `proxy_ops/validate_url_domain` | 10.1 | 10.0 | +0.2% |
-| gateway-metering | `metering_ops/price_of` | 9.4 | 9.4 | +0.2% |
-| gateway-proxy | `proxy_ops/check_ip_public_v4` | 8.1 | 8.1 | -0.0% |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_passthrough` | 4.7 | 4.7 | +0.3% |
-| gateway-forward | `pipeline_ops/capture_prompt_body` | 4.0 | 4.0 | +0.5% |
-| gateway-proxy | `proxy_ops/adapter_for_socks5` | 3.1 | 3.1 | +0.3% |
+| gateway-security | `word_filter/stream_push_small_chunks` | 64834.3 | 64020.1 | +1.3% |
+| gateway-dispatch | `selector_latency/pick_digest_mounted` | 52372.4 | 50121.4 | +20.4% |
+| gateway-dispatch | `selector_latency/pick_ewma_baseline` | 42805.2 | 41263.0 | +59.0% |
+| gateway-cache | `cache_ops/response_key_large` | 20389.6 | 20305.7 | -8.9% |
+| gateway-security | `word_filter/filter` | 19980.4 | 19597.3 | -2.4% |
+| gateway-protocol-bridge | `codec_ops/translate_response` | 5844.4 | 5640.7 | +11.5% |
+| gateway-metering | `metering_ops/estimate_tokens` | 5081.7 | 4952.6 | +22.0% |
+| gateway-cache | `cache_ops/response_key_medium` | 3730.3 | 3624.0 | +29.9% |
+| gateway-metering | `metering_ops/stream_scan` | 3697.5 | 3680.3 | -4.9% |
+| gateway-protocol-bridge | `codec_ops/translate_request` | 2450.3 | 2252.3 | +36.1% |
+| gateway-proxy | `proxy_ops/adapter_for_vless` | 2327.7 | 2295.3 | +22.6% |
+| gateway-cache | `cache_ops/response_key_small` | 1497.9 | 1438.0 | +37.4% |
+| gateway-protocol-bridge | `codec_ops/sse_push` | 1387.7 | 1346.1 | -0.5% |
+| gateway-metering | `metering_ops/estimate_prompt_tokens` | 1279.0 | 1273.2 | -10.9% |
+| gateway-cache | `cache_ops/response_cache_store` | 1247.1 | 1206.6 | +49.6% |
+| gateway-cache | `cache_ops/ttl_insert` | 848.4 | 823.7 | +40.2% |
+| gateway-metering | `metering_ops/extract_usage` | 717.8 | 708.7 | +18.3% |
+| gateway-forward | `pipeline_ops/rewrite_upstream_model_json` | 581.1 | 575.4 | -54.7% |
+| gateway-dispatch | `state_ops/tdigest_quantile` | 571.3 | 503.6 | -5.2% |
+| gateway-forward | `pipeline_ops/resolve_upstream_model_from_body` | 537.5 | 545.2 | -20.3% |
+| gateway-protocol-bridge | `codec_ops/map_error` | 520.5 | 517.1 | -2.0% |
+| gateway-proxy | `proxy_ops/manager_acquire` | 464.9 | 462.4 | -16.6% |
+| gateway-forward | `pipeline_ops/sanitize_client_headers` | 238.0 | 234.4 | -56.5% |
+| gateway-dispatch | `state_ops/sticky_lookup` | 237.6 | 217.3 | +31.1% |
+| gateway-cache | `cache_ops/response_cache_lookup` | 212.0 | 214.0 | +25.2% |
+| gateway-dispatch | `state_ops/latency_digest_quantiles_with_weight` | 188.7 | 173.0 | -30.5% |
+| gateway-dispatch | `state_ops/token_budget_admit_window` | 163.9 | 196.0 | -38.0% |
+| gateway-cache | `cache_ops/ttl_get_hit` | 159.4 | 162.0 | +16.2% |
+| gateway-dispatch | `state_ops/tdigest_add` | 116.7 | 113.6 | +70.0% |
+| gateway-dispatch | `state_ops/sliding_window_admits_weighted` | 78.3 | 72.2 | +12.2% |
+| gateway-proxy | `proxy_ops/pool_pick` | 63.8 | 62.2 | -6.2% |
+| gateway-forward | `pipeline_ops/classify_status_401` | 53.9 | 53.4 | -61.6% |
+| gateway-forward | `pipeline_ops/classify_status_429` | 47.4 | 46.2 | -84.5% |
+| gateway-forward | `pipeline_ops/classify_status_502` | 47.2 | 45.7 | -50.1% |
+| gateway-security | `word_filter/has_match` | 35.5 | 35.2 | +19.1% |
+| gateway-forward | `pipeline_ops/resolve_upstream_model_override` | 28.8 | 28.3 | +23.2% |
+| gateway-protocol-bridge | `codec_ops/resolve` | 22.9 | 22.4 | +0.9% |
+| gateway-proxy | `proxy_ops/tcp_metadata` | 21.5 | 21.0 | +6.5% |
+| gateway-proxy | `proxy_ops/validate_url_ip_literal` | 17.1 | 16.5 | +2.6% |
+| gateway-metering | `metering_ops/price_of` | 14.3 | 13.9 | -2.7% |
+| gateway-proxy | `proxy_ops/validate_url_domain` | 12.4 | 11.7 | +10.2% |
+| gateway-proxy | `proxy_ops/check_ip_public_v4` | 7.4 | 7.4 | +13.9% |
+| gateway-forward | `pipeline_ops/rewrite_upstream_model_passthrough` | 4.6 | 4.8 | -5.6% |
+| gateway-proxy | `proxy_ops/adapter_for_socks5` | 3.2 | 3.2 | -1.0% |
+| gateway-forward | `pipeline_ops/capture_prompt_body` | 2.3 | 2.3 | -61.6% |
 
 ## CPU sample breakdown
 
 Not collected. Reason from the sampling step:
 
-> bench process exited before sampling; see /tmp/bench-cpu-run.log
+> perf is not installed on this host; CPU sample table left empty.
 
 On a host with perf_event permission, `bash scripts/bench-cpu.sh` fills this
 table with leaf functions ranked by sample count. CI runners commonly set

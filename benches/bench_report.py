@@ -75,7 +75,8 @@ def criterion_rows(
         if change.is_file():
             delta = json.loads(change.read_text()).get("mean", {}).get("point_estimate")
             if delta is not None:
-                change_text = f"{float(delta):+.1f}%"
+                # Criterion stores the relative change as a ratio (0.1 = +10%).
+                change_text = f"{float(delta) * 100:+.1f}%"
         rows.append(
             (
                 groups.get(group, "unknown"),
