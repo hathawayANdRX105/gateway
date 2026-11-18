@@ -38,6 +38,7 @@
 pub mod dispatch;
 pub mod egress;
 pub mod error;
+pub mod failure_scope;
 pub mod gate;
 pub mod health;
 pub mod metering;
@@ -47,6 +48,7 @@ pub mod records;
 
 pub use dispatch::{DispatcherHandle, RetryPolicy, STATUS_ENABLED, SelectorKind, Snapshot};
 pub use error::{ErrorCode, NormalizedError};
+pub use failure_scope::{FailureScope, classify_channel_scope, is_context_overflow};
 pub use health::HealthHandle;
 pub use metering::{Hold, Insufficient, Ledger, ModelPrice, PriceTable, SettleSink};
 pub use protocol::{ProtocolKind, RequestPath};

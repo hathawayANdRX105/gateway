@@ -340,7 +340,7 @@ fn rate_limit_refusals_expose_the_lower_tier() {
 /// 溢出族（400/413 + provider 措辞），非 400/413 或无关措辞不误判。
 #[test]
 fn context_overflow_classifier_covers_provider_phrasings() {
-    use gateway_dispatch::failure_scope::is_context_overflow;
+    use gateway_core::failure_scope::is_context_overflow;
     assert!(is_context_overflow(
         400,
         "{\"error\":{\"code\":\"context_length_exceeded\"}}"

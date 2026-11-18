@@ -47,13 +47,13 @@ pub fn classify_status(
         400..=499 => (code::UPSTREAM_ERROR, status, false),
         _ => (code::UPSTREAM_ERROR, 502, false),
     };
-    // Channel-scoped 4xx reuses gateway_dispatch::failure_scope (P1-B demotion)
+    // Channel-scoped 4xx reuses gateway_core::failure_scope (P1-B demotion)
     // instead of duplicating a table here; retryable failures (429/5xx) already switch
     // candidates, so this flag only matters on the non-retry branch.
     let channel_scoped = !retryable
         && matches!(status, 400..=499)
-        && gateway_dispatch::failure_scope::classify_channel_scope(status)
-            == gateway_dispatch::failure_scope::FailureScope::Channel;
+        && gateway_core::failure_scope::classify_channel_scope(status)
+            == gateway_core::failure_scope::FailureScope::Channel;
     gateway_core::error::NormalizedError {
         code,
         status: http_status,

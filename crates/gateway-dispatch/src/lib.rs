@@ -1,6 +1,5 @@
 pub mod candidate;
 pub mod dispatcher;
-pub mod failure_scope;
 pub mod health;
 pub mod latency_digest;
 pub mod ratelimit;
@@ -14,7 +13,6 @@ pub mod token_budget;
 pub use candidate::{Candidate, STATUS_ENABLED, resolve_candidate};
 pub(crate) use dispatcher::utc_now_ms;
 pub use dispatcher::{Dispatch, DispatchError, Dispatcher, candidates_from_snapshot};
-pub use failure_scope::{FailureScope, classify_channel_scope};
 /// Channel / route-unit catalog snapshot — defined on the injection surface so the
 /// admin plane can build and read it without depending on this engine.
 pub use gateway_core::dispatch::Snapshot;
