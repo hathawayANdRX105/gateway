@@ -2,9 +2,9 @@
 填写规范：
 - PR 标题可以使用自然的英文描述，不要求固定前缀；类型通过 GitHub label 区分。
 - PR 正文结构使用英文 heading，正文内容使用中文。
-- 一个 PR 对应一个主要 Issue；使用 `Fixes #N` 关闭主 Issue，使用 `Related #N` 或 `Part of #N` 关联更大的工作。
+- 只有 issue 与 PR 一起创建（合并即关闭那个 issue）时才写 `Fixes #N`；已有 Issue 用 `Related #N` / `Part of #N` 关联更大的工作。没有 Issue 的 PR（例行 chore、CI 配置、随手上修）跳过 `## Issue` 整节，不要留空的 `Fixes #` 占位。
 - 不要直接推送或合并到 `main`。
-- diff 必须聚焦，所有变更路径都必须能由主 Issue 解释。
+- diff 必须聚焦，所有变更路径都要能由同一个目标解释。
 - 不要包含密钥、真实配置、生产环境信息、生成垃圾或无关格式化。
 - 只有适用时才复制额外区块，不要发布空的额外标题。
 -->
@@ -21,7 +21,7 @@
 
 ## Issue
 
-<!-- 主 Issue：使用 `Fixes #N`，合并后自动关闭。正文请用中文填写。 -->
+<!-- 只有 issue 与 PR 一起创建时才填 `Fixes #N`（合并后自动关闭）；已有 Issue 用下面的 `Related #N`。没有就删掉整节。 -->
 
 Fixes #
 
@@ -55,7 +55,7 @@ Related #
 
 ## Checklist
 
-- [ ] 已使用 `Fixes #N` 关联一个主 Issue。
+- [ ] 已按实际情况处理 `## Issue`：issue 与 PR 一起创建时用 `Fixes #N`，已有 Issue 用 `Related #N`，没有 Issue 时整节删除。
 - [ ] 已使用正确的英文类型 label：`bug`、`enhancement` 或 `chore`。
 - [ ] 已添加适用的区域 label：`contract`、`cache`、`dispatch`、`forward`、`gate`、`metering`、`pipeline`、`protocol`、`proxy`、`security`、`facade`、`tests`、`ci` 或 `documentation`。
 - [ ] 没有包含密钥、真实配置、生成垃圾或无关变更。
