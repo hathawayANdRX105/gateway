@@ -20,8 +20,14 @@ use gateway_cache::{
 
 const N: usize = 256;
 const TTL_CAPACITY: u64 = 4096;
-// Three realistic request sizes; a single fixed 4 KB body inflated the key-derivation bench.
-const BODY_SIZES: [(&str, usize); 3] = [("small", 0), ("medium", 448), ("large", 4096)];
+// Body sizes shared with hash_candidates/prefilter_probe, so key-derivation costs
+// are comparable across benches. Padding is applied to reach each target size.
+const BODY_SIZES: [(&str, usize); 4] = [
+    ("512b", 512),
+    ("4kb", 4 * 1024),
+    ("16kb", 16 * 1024),
+    ("32kb", 32 * 1024),
+];
 
 struct Harness {
     scope: CacheScope,
@@ -47,9 +53,10 @@ fn bench_scope() -> CacheScope {
     }
 }
 
-fn request_body(padding: usize) -> Vec<u8> {
+/// Build a JSON request body of exactly `total_len` bytes.
+fn request_body(total_len: usize) -> Vec<u8> {
     let mut body = br#"{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}"#.to_vec();
-    body.resize(body.len() + padding, b' ');
+    body.resize(total_len, b' ');
     body
 }
 
@@ -72,7 +79,7 @@ fn build_harness() -> Harness {
     let protocol = "openai".to_string();
     let bodies: Vec<(&'static str, Vec<u8>)> = BODY_SIZES
         .iter()
-        .map(|(name, padding)| (*name, request_body(*padding)))
+        .map(|(name, size)| (*name, request_body(*size)))
         .collect();
     let body = bodies
         .last()

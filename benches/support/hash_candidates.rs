@@ -179,8 +179,9 @@ impl RequestCase {
     }
 }
 
-/// Body sizes that cover the observed request distribution.
-pub const BODY_SIZES: [usize; 3] = [512, 4 * 1024, 32 * 1024];
+/// Body sizes that cover the observed request distribution: a short chat request,
+/// a tool-carrying request, a long-context one, and a 32 KiB worst case.
+pub const BODY_SIZES: [usize; 4] = [512, 4 * 1024, 16 * 1024, 32 * 1024];
 
 /// Build a corpus of distinct requests with a fixed seed so every run is identical.
 ///
