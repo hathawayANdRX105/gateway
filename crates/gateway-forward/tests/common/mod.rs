@@ -112,7 +112,7 @@ pub enum Plan {
 }
 
 /// Scripted egress mock: returns fixed results based on the candidate marker in the url.
-/// The `Fail` `NormalizedError` is isomorphic to the real `egress::classify_status` output
+/// The `Fail` `NormalizedError` is isomorphic to the real `gateway_forward::status::classify_status` output
 /// (502 → retryable, 400 → not retryable, 401/403/404 → `channel_scoped`); forward only sees
 /// the trait's return value.
 #[allow(dead_code)] // the settle binary does not use this mock

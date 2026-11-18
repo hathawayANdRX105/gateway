@@ -11,8 +11,8 @@
 //! must stay non-retryable, and 408 must not turn all of 4xx retryable.
 
 use bytes::Bytes;
-use gateway_forward::egress::parse_retry_after_ms;
 use gateway_forward::egress::{Egress, ReqwestEgress, Timeouts};
+use gateway_forward::status::parse_retry_after_ms;
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
@@ -189,7 +189,7 @@ fn retry_after_negative_or_garbage_is_none() {
 }
 
 /// Purpose: pin the parity contract between forward's client-facing
-/// `egress::classify_status` and core's `STATUS_RULES` table.
+/// `gateway_forward::status::classify_status` and core's `STATUS_RULES` table.
 /// Scenario: every status 100..=600 classified by both tables.
 /// Accepts: `retryable` and `channel_scoped` agree everywhere (the flags that drive
 /// retry/demotion semantics); `code` agrees everywhere EXCEPT the deliberately
@@ -202,7 +202,7 @@ fn egress_and_core_tables_agree_on_flags_and_documented_code_divergence() {
     use gateway_core::error::code;
 
     for status in 100u16..=600 {
-        let egress = gateway_forward::egress::classify_status(status, "preview", None);
+        let egress = gateway_forward::status::classify_status(status, "preview", None);
         let core = gateway_core::error::NormalizedError::from_status(status, "preview");
 
         assert_eq!(
