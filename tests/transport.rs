@@ -26,8 +26,8 @@ use gateway_daemon::server::{
     AppState, BodyError, client_addr, forwarded_for, is_data_plane_path, is_hop_by_hop, read_body,
     router, strip_hop_by_hop,
 };
-use gateway_facade::Pipeline;
 use gateway_facade::calibration::CalibrationLog;
+use gateway_facade::{Pipeline, ResponseCacheStats};
 
 fn ip(text: &str) -> IpAddr {
     text.parse().expect("test address must parse")
@@ -166,7 +166,27 @@ fn test_state(max_request_bytes: usize, billing_enabled: bool) -> Arc<AppState> 
         Arc::new(CalibrationLog::new()),
         CatalogCounts::default(),
         billing_enabled,
+        None,
     ))
+}
+
+/// Test double for the facade's response-cache readout: fixed counters so the
+/// /readyz enabled branch can be asserted without a real cache. The daemon crate
+/// depends on `gateway-facade`, not on the cache engine crate, so the trait is
+/// all `/readyz` reads and a stub is the whole fixture.
+struct StubCache {
+    hits: u64,
+    misses: u64,
+}
+
+impl ResponseCacheStats for StubCache {
+    fn hits(&self) -> u64 {
+        self.hits
+    }
+
+    fn misses(&self) -> u64 {
+        self.misses
+    }
 }
 
 async fn get(state: Arc<AppState>, path: &str) -> (StatusCode, serde_json::Value) {
@@ -213,6 +233,43 @@ async fn readyz_reports_billing_disabled() {
     let (status, json) = get(test_state(1024, false), "/readyz").await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["billing"], "disabled");
+}
+
+#[tokio::test]
+async fn readyz_reports_response_cache_disabled() {
+    // Scenario: the deployment mounted no response cache (response_cache = None).
+    // Acceptance: /readyz always returns "responseCache": {"enabled": false} with no
+    // counters, so a cache-less relay is visible to ops.
+    let (status, json) = get(test_state(1024, false), "/readyz").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        json["responseCache"],
+        serde_json::json!({ "enabled": false })
+    );
+}
+
+#[tokio::test]
+async fn readyz_reports_response_cache_counters() {
+    // Scenario: the deployment mounted a response cache whose counters read 7 hits /
+    // 3 misses. A stub implements the facade trait because the daemon does not depend
+    // on the cache engine crate; the counters are the whole /readyz contract.
+    // Acceptance: /readyz returns "responseCache": {"enabled": true, "hits": 7,
+    // "misses": 3}.
+    let state = Arc::new(AppState::new(
+        Arc::new(Pipeline::new()),
+        1024,
+        Vec::new(),
+        Arc::new(CalibrationLog::new()),
+        CatalogCounts::default(),
+        false,
+        Some(Arc::new(StubCache { hits: 7, misses: 3 })),
+    ));
+    let (status, json) = get(state, "/readyz").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        json["responseCache"],
+        serde_json::json!({ "enabled": true, "hits": 7, "misses": 3 })
+    );
 }
 
 #[tokio::test]

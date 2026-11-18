@@ -8,7 +8,7 @@
 //! | **config** | [`config`] | [`Config`] (boot values), [`Components`] (injected runtime), [`RuntimeKnobs`] (runtime-mutable subset + `epoch`) |
 //! | **builder** | [`builder`] | [`GatewayBuilder`]: preset choice, gate composition, stage insertion points, `build()` wiring |
 //! | **preset** | [`preset`] | [`Shape`]: named admission chains (`Relay` / `NoBilling` / `Open`) |
-//! | **gateway** | [`gateway`] | [`Gateway`]: the assembled plane and its exits (router / pipeline / knobs / graylist / ip policy / handles) |
+//! | **gateway** | [`gateway`] | [`Gateway`]: the assembled plane and its exits (router / pipeline / knobs / graylist / ip policy / handles / response-cache stats) |
 //!
 //! ## Ownership boundary (the answer to "what belongs here")
 //!
@@ -68,7 +68,7 @@ pub use config::{
     BootConfig, Components, Config, ConfigDraft, ConfigError, Context, EffectiveConfig,
     ResponseCacheTuning, RuntimeKnobs, Settle, State,
 };
-pub use gateway::Gateway;
+pub use gateway::{Gateway, ResponseCacheStats};
 pub use preset::{GATE_NAMES, Shape};
 
 // ── engine surface a consumer may reference without naming an engine crate ──

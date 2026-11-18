@@ -157,7 +157,9 @@ Transport notes:
   `/readyz` are separate routes. Unknown paths are 404 before the pipeline runs.
 - `/readyz` always carries a `billing` field (`"enabled"` / `"disabled"`,
   mirroring whether a settlement sink is mounted), so an unbilled deployment
-  is visible to ops; the `calibration` object appears once real-traffic
+  is visible to ops; a `responseCache` object follows the same rule and
+  exposes `enabled` plus cumulative `hits`/`misses` when the response cache is
+  mounted; the `calibration` object appears once real-traffic
   samples exist and carries a `suggested_weights` fit (prior-centered ridge
   over the non-fallback samples) once usable samples are in the ring — the
   input for the #20 weight-table recalibration.
