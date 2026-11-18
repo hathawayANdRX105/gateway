@@ -12,5 +12,8 @@ pub mod catalog;
 pub mod config;
 pub mod server;
 
+/// Settlement delivery for the standalone shape (log-only sink).
+mod settle_log;
+
 pub use config::DaemonConfig;
 pub use server::run;

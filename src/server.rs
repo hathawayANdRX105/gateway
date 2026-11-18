@@ -26,8 +26,7 @@ use tokio::sync::watch;
 use gateway_facade::calibration::{self, CalibrationLog};
 use gateway_facade::{
     Components, Config, Context, GatewayBuilder, Ledger, MemoryLedger, Pipeline, ProxyManager,
-    QuotaGate, RequestCtx, ReqwestEgress, Settle, SettleSink, State as FacadeState, UsageEvent,
-    error_to_response,
+    QuotaGate, RequestCtx, ReqwestEgress, Settle, State as FacadeState, error_to_response,
 };
 
 use crate::catalog::{Catalog, CatalogCounts};
@@ -224,32 +223,12 @@ fn assemble(
             quota_gate: Some(QuotaGate::new(quotas, pricing, ledger.clone())),
             settle: Some(Settle {
                 price_table: Arc::new(catalog.price_table),
-                sink: Arc::new(LogSettleSink),
+                sink: Arc::new(crate::settle_log::LogSettleSink),
             }),
             ledger: Some(ledger),
         },
     })
     .build()
-}
-
-/// Settlement delivery for the standalone shape: the event is logged, not persisted.
-///
-/// The library contract requires `submit` to return fast; a log line satisfies that. A
-/// product that needs durable usage rows installs its own sink instead.
-struct LogSettleSink;
-
-impl SettleSink for LogSettleSink {
-    fn submit(&self, event: UsageEvent) {
-        tracing::info!(
-            token = %event.token_key,
-            model = %event.public_model,
-            prompt_tokens = event.prompt_tokens,
-            completion_tokens = event.completion_tokens,
-            cost = event.cost,
-            status = event.status_code,
-            "settled"
-        );
-    }
 }
 
 fn remove_stale_socket(path: &std::path::Path) -> anyhow::Result<()> {
