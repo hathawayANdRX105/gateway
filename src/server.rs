@@ -26,7 +26,8 @@ use tokio::sync::watch;
 use gateway_facade::calibration::{self, CalibrationLog};
 use gateway_facade::{
     Components, Config, Context, GatewayBuilder, Ledger, MemoryLedger, Pipeline, ProxyManager,
-    QuotaGate, RequestCtx, ReqwestEgress, Settle, State as FacadeState, error_to_response,
+    QuotaGate, RequestCtx, ReqwestEgress, ResponseCacheStats, Settle, State as FacadeState,
+    error_to_response,
 };
 
 use crate::catalog::{Catalog, CatalogCounts};
@@ -47,6 +48,10 @@ pub struct AppState {
     /// their own facade Config. Drives the always-present /readyz `billing`
     /// field so an unbilled relay is visible to ops.
     billing_enabled: bool,
+    /// Response-cache hit/miss readout, or `None` when the cache is not mounted.
+    /// Drives the always-present /readyz `responseCache` object so a cache-less
+    /// deployment is visible to ops (same philosophy as `billing`).
+    response_cache: Option<Arc<dyn ResponseCacheStats>>,
 }
 
 impl AppState {
@@ -58,6 +63,7 @@ impl AppState {
         calibration: Arc<CalibrationLog>,
         counts: CatalogCounts,
         billing_enabled: bool,
+        response_cache: Option<Arc<dyn ResponseCacheStats>>,
     ) -> Self {
         Self {
             pipeline,
@@ -66,6 +72,7 @@ impl AppState {
             calibration,
             counts,
             billing_enabled,
+            response_cache,
         }
     }
 }
@@ -108,7 +115,9 @@ pub async fn run(
     // /readyz exposes billing so ops can tell an unbilled relay from one that
     // settles usage. The standalone shape always mounts the logging settle sink
     // (assemble → Settle), so this is fixed at true here; an embedded consumer
-    // derives it from its own facade Config (settle.is_some()).
+    // derives it from its own facade Config (settle.is_some()). The response
+    // cache is reported from the assembled plane's own readout, so it is `None`
+    // exactly when the cache is off.
     let state = Arc::new(AppState::new(
         gateway.pipeline(),
         config.max_request_bytes,
@@ -116,6 +125,7 @@ pub async fn run(
         calibration,
         counts,
         true,
+        gateway.response_cache(),
     ));
 
     let tcp = tokio::net::TcpListener::bind(&config.listen)
@@ -255,9 +265,21 @@ pub async fn readyz(State(state): State<Arc<AppState>>) -> Json<Value> {
     } else {
         "disabled"
     };
+    // Response-cache counters are always reported as an object: a cache-less
+    // deployment is invisible to ops otherwise, unlike `calibration`, which only
+    // appears once samples have been recorded. When the cache is mounted the
+    // cumulative hit/miss counters ride along; when it is not, only `enabled:
+    // false` is present (no counters to report). Additive for existing /readyz
+    // consumers.
+    let response_cache = if let Some(cache) = &state.response_cache {
+        json!({ "enabled": true, "hits": cache.hits(), "misses": cache.misses() })
+    } else {
+        json!({ "enabled": false })
+    };
     let mut body = json!({
         "status": "ready",
         "billing": billing,
+        "responseCache": response_cache,
         "channels": state.counts.channels,
         "routeUnits": state.counts.route_units,
         "groups": state.counts.groups,

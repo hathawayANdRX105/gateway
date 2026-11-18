@@ -15,6 +15,30 @@ use gateway_pipeline::Pipeline;
 
 use crate::config::RuntimeKnobs;
 
+/// Narrow observability port over the response cache's hit/miss counters.
+///
+/// Implemented for the engine's [`gateway_cache::ResponseCache`], so the
+/// consumer reads the cache stats through the facade vocabulary instead of
+/// naming the cache engine type. Cumulative counters only; the cache itself
+/// stays private to the forward stage.
+pub trait ResponseCacheStats: Send + Sync {
+    /// Lookups that found a live entry.
+    fn hits(&self) -> u64;
+
+    /// Lookups that found nothing or only an expired entry.
+    fn misses(&self) -> u64;
+}
+
+impl ResponseCacheStats for gateway_cache::ResponseCache {
+    fn hits(&self) -> u64 {
+        gateway_cache::ResponseCache::stats(self).hits
+    }
+
+    fn misses(&self) -> u64 {
+        gateway_cache::ResponseCache::stats(self).misses
+    }
+}
+
 /// Assembled data plane: shared handles reusable by the consumer + the pipeline
 /// Router.
 ///
@@ -26,7 +50,9 @@ use crate::config::RuntimeKnobs;
 ///   slots the knobs do not cover (the admin side owns their content);
 /// - [`Self::dispatcher`] / [`Self::health`] / [`Self::retry_handle`] — the
 ///   handles a reload / observability path needs until the admin surface folds
-///   them in.
+///   them in;
+/// - [`Self::response_cache`] — the hit/miss readout of the mounted response
+///   cache (`None` when the cache is off).
 pub struct Gateway {
     pub(crate) dispatcher: Arc<Dispatcher>,
     pub(crate) health: Arc<MemoryHealthTable>,
@@ -36,6 +62,7 @@ pub struct Gateway {
     pub(crate) router: Router,
     pub(crate) graylist: Arc<ArcSwap<GrayListState>>,
     pub(crate) ip_policy: Arc<ArcSwap<IpPolicy>>,
+    pub(crate) response_cache: Option<Arc<gateway_cache::ResponseCache>>,
 }
 
 impl Gateway {
@@ -93,5 +120,17 @@ impl Gateway {
     /// [`gateway_pipeline::data_plane_guard`]).
     pub fn router(&self) -> Router {
         self.router.clone()
+    }
+
+    /// Response-cache hit/miss readout: the counters of the cache mounted on the
+    /// forwarding stage, or `None` when the response cache is off. The cache
+    /// instance is shared with the forward stage, so the counters accumulate as
+    /// the plane serves; the handle is handed out as the [`ResponseCacheStats`]
+    /// port so the consumer names no cache engine type.
+    #[must_use]
+    pub fn response_cache(&self) -> Option<Arc<dyn ResponseCacheStats>> {
+        self.response_cache
+            .clone()
+            .map(|cache| cache as Arc<dyn ResponseCacheStats>)
     }
 }

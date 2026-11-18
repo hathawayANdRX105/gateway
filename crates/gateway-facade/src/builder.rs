@@ -29,9 +29,7 @@ use gateway_protocol_bridge::stage::ProtocolBridgeStage;
 use gateway_proxy::ProxyManager;
 use gateway_security::{FilterConfig, WordFilter};
 
-use crate::config::{
-    BootConfig, Components, Config, Context, ResponseCacheTuning, RuntimeKnobs, Settle,
-};
+use crate::config::{BootConfig, Components, Config, Context, RuntimeKnobs, Settle};
 use crate::gateway::Gateway;
 use crate::preset::{GateParts, Shape};
 
@@ -313,6 +311,24 @@ impl GatewayBuilder {
             },
         });
         let adaptors = Arc::new(FormatRegistry::with_defaults());
+        // Response cache (read once at boot): the `Arc` built here is the single
+        // instance — mounted on the forwarding stage and handed back on the
+        // `Gateway` so the consumer can read its hit/miss counters. `None` =
+        // not mounted, and the `info!` log records the boot-fixed limits.
+        // The tuning snapshot stays in `BootConfig`; only the handle is replaced.
+        let response_cache_handle = response_cache.as_ref().map(|cfg| {
+            tracing::info!(
+                ttl_secs = cfg.ttl_secs,
+                max_total_bytes = cfg.max_total_bytes,
+                max_entry_bytes = cfg.max_entry_bytes,
+                "response cache mounted"
+            );
+            gateway_cache::ResponseCache::with_limits(
+                Duration::from_secs(u64::from(cfg.ttl_secs)),
+                u64::from(cfg.max_total_bytes),
+                usize::try_from(cfg.max_entry_bytes).unwrap_or(usize::MAX),
+            )
+        });
         let forward_stage = Self::wire_forward_stage(
             &Mounts {
                 egress,
@@ -322,7 +338,7 @@ impl GatewayBuilder {
                 ledger,
                 settle,
                 sticky: sticky_table,
-                response_cache,
+                response_cache: response_cache_handle.clone(),
                 // Clone at assembly only: `BootConfig` keeps the original for the
                 // read-only view.
                 security: security.clone(),
@@ -384,6 +400,7 @@ impl GatewayBuilder {
             router,
             graylist,
             ip_policy,
+            response_cache: response_cache_handle,
         }
     }
 
@@ -520,20 +537,10 @@ impl GatewayBuilder {
         }
         // Response-cache mount (read once at boot): identical non-streaming
         // requests replay the previous upstream answer at the top of the forward
-        // stage, settled exactly like the original call. `None` = not mounted.
-        if let Some(cfg) = response_cache {
-            tracing::info!(
-                ttl_secs = cfg.ttl_secs,
-                max_total_bytes = cfg.max_total_bytes,
-                max_entry_bytes = cfg.max_entry_bytes,
-                "response cache mounted"
-            );
-            forward_stage =
-                forward_stage.with_response_cache(gateway_cache::ResponseCache::with_limits(
-                    Duration::from_secs(u64::from(cfg.ttl_secs)),
-                    u64::from(cfg.max_total_bytes),
-                    usize::try_from(cfg.max_entry_bytes).unwrap_or(usize::MAX),
-                ));
+        // stage, settled exactly like the original call. The instance is built by
+        // `build()` (shared with the `Gateway` readout); `None` = not mounted.
+        if let Some(cache) = response_cache {
+            forward_stage = forward_stage.with_response_cache(cache.clone());
         }
         // Word filter (dormant by default): only a non-empty word list builds the
         // WordFilter and attaches the request-side switch; an empty list = not
@@ -599,7 +606,7 @@ struct Mounts {
     ledger: Option<Arc<dyn Ledger>>,
     settle: Option<Settle>,
     sticky: Option<Arc<StickyTable>>,
-    response_cache: Option<ResponseCacheTuning>,
+    response_cache: Option<Arc<gateway_cache::ResponseCache>>,
     security: FilterConfig,
 }
 
