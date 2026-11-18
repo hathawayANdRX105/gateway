@@ -8,7 +8,7 @@
 //!
 //! Every Chat field name is declared exactly once, as a serde field of a DTO in
 //! [`wire`]; the codec body is decode → [`wire::Request::into_ir`] and IR → wire
-//! struct → bytes. Wire DTOs decode leniently (nested [`ir::Lenient`] fields degrade
+//! struct → bytes. Wire DTOs decode leniently (nested [`crate::codec_kit::Lenient`] fields degrade
 //! type mismatches to defaults — the same contract the old `.and_then(Value::as_)
 //! .unwrap_or_default()` chains had), and unmodeled top-level fields land in the
 //! flattened `extra` map, so the hand-maintained "known keys" list is gone.
@@ -21,18 +21,19 @@
 //! counterexample recorded in G1; here [`OpenAiStreamEncoder`] remembers the first
 //! id and reuses it for the whole stream.
 //!
-//! [`ir::Lenient`]: crate::ir
+//! [`crate::codec_kit::Lenient`]: crate::codec_kit
 
 use bytes::Bytes;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
 use crate::adaptor::{AdaptorError, Protocol};
-use crate::format_codec::{FormatCodec, StreamEncoder};
-use crate::ir::{
-    LlmRequest, LlmResponse, StreamEvent, Usage, apply_extra_fields, apply_extra_map, decode_body,
-    encode_object, encode_value, struct_to_map, wire_value,
+use crate::codec_kit::{
+    apply_extra_fields, apply_extra_map, decode_body, encode_object, encode_value, struct_to_map,
+    wire_value,
 };
+use crate::format_codec::{FormatCodec, StreamEncoder};
+use crate::ir::{LlmRequest, LlmResponse, StreamEvent, Usage};
 use crate::sse::data_frame;
 
 /// `OpenAI` Chat Completions format codec.
@@ -349,10 +350,10 @@ mod wire {
     use serde_json::{Map, Value, json};
     use std::borrow::Cow;
 
+    use crate::codec_kit::{Lenient, Present, lenient_from_value, sampling_params, wire_value};
     use crate::ir::{
-        ContentBlock, Lenient, LlmRequest, LlmResponse, Message as IrMessage, Present, Role,
-        StopReason, StreamEvent, TextBlock, ToolChoice, ToolDef, Usage, lenient_from_value,
-        sampling_params, wire_value,
+        ContentBlock, LlmRequest, LlmResponse, Message as IrMessage, Role, StopReason, StreamEvent,
+        TextBlock, ToolChoice, ToolDef, Usage,
     };
 
     // ---- shared Chat vocabulary: finish_reason and tool_choice ----

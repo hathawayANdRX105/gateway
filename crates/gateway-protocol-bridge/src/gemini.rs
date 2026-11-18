@@ -19,11 +19,11 @@
 //!
 //! Every Gemini field name is declared exactly once, as a serde field of a DTO in
 //! [`wire`]; the codec body is decode → [`wire::Request::into_ir`] and IR → wire
-//! struct → bytes. Wire DTOs decode leniently (nested [`ir::Lenient`] fields degrade
+//! struct → bytes. Wire DTOs decode leniently (nested [`crate::codec_kit::Lenient`] fields degrade
 //! type mismatches to defaults — the same contract the old `.and_then(Value::as_)
 //! .unwrap_or_default()` chains had), and key-presence distinctions the old code
 //! made through `Value::get` ("key absent" vs "explicit null", e.g. a part's `text`
-//! key) go through the shared [`ir::Present`] wrapper. Unmodeled top-level fields land
+//! key) go through the shared [`crate::codec_kit::Present`] wrapper. Unmodeled top-level fields land
 //! in the flattened `extra` map, so the hand-maintained "known keys" list is gone.
 //!
 //! ## Three pre-existing defects this module fixes (G1)
@@ -42,18 +42,18 @@
 //! 3. **The usage block's `choices` was an empty array** — most clients reject that
 //!    shape. The usage frame now carries non-empty choices.
 //!
-//! [`ir::Lenient`]: crate::ir
+//! [`crate::codec_kit::Lenient`]: crate::codec_kit
 
 use bytes::Bytes;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 use crate::adaptor::{AdaptorError, Protocol};
-use crate::format_codec::{FormatCodec, StreamEncoder};
-use crate::ir::{
-    LlmRequest, LlmResponse, StopReason, StreamEvent, Usage, apply_extra_fields, decode_body,
-    encode_object, encode_value, struct_to_map, wire_value,
+use crate::codec_kit::{
+    apply_extra_fields, decode_body, encode_object, encode_value, struct_to_map, wire_value,
 };
+use crate::format_codec::{FormatCodec, StreamEncoder};
+use crate::ir::{LlmRequest, LlmResponse, StopReason, StreamEvent, Usage};
 use crate::sse::data_frame;
 
 /// Gemini format codec.
@@ -332,10 +332,10 @@ mod wire {
     use serde_json::{Map, Value, json};
 
     use super::{encode_usage_metadata, gemini_finish_reason, gemini_finish_reason_str};
+    use crate::codec_kit::{Lenient, Present, lenient_from_value, sampling_params};
     use crate::ir::{
-        ContentBlock, Lenient, LlmRequest, LlmResponse, Message as IrMessage, Present, Role,
-        SamplingParams, StopReason, StreamEvent, TextBlock, ToolDef, Usage, lenient_from_value,
-        sampling_params,
+        ContentBlock, LlmRequest, LlmResponse, Message as IrMessage, Role, SamplingParams,
+        StopReason, StreamEvent, TextBlock, ToolDef, Usage,
     };
 
     // ---- request decode ----

@@ -33,8 +33,9 @@ use tower::Service;
 
 use crate::egress::{
     ByteStream, ForwardedResponse, Timeouts, build_header_map, finish_forwarded_response,
-    parse_retry_after_ms, upstream_error,
+    upstream_error,
 };
+use crate::status::parse_retry_after_ms;
 
 /// Egress dialer: given a target host/port, return a bidirectional stream with the
 /// protocol handshake complete.

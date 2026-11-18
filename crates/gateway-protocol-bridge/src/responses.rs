@@ -29,24 +29,24 @@
 //! Every Responses field name is declared exactly once as a serde field of a DTO in
 //! [`wire`] (or in [`crate::responses_items`] for the shapes request, response and
 //! stream share); the codec body is decode → `wire::Request::into_ir` and IR → wire
-//! struct → bytes. Fields decode leniently ([`ir::Lenient`] degrades type mismatches
+//! struct → bytes. Fields decode leniently ([`crate::codec_kit::Lenient`] degrades type mismatches
 //! to defaults), and the old hand-maintained key lists are exactly the declared field
 //! sets — they can no longer drift. Unlike the sibling codecs this body carries NO
 //! flattened `extra` map: the old decoder forwarded exactly three unmodeled keys
 //! through the IR extra (an allowlist, not an exclusion list), so those three are
 //! declared fields and every other unmodeled key stays dropped, key for key.
 //!
-//! [`ir::Lenient`]: crate::ir::Lenient
+//! [`crate::codec_kit::Lenient`]: crate::codec_kit
 
 use bytes::Bytes;
 use serde_json::Value;
 
 use crate::adaptor::{AdaptorError, Protocol};
-use crate::format_codec::{FormatCodec, StreamEncoder};
-use crate::ir::{
-    LlmRequest, LlmResponse, StreamEvent, apply_extra_fields, decode_body, encode_object,
-    encode_value, struct_to_map, wire_value,
+use crate::codec_kit::{
+    apply_extra_fields, decode_body, encode_object, encode_value, struct_to_map, wire_value,
 };
+use crate::format_codec::{FormatCodec, StreamEncoder};
+use crate::ir::{LlmRequest, LlmResponse, StreamEvent};
 use crate::responses_items::InputItemOut;
 use crate::responses_stream::ResponsesStreamEncoder;
 
@@ -145,9 +145,11 @@ mod wire {
     use serde::{Deserialize, Serialize};
     use serde_json::{Map, Value, json};
 
+    use crate::codec_kit::{
+        Lenient, Present, decode_text_blocks, event_index, from_event, sampling_params,
+    };
     use crate::ir::{
-        ContentBlock, Lenient, LlmRequest, LlmResponse, Message, Present, Role, StopReason,
-        StreamEvent, ToolDef, decode_text_blocks, event_index, from_event, sampling_params,
+        ContentBlock, LlmRequest, LlmResponse, Message, Role, StopReason, StreamEvent, ToolDef,
     };
     use crate::responses_items::{
         InputItem, InputItemOut, OutputItem, UsageIn, UsageOut, resolve_call_id,

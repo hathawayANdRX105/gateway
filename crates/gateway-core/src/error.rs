@@ -109,9 +109,9 @@ pub struct NormalizedError {
     /// non-retryable 4xx downgrade to the next candidate, with health recorded as Neutral.
     /// The classification table (`STATUS_RULES` / [`classify_status`] in this module) is the
     /// single source of truth for `channel_scoped` across the workspace:
-    /// `gateway_dispatch::failure_scope::classify_channel_scope` and forward's egress both
+    /// `crate::failure_scope::classify_channel_scope` and forward's egress both
     /// delegate to it, so those consumers cannot drift. `code`/`retryable` are additionally
-    /// mapped by `gateway_forward::egress::classify_status` for the client-facing error
+    /// mapped by `gateway_forward::status::classify_status` for the client-facing error
     /// body — that mapping deliberately reports `UPSTREAM_ERROR` for generic 4xx (fatal
     /// request errors, see its doc comment); the parity test in forward's
     /// `classify_status.rs` pins where the two tables must agree.
@@ -145,7 +145,7 @@ struct StatusRule {
 /// Single source of truth for `status -> (code, retryable, channel_scoped)` (issue #16).
 ///
 /// Lives in `gateway-core` because `gateway-dispatch` depends on `core`, never the reverse;
-/// `gateway_dispatch::failure_scope::classify_channel_scope` delegates to [`classify_status`],
+/// `crate::failure_scope::classify_channel_scope` delegates to [`classify_status`],
 /// so there is one table and no duplicated inline classification between the two crates.
 const STATUS_RULES: &[StatusRule] = &[
     // exact matches first — they fall inside the ranges below
@@ -223,7 +223,7 @@ impl NormalizedError {
     /// 5xx → `UPSTREAM_ERROR`, retryable; other 4xx → `INVALID_API_KEY`, not retryable;
     /// anything else → `UPSTREAM_ERROR` with status 502, not retryable.
     ///
-    /// Forward's `egress::classify_status` (the client-facing production classifier)
+    /// Forward's `gateway_forward::status::classify_status` (the client-facing production classifier)
     /// deliberately keeps `UPSTREAM_ERROR` for generic 4xx — see its doc comment and the
     /// parity test in forward's `classify_status.rs`.
     ///

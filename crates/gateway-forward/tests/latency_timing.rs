@@ -50,7 +50,7 @@ const SLOW_FLOOR_MS: u32 = 150;
 type EgressFuture<'a> =
     Pin<Box<dyn Future<Output = Result<ForwardedResponse, NormalizedError>> + Send + 'a>>;
 
-/// Retryable 502 failure (isomorphic to the real `egress::classify_status` output for
+/// Retryable 502 failure (isomorphic to the real `gateway_forward::status::classify_status` output for
 /// 502).
 fn retryable_502() -> NormalizedError {
     NormalizedError {
