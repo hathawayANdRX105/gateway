@@ -5,6 +5,9 @@
 //! `ResponseCache::store` / `ResponseCache::lookup` are the data-plane entry points
 //! for replaying an upstream answer. Their per-call cost directly bounds replay
 //! throughput, so each is measured against prepared data rather than cold structures.
+//! The lookup is split into miss / hit, and the full hit path (`response_key` +
+//! lookup) is measured on its own: a hit pays the complete key derivation, which
+//! is the cost any cheaper key pre-screen has to be weighed against.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,8 +20,14 @@ use gateway_cache::{
 
 const N: usize = 256;
 const TTL_CAPACITY: u64 = 4096;
-// Three realistic request sizes; a single fixed 4 KB body inflated the key-derivation bench.
-const BODY_SIZES: [(&str, usize); 3] = [("small", 0), ("medium", 448), ("large", 4096)];
+// Body sizes shared with hash_candidates/prefilter_probe, so key-derivation costs
+// are comparable across benches. Padding is applied to reach each target size.
+const BODY_SIZES: [(&str, usize); 4] = [
+    ("512b", 512),
+    ("4kb", 4 * 1024),
+    ("16kb", 16 * 1024),
+    ("32kb", 32 * 1024),
+];
 
 struct Harness {
     scope: CacheScope,
@@ -31,6 +40,10 @@ struct Harness {
     cache: Arc<ResponseCache>,
     keys: Vec<CacheKey>,
     responses: Vec<CachedResponse>,
+    /// Keys derived from bodies that were never stored, so every lookup on them
+    /// is a guaranteed miss (the bench measures the miss path, never a
+    /// population side effect).
+    miss_keys: Vec<CacheKey>,
 }
 
 fn bench_scope() -> CacheScope {
@@ -40,9 +53,10 @@ fn bench_scope() -> CacheScope {
     }
 }
 
-fn request_body(padding: usize) -> Vec<u8> {
+/// Build a JSON request body of exactly `total_len` bytes.
+fn request_body(total_len: usize) -> Vec<u8> {
     let mut body = br#"{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}"#.to_vec();
-    body.resize(body.len() + padding, b' ');
+    body.resize(total_len, b' ');
     body
 }
 
@@ -65,7 +79,7 @@ fn build_harness() -> Harness {
     let protocol = "openai".to_string();
     let bodies: Vec<(&'static str, Vec<u8>)> = BODY_SIZES
         .iter()
-        .map(|(name, padding)| (*name, request_body(*padding)))
+        .map(|(name, size)| (*name, request_body(*size)))
         .collect();
     let body = bodies
         .last()
@@ -89,6 +103,18 @@ fn build_harness() -> Harness {
     for (key, response) in keys.iter().zip(&responses) {
         cache.store(key.clone(), response.clone());
     }
+    // One realistic payload resident so the hit-path bench derives a key that is
+    // actually cached: a hit re-derives the key from the request bytes on every
+    // call, so the benched body must be one that was stored.
+    cache.store(
+        response_key(&scope, &model, &protocol, body),
+        cached_response(body, N),
+    );
+    // Never-stored bodies: a lookup on these keys always misses, so the miss
+    // bench measures the miss path with no population side effect.
+    let miss_keys: Vec<CacheKey> = (0..N)
+        .map(|i| response_key(&scope, &model, &protocol, format!("absent-{i}").as_bytes()))
+        .collect();
 
     Harness {
         scope,
@@ -101,6 +127,7 @@ fn build_harness() -> Harness {
         cache,
         keys,
         responses,
+        miss_keys,
     }
 }
 
@@ -168,6 +195,52 @@ fn cache_ops_bench(c: &mut Criterion) {
             let key = &h.keys[i];
             i = i.wrapping_add(1) % h.keys.len();
             let hit = h.cache.lookup(key);
+            black_box(hit)
+        });
+    });
+
+    // Miss path in isolation: keys that were never stored, so the lookup
+    // measures the empty-result walk (hash + probe + counter) and nothing else.
+    group.bench_function("cache_lookup_miss", |b| {
+        let mut i = 0usize;
+        b.iter(|| {
+            let key = &h.miss_keys[i];
+            i = i.wrapping_add(1) % h.miss_keys.len();
+            let miss = h.cache.lookup(key);
+            black_box(miss)
+        });
+    });
+
+    // Hit lookup in isolation, separated from key derivation: the other half of
+    // the cost a cache lookup pays, and the baseline the hit-path bench adds
+    // `response_key` on top of.
+    group.bench_function("cache_lookup_hit", |b| {
+        let mut i = 0usize;
+        b.iter(|| {
+            let key = &h.keys[i];
+            i = i.wrapping_add(1) % h.keys.len();
+            let hit = h.cache.lookup(key);
+            black_box(hit)
+        });
+    });
+
+    // End-to-end hit path: derive the key from the request bytes, then find it.
+    // This is the full cost a cache hit still pays — the only scenario where a
+    // pre-screen cannot skip the key derivation, so it is the upper bound any
+    // cheaper key pre-screen must stay under. The largest body is the
+    // conservative case: key derivation hashes the raw bytes, so the hit path
+    // grows with payload size (small payloads are covered by the
+    // `response_key_<size>` benches plus the two lookup benches above).
+    group.bench_function("cache_hit_path", |b| {
+        let body = h
+            .bodies
+            .last()
+            .expect("body sizes are non-empty")
+            .1
+            .as_slice();
+        b.iter(|| {
+            let key = response_key(&h.scope, h.model.as_str(), h.protocol.as_str(), body);
+            let hit = h.cache.lookup(&key);
             black_box(hit)
         });
     });

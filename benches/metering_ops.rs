@@ -14,7 +14,7 @@ use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use gateway_metering::estimate::{estimate_prompt_tokens, estimate_tokens};
 use gateway_metering::pricing::{ModelPrice, price_of};
 use gateway_metering::scanner::{StreamScanner, TokenCounts};
-use gateway_metering::settle::extract_usage;
+use gateway_metering::usage::extract_usage;
 
 /// Mixed Latin / CJK / digit text: the three weight classes the estimator distinguishes,
 /// long enough that per-character branch cost dominates call overhead.
