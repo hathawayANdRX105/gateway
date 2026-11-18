@@ -129,6 +129,74 @@ just bench-report                                 # 从 Criterion JSON 重建 be
 just bench-report --perf-folded benches/perf-folded.txt   # 附上 CPU 采样函数表
 ```
 
+### 哈希候选对比
+
+`benches/hash_candidates.rs` 对比响应缓存键可用的摘要算法，输入与 `response_key` 的
+字节布局完全一致（每个字段 8 字节大端长度前缀 + body）。算法、语料与正确性断言
+集中在 `benches/support/hash_candidates.rs`，bench 与测试共用同一份，口径不会漂移。
+
+覆盖 SHA-256、BLAKE3（256/128）、XXH3-128、XXH3-64、SipHash-2-4-128、ahash、foldhash。
+`just bench` 后报告会多出 `## Hash candidate throughput` 一节（MiB/s，本机相对值），
+`vs base` 与 CPU 采样同样适用。
+
+正确性与一致性由 `crates/gateway-cache/tests/hash_consistency.rs` 保证，样本量 2048：
+
+| 断言 | 覆盖 |
+| --- | --- |
+| 摘要宽度与确定性 | 每个候选按声明的字节数输出，重复调用一致 |
+| 2048 个不同请求零碰撞 | 每个候选 2048 个互异摘要 |
+| 隔离边界不碰撞 | 单字节差异、`user+model` 拼接陷阱、换 user/group/协议 |
+| SHA-256 匹配 NIST 向量 | 证明 harness 喂的就是预期字节 |
+| 跨进程稳定性策略 | ahash/foldhash 标记为不可作共享缓存键 |
+
+`just test-fast` 会一并运行。要加新候选：在 `Algorithm::ALL` 注册、实现 `digest`
+并声明 `is_cross_process_stable`，bench 与测试自动覆盖。
+
+### 响应缓存命中路径成本
+
+`benches/cache_ops.rs` 在 store / lookup 之外补了三个口径，服务一个待决策问题：
+要不要给缓存键加一道廉价预筛（先用更便宜的摘要排除不可能命中的请求，再走完整的
+`response_key`）。三个 bench 都在 `cache_ops` group 里，沿用既有 group 的
+sample_size / measurement_time / warm_up_time：
+
+| bench id            | 测什么                                                |
+| ------------------- | ----------------------------------------------------- |
+| `cache_lookup_miss` | 用一个从未入库的 key 查找，纯 miss 路径的成本         |
+| `cache_lookup_hit`  | 用一个已在库的 key 查找，纯 hit 查找的成本            |
+| `cache_hit_path`    | `response_key()` + 命中查找，一次缓存命中的端到端成本 |
+
+`cache_hit_path` 是唯一省不掉完整键派生的场景（命中了就必须拿到 key），所以它是
+预筛新增开销的上限参照；`response_key_<size>` 三个 bench 给出不同 body 大小下的键派生
+成本，和这三个口径合起来就能判断预筛是否划算。
+
+命中率由 `ResponseCache::stats()` 的 hits / misses 计数器维护（`gateway-cache` 每次
+get 自增），但 `/readyz` 暂未暴露：缓存 handle 由 facade 的 `wire_forward_stage`
+构造后只交给 `ForwardStage`，`Gateway` 没有对应端口，进程侧拿不到这个 handle，
+需要先补一个 facade accessor 才能接线。接线前，先用
+`cargo bench -p gateway-cache --bench cache_ops` 的成本数据推进预筛决策。
+
+### 预筛探针
+
+`benches/prefilter_probe.rs` 测量「给缓存键加廉价预筛是否值得」。它实现了**修正后的**
+设计：二级索引 `quick_fp -> full_key`，而不是原方案里「未命中就跳过 SHA-256」——
+后者是错的，write-through 缓存在未命中后仍要算全量 key 才能存入新响应。
+
+CI 干净 runner（AMD EPYC 7763，有 SHA-NI）实测：
+
+| body | 现状 sha256_only | 命中省下 | 未命中多付 | 盈亏平衡命中率 |
+| --- | ---: | ---: | ---: | ---: |
+| 512 B | 444.5 ns | 401.7 ns | 35.4 ns | 8.1% |
+| 4 KiB | 2432.4 ns | 2273.0 ns | 151.2 ns | 6.2% |
+| 16 KiB | 9173.1 ns | 9011.8 ns | 154.0 ns | 1.7% |
+| 32 KiB | 18176.9 ns | 18018.2 ns | 163.7 ns | 0.9% |
+
+盈亏平衡命中率 = 未命中多付 /（未命中多付 + 命中省下）。低于该命中率时预筛净亏。
+本机（i5-9300H，无 SHA-NI，负载 6.9）测出的符号会翻转，只能看 CI 数据。
+
+**未计入的成本**：每次 store 都要写索引、索引与缓存双份内存、淘汰需要两处协调。
+所以「盈亏平衡命中率只有 1-8%」不等于「值得做」——还要命中率真的那么高，且能接受
+多维护一份结构的复杂度。
+
 ### CI 手动入口
 
 `.github/workflows/benchmark.yml` 只在 GitHub Actions 页面手动触发（Actions → Benchmark (manual) → Run workflow）：

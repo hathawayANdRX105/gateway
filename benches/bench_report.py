@@ -23,6 +23,16 @@ from pathlib import Path
 
 GROUP_RE = re.compile(r'benchmark_group\(\s*"([^"]+)"\s*\)')
 
+# Labels the hash-candidate harness declares stable across processes.
+STABLE_HASH_LABELS = {
+    "sha256",
+    "blake3_256",
+    "blake3_128",
+    "xxh3_128",
+    "xxh3_64",
+    "siphash24_128",
+}
+
 
 def repo_root() -> Path:
     return Path(
@@ -87,6 +97,33 @@ def criterion_rows(
             )
         )
     return sorted(rows, key=lambda row: row[2], reverse=True)
+
+
+def hash_candidate_rows(criterion_dir: Path) -> list[tuple[str, int, float]]:
+    """Read (algorithm, body bytes, MiB/s) from Criterion's hash_candidates group.
+
+    Throughput comes from Criterion's own `throughput` metadata divided by the
+    measured mean, so no value here is estimated.
+    """
+    rows: list[tuple[str, int, float]] = []
+    for benchmark in sorted(criterion_dir.glob("hash_candidates/*/new/benchmark.json")):
+        meta = json.loads(benchmark.read_text())
+        function_id = meta.get("function_id", "")
+        if "/" not in function_id:
+            continue
+        algorithm, _, body = function_id.partition("/")
+        if not body.startswith("body_"):
+            continue
+        total_bytes = meta.get("throughput", {}).get("Bytes")
+        estimates = benchmark.parent / "estimates.json"
+        if not total_bytes or not estimates.is_file():
+            continue
+        mean_ns = json.loads(estimates.read_text()).get("mean", {}).get("point_estimate")
+        if not mean_ns:
+            continue
+        mib_per_s = (total_bytes / (float(mean_ns) * 1e-9)) / (1024 * 1024)
+        rows.append((algorithm, int(body.removeprefix("body_")), mib_per_s))
+    return rows
 
 
 def folded_stack_rows(path: Path) -> list[tuple[str, int, float]]:
@@ -160,6 +197,7 @@ def render(
     rows: list[tuple[str, str, float, float, str]],
     perf: list[tuple[str, int, float]],
     perf_path: Path | None,
+    hash_rows: list[tuple[str, int, float]],
 ) -> str:
     lines = [
         "# Gateway benchmark report",
@@ -184,6 +222,25 @@ def render(
         lines.append(
             f"| {crate} | `{name}` | {mean:.1f} | {median:.1f} | {change} |"
         )
+    if hash_rows:
+        lines.extend(
+            [
+                "",
+                "## Hash candidate throughput (MiB/s)",
+                "",
+                "Throughput is Criterion's `throughput` metadata divided by the measured",
+                "mean, so it is relative to this machine and not comparable across runners.",
+                "Candidates marked not cross-process stable cannot key a shared cache.",
+                "",
+                "| Algorithm | Body (B) | MiB/s | Cross-process stable |",
+                "| --- | ---: | ---: | --- |",
+            ]
+        )
+        for algorithm, body, mib_per_s in hash_rows:
+            lines.append(
+                f"| `{algorithm}` | {body} | {mib_per_s:.1f} | "
+                f"{'yes' if algorithm in STABLE_HASH_LABELS else 'no'} |"
+            )
     lines.extend(
         [
             "",
@@ -267,8 +324,12 @@ def main() -> int:
         print(f"no estimates.json under {criterion_dir}", file=sys.stderr)
         return 1
     perf = folded_stack_rows(args.perf_folded) if args.perf_folded else []
-    out.write_text(render(root, rows, perf, args.perf_folded))
-    print(f"wrote {out} ({len(rows)} benchmark rows, {len(perf)} CPU sample rows)")
+    hash_rows = hash_candidate_rows(criterion_dir)
+    out.write_text(render(root, rows, perf, args.perf_folded, hash_rows))
+    print(
+        f"wrote {out} ({len(rows)} benchmark rows, {len(hash_rows)} hash throughput rows, "
+        f"{len(perf)} CPU sample rows)"
+    )
     return 0
 
 

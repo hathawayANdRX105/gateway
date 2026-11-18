@@ -16,10 +16,10 @@ use std::time::Duration;
 use bytes::Bytes;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use gateway_forward::adapter::sanitize_client_headers;
-use gateway_forward::egress::classify_status;
 use gateway_forward::pipeline::{
     capture_prompt_body, resolve_upstream_model, rewrite_upstream_model,
 };
+use gateway_forward::status::classify_status;
 
 /// A representative chat-completions request body (alias model name, one user message).
 const CHAT_BODY: &[u8] = br#"{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}"#;
