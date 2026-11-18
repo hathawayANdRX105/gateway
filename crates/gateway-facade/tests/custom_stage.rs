@@ -243,3 +243,56 @@ async fn path_guard_serves_only_data_plane_paths() {
         .expect("router responds");
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
+
+/// A mounted response cache must be handed back through the gateway port as the
+/// *same* `Arc` that serves the data plane: the counters `/readyz` reports are
+/// only meaningful if the readout and the forwarding stage share one instance.
+///
+/// The facade tests run against a failing dispatch catalog (no upstream), so a
+/// full hit path cannot be driven here; the end-to-end counter plumbing is
+/// covered by the daemon's `/readyz` tests. This pins the instance identity,
+/// which is the property a refactor (a second construction, or re-wrapping the
+/// handle) would break while everything still compiled.
+#[tokio::test]
+async fn gateway_port_hands_back_the_mounted_cache_instance() {
+    let context = Context {
+        config: Config {
+            response_cache: Some(gateway_facade::ResponseCacheTuning {
+                ttl_secs: 300,
+                max_total_bytes: 1 << 20,
+                max_entry_bytes: 1 << 18,
+            }),
+            ..facade_context().config
+        },
+        components: facade_context().components,
+    };
+    let app = GatewayBuilder::relay(context).build();
+
+    let first = app.response_cache().expect("mounted cache must be exposed");
+    let second = app
+        .response_cache()
+        .expect("the port is stable across calls");
+    assert!(
+        std::sync::Arc::ptr_eq(&first, &second),
+        "the gateway port must hand back the same Arc instance the plane reads"
+    );
+}
+
+/// Without `response_cache` in the boot config, the port is absent rather than a
+/// zeroed placeholder, so an unmounted plane stays visibly unmounted on /readyz.
+/// The fixture context mounts a cache by default, so this overrides it to None.
+#[tokio::test]
+async fn gateway_port_is_absent_without_a_mounted_cache() {
+    let context = Context {
+        config: Config {
+            response_cache: None,
+            ..facade_context().config
+        },
+        components: facade_context().components,
+    };
+    let app = GatewayBuilder::relay(context).build();
+    assert!(
+        app.response_cache().is_none(),
+        "no response-cache tuning means no port to read"
+    );
+}

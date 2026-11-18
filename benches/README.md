@@ -170,9 +170,9 @@ sample_size / measurement_time / warm_up_time：
 成本，和这三个口径合起来就能判断预筛是否划算。
 
 命中率由 `ResponseCache::stats()` 的 hits / misses 计数器维护（`gateway-cache` 每次
-get 自增），但 `/readyz` 暂未暴露：缓存 handle 由 facade 的 `wire_forward_stage`
-构造后只交给 `ForwardStage`，`Gateway` 没有对应端口，进程侧拿不到这个 handle，
-需要先补一个 facade accessor 才能接线。接线前，先用
+get 自增），进程侧通过 `Gateway::response_cache()` 窄端口把同一个 `Arc` 接出来，
+在 `/readyz` 的 `responseCache` 字段里暴露 `enabled` / `hits` / `misses`——
+预筛是否值得落地，就由这个累计命中率决定。接线前，先用
 `cargo bench -p gateway-cache --bench cache_ops` 的成本数据推进预筛决策。
 
 ### 预筛探针
