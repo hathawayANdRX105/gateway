@@ -129,6 +129,29 @@ just bench-report                                 # 从 Criterion JSON 重建 be
 just bench-report --perf-folded benches/perf-folded.txt   # 附上 CPU 采样函数表
 ```
 
+### 哈希候选对比
+
+`benches/hash_candidates.rs` 对比响应缓存键可用的摘要算法，输入与 `response_key` 的
+字节布局完全一致（每个字段 8 字节大端长度前缀 + body）。算法、语料与正确性断言
+集中在 `benches/support/hash_candidates.rs`，bench 与测试共用同一份，口径不会漂移。
+
+覆盖 SHA-256、BLAKE3（256/128）、XXH3-128、XXH3-64、SipHash-2-4-128、ahash、foldhash。
+`just bench` 后报告会多出 `## Hash candidate throughput` 一节（MiB/s，本机相对值），
+`vs base` 与 CPU 采样同样适用。
+
+正确性与一致性由 `crates/gateway-cache/tests/hash_consistency.rs` 保证，样本量 2048：
+
+| 断言 | 覆盖 |
+| --- | --- |
+| 摘要宽度与确定性 | 每个候选按声明的字节数输出，重复调用一致 |
+| 2048 个不同请求零碰撞 | 每个候选 2048 个互异摘要 |
+| 隔离边界不碰撞 | 单字节差异、`user+model` 拼接陷阱、换 user/group/协议 |
+| SHA-256 匹配 NIST 向量 | 证明 harness 喂的就是预期字节 |
+| 跨进程稳定性策略 | ahash/foldhash 标记为不可作共享缓存键 |
+
+`just test-fast` 会一并运行。要加新候选：在 `Algorithm::ALL` 注册、实现 `digest`
+并声明 `is_cross_process_stable`，bench 与测试自动覆盖。
+
 ### CI 手动入口
 
 `.github/workflows/benchmark.yml` 只在 GitHub Actions 页面手动触发（Actions → Benchmark (manual) → Run workflow）：
