@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use gateway_cache::{
-    CacheScope, CachedResponse, CachedUsage, ResponseCache, TtlCache, response_key,
+    CACHE_KEY_VERSION, CacheScope, CachedResponse, CachedUsage, ResponseCache, TtlCache,
+    response_key, response_key_versioned,
 };
 
 fn entry(status: u16, body: &[u8], channel: &str) -> CachedResponse {
@@ -186,6 +187,56 @@ fn stats_and_invalidate() {
     assert_eq!(cache.get(&"k".into()), None);
     assert!(cache.is_empty());
     assert_eq!(cache.stats().misses, 2);
+}
+
+// ---------- response_key: key-space version ----------
+
+/// The default key must be the one produced under `CACHE_KEY_VERSION`, so a
+/// version bump is the single switch that moves the whole key space.
+/// Bug it catches: `response_key` hard-coding a different version than the
+/// constant, which would split reads and writes across two key spaces.
+#[test]
+fn default_key_uses_the_declared_version() {
+    let scope = scope("u-1", "default");
+    let expected = response_key_versioned(&scope, "gpt-4o", "openai", b"body", CACHE_KEY_VERSION);
+    assert_eq!(
+        response_key(&scope, "gpt-4o", "openai", b"body"),
+        expected,
+        "response_key must derive under CACHE_KEY_VERSION"
+    );
+}
+
+/// A version bump must invalidate every key, so a migration is a clean cutover
+/// rather than a silent aliasing between old and new layouts.
+/// Bug it catches: forgetting to bind the version into the digest, which would
+/// let an old-format and a new-format key collide and serve each other's entry.
+#[test]
+fn version_bump_invalidates_every_key() {
+    let samples = [
+        (
+            &scope("u-1", "default"),
+            "gpt-4o",
+            "openai",
+            b"body".as_slice(),
+        ),
+        (
+            &CacheScope {
+                user_key: "u-123".to_string(),
+                group: "premium".to_string(),
+            },
+            "23gpt-4o",
+            "anthropic",
+            b"other".as_slice(),
+        ),
+    ];
+    for (scope, model, protocol, body) in samples {
+        let v1 = response_key_versioned(scope, model, protocol, body, 1);
+        let v2 = response_key_versioned(scope, model, protocol, body, 2);
+        assert_ne!(
+            v1, v2,
+            "bumping the key-space version must change the key for {model}"
+        );
+    }
 }
 
 // ---------- response_key: isolation ----------

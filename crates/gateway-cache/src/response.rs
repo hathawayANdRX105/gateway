@@ -13,6 +13,13 @@
 //! Storage layout: each string component is hashed into its own length-delimited
 //! boundary (no concatenation ambiguity from client-controlled model values);
 //! the raw body is appended after a length prefix.
+//!
+//! The key space carries an explicit version ([`CACHE_KEY_VERSION`]). Changing the
+//! digest algorithm or the component layout must bump that version rather than
+//! swap in place: a bump produces a fresh key space, so entries written under the
+//! old version simply stop matching and age out. During a migration a deployment
+//! computes both versions via [`response_key_versioned`] and serves reads from
+//! both, instead of going cold on a flag day.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,6 +52,15 @@ pub struct CacheKey {
     pub(crate) body: [u8; 32],
 }
 
+/// Version of the cache key space.
+///
+/// Bumping this invalidates every stored entry, which is the intended migration
+/// path when the digest algorithm or the component layout changes. The version is
+/// bound into the scope digest, so two versions never produce the same key for
+/// the same request — that is what makes a bump a clean cutover instead of a
+/// silent aliasing.
+pub const CACHE_KEY_VERSION: u8 = 1;
+
 /// Derive the isolation-scoped cache key for one request.
 ///
 /// Components (in order): user key, group, public model, inbound protocol, raw
@@ -56,7 +72,24 @@ pub struct CacheKey {
 /// what a replay bills and attributes.
 #[must_use]
 pub fn response_key(scope: &CacheScope, model: &str, protocol: &str, body: &[u8]) -> CacheKey {
+    response_key_versioned(scope, model, protocol, body, CACHE_KEY_VERSION)
+}
+
+/// Derive a key under an explicit key-space version.
+///
+/// Exists for migrations: while two versions are both live, a deployment reads
+/// and writes with both, so no request goes cold on the day the version flips.
+/// Production callers use [`response_key`].
+#[must_use]
+pub fn response_key_versioned(
+    scope: &CacheScope,
+    model: &str,
+    protocol: &str,
+    body: &[u8],
+    version: u8,
+) -> CacheKey {
     let mut scope_hasher = Sha256::new();
+    scope_hasher.update([version]);
     for part in [
         scope.user_key.as_bytes(),
         scope.group.as_bytes(),

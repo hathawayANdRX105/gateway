@@ -45,5 +45,10 @@ name = "hash_candidates"
 path = "../../benches/hash_candidates.rs"
 harness = false
 
+[[bench]]
+name = "prefilter_probe"
+path = "../../benches/prefilter_probe.rs"
+harness = false
+
 [lints]
 workspace = true
