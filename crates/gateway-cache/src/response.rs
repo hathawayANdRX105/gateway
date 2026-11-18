@@ -32,11 +32,18 @@ pub struct CacheScope {
     pub group: String,
 }
 
-/// Opaque response-cache key — the sha256 digest hex of the isolation-scoped
-/// request identity. Construction goes through [`response_key`] only, so the
-/// component layout has one authority.
+/// Opaque response-cache key for an isolation-scoped request identity.
+///
+/// Holds two raw SHA-256 digests: `scope` covers the identity fields (user,
+/// group, model, protocol) and `body` covers the request bytes. Storing raw
+/// bytes instead of a hex-encoded string removes the encode pass and its
+/// allocation from every cacheable request. Construction goes through
+/// [`response_key`] only, so the component layout has one authority.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CacheKey(pub(crate) String);
+pub struct CacheKey {
+    pub(crate) scope: [u8; 32],
+    pub(crate) body: [u8; 32],
+}
 
 /// Derive the isolation-scoped cache key for one request.
 ///
@@ -49,19 +56,25 @@ pub struct CacheKey(pub(crate) String);
 /// what a replay bills and attributes.
 #[must_use]
 pub fn response_key(scope: &CacheScope, model: &str, protocol: &str, body: &[u8]) -> CacheKey {
-    let mut hasher = Sha256::new();
+    let mut scope_hasher = Sha256::new();
     for part in [
         scope.user_key.as_bytes(),
         scope.group.as_bytes(),
         model.as_bytes(),
         protocol.as_bytes(),
     ] {
-        hasher.update((part.len() as u64).to_be_bytes());
-        hasher.update(part);
+        scope_hasher.update((part.len() as u64).to_be_bytes());
+        scope_hasher.update(part);
     }
-    hasher.update((body.len() as u64).to_be_bytes());
-    hasher.update(body);
-    CacheKey(hex::encode(hasher.finalize()))
+
+    let mut body_hasher = Sha256::new();
+    body_hasher.update((body.len() as u64).to_be_bytes());
+    body_hasher.update(body);
+
+    CacheKey {
+        scope: scope_hasher.finalize().into(),
+        body: body_hasher.finalize().into(),
+    }
 }
 
 /// Token counts recorded with an entry: the settlement basis when the entry is
