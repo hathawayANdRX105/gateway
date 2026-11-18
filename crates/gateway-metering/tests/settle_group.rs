@@ -14,7 +14,7 @@ use gateway_core::records::UsageEvent;
 use gateway_metering::ledger::Hold;
 use gateway_metering::pricing::{ModelPrice, PriceTable};
 use gateway_metering::scanner::TokenCounts;
-use gateway_metering::settle::{extract_finish_reason, extract_usage};
+use gateway_metering::usage::{extract_finish_reason, extract_usage};
 use gateway_metering::{SettleSink, settle_event};
 use std::sync::Mutex;
 
