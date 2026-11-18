@@ -6,6 +6,9 @@
 //! superset shape of those files (cases that do not read the recording fields never see
 //! them). `common` is compiled separately into every test binary, so items not used by all
 //! binaries are marked `#[allow(dead_code)]`.
+//!
+//! This is a flat file, not `tests/common/mod.rs`: the repo keeps `tests/` mirroring
+//! `crate/src/`, and a subdirectory without a `src` counterpart breaks that rule.
 
 use bytes::Bytes;
 use gateway_core::error::NormalizedError;
@@ -22,16 +25,17 @@ use parking_lot::Mutex;
 // ---------- Request builders ----------
 
 /// Minimal non-streaming request body (the default body shared by the three test files).
-pub const NON_STREAM_BODY: &[u8] = b"{\"model\":\"m\"}";
+pub(crate) const NON_STREAM_BODY: &[u8] = b"{\"model\":\"m\"}";
 
 /// Streaming request body: it carries a top-level `"stream":true`, which
 /// `body_wants_stream` uses to detect streaming intent.
 #[allow(dead_code)] // not used by every test binary
-pub const STREAM_BODY: &[u8] = b"{\"model\":\"m\",\"stream\":true}";
+pub(crate) const STREAM_BODY: &[u8] = b"{\"model\":\"m\",\"stream\":true}";
 
 /// Build a test candidate: `base_url` carries the key marker so `ScriptedEgress` can tell
 /// candidates apart.
-pub fn candidate(key: &str) -> Candidate {
+#[allow(dead_code)] // every test binary uses it; only this file's own empty target does not
+pub(crate) fn candidate(key: &str) -> Candidate {
     SelectedRoute {
         unit: RouteUnitRecord {
             meta: SyncMeta {
@@ -61,7 +65,7 @@ pub fn candidate(key: &str) -> Candidate {
 /// streaming), and route is preset for single-shot mode (after `with_retry`, handle ignores
 /// it). The token is fixed to tok-1/g; the channel-attribution fields stay empty (#140:
 /// this group of cases does not rely on attribution).
-pub fn ctx_with_body(body: &'static [u8], route: Candidate) -> RequestCtx {
+pub(crate) fn ctx_with_body(body: &'static [u8], route: Candidate) -> RequestCtx {
     RequestCtx {
         request: RequestMeta {
             method: "POST".to_string(),
@@ -97,7 +101,7 @@ pub fn ctx_with_body(body: &'static [u8], route: Candidate) -> RequestCtx {
 /// Build a request ctx carrying only a route (no body parsing needed; used by
 /// retry-attribution cases).
 #[allow(dead_code)] // not used by every test binary
-pub fn ctx_with_route(route: Candidate) -> RequestCtx {
+pub(crate) fn ctx_with_route(route: Candidate) -> RequestCtx {
     ctx_with_body(NON_STREAM_BODY, route)
 }
 
@@ -106,7 +110,7 @@ pub fn ctx_with_route(route: Candidate) -> RequestCtx {
 /// One plan item of the scripted egress mock: `Ok` returns a fixed success body, `Fail`
 /// returns a classified error.
 #[allow(dead_code)] // the settle binary does not use this mock
-pub enum Plan {
+pub(crate) enum Plan {
     Ok { body: &'static [u8] },
     Fail { status: u16, retryable: bool },
 }
@@ -116,14 +120,14 @@ pub enum Plan {
 /// (502 → retryable, 400 → not retryable, 401/403/404 → `channel_scoped`); forward only sees
 /// the trait's return value.
 #[allow(dead_code)] // the settle binary does not use this mock
-pub struct ScriptedEgress {
+pub(crate) struct ScriptedEgress {
     plans: Vec<(String, Plan)>,
     calls: Mutex<Vec<String>>,
 }
 
 #[allow(dead_code)] // same as above: not every binary uses the constructor and accessors
 impl ScriptedEgress {
-    pub fn new(plans: Vec<(&str, Plan)>) -> Self {
+    pub(crate) fn new(plans: Vec<(&str, Plan)>) -> Self {
         Self {
             plans: plans.into_iter().map(|(k, p)| (k.to_string(), p)).collect(),
             calls: Mutex::new(Vec::new()),
@@ -132,7 +136,7 @@ impl ScriptedEgress {
 
     /// Upstream urls that were requested (for asserting attempt counts and hit
     /// candidates).
-    pub fn calls(&self) -> Vec<String> {
+    pub(crate) fn calls(&self) -> Vec<String> {
         self.calls.lock().clone()
     }
 }
@@ -189,7 +193,7 @@ impl Egress for ScriptedEgress {
 
 /// Mock egress that always returns 200 plus a fixed body (non-streaming).
 #[allow(dead_code)] // settle only
-pub struct FixedEgress {
+pub(crate) struct FixedEgress {
     pub body: &'static [u8],
 }
 
@@ -225,7 +229,7 @@ impl Egress for FixedEgress {
 /// that do not read the records simply ignore them; the select/report decision logic is
 /// identical to the inline versions in the individual files).
 #[allow(dead_code)] // settle binary unused; records are read only by some binaries
-pub struct MockDispatch {
+pub(crate) struct MockDispatch {
     candidates: Vec<Candidate>,
     /// `AllUnavailable.retry_after_ms` returned by `select` when everything is cooling or
     /// exhausted (default 0 = no cooldown).
@@ -236,7 +240,7 @@ pub struct MockDispatch {
 
 #[allow(dead_code)] // same as above: not every binary uses the constructor and accessors
 impl MockDispatch {
-    pub fn new(candidates: Vec<Candidate>) -> Self {
+    pub(crate) fn new(candidates: Vec<Candidate>) -> Self {
         Self {
             candidates,
             cooled_ra: 0,
@@ -247,18 +251,18 @@ impl MockDispatch {
 
     /// `retry_after_ms` returned by `select` when everything is cooling or exhausted
     /// (0 = no cooldown; >0 = cooldown).
-    pub fn with_cooling_ra(mut self, ra: u64) -> Self {
+    pub(crate) fn with_cooling_ra(mut self, ra: u64) -> Self {
         self.cooled_ra = ra;
         self
     }
 
     /// Sequence of select calls (a snapshot of the exclude set per call).
-    pub fn selects(&self) -> Vec<Vec<String>> {
+    pub(crate) fn selects(&self) -> Vec<Vec<String>> {
         self.selects.lock().clone()
     }
 
     /// Sequence of report calls (unit key + health result).
-    pub fn reports(&self) -> Vec<(String, Result<u16, FailureClass>)> {
+    pub(crate) fn reports(&self) -> Vec<(String, Result<u16, FailureClass>)> {
         self.reports
             .lock()
             .iter()
@@ -307,7 +311,7 @@ impl Dispatch for MockDispatch {
 /// observation events for assertions.
 #[allow(dead_code)] // the retry_wiring binary does not use this mock
 #[derive(Default)]
-pub struct VecSink(Mutex<Vec<UsageEvent>>);
+pub(crate) struct VecSink(Mutex<Vec<UsageEvent>>);
 
 impl SettleSink for VecSink {
     fn submit(&self, event: UsageEvent) {
@@ -317,7 +321,7 @@ impl SettleSink for VecSink {
 
 #[allow(dead_code)] // same as above: the events accessor is not used by every binary
 impl VecSink {
-    pub fn events(&self) -> Vec<UsageEvent> {
+    pub(crate) fn events(&self) -> Vec<UsageEvent> {
         self.0.lock().clone()
     }
 }
