@@ -156,7 +156,7 @@ fn print_conclusion(harness: &Harness) {
         println!(
             "  body_{body_len:<5} sha256_only {baseline:7.1} ns | prefilter_hit {hit:7.1} ns (saves {saving:6.1} ns) \
              | prefilter_miss {miss:7.1} ns (pays {overhead:6.1} ns) | break-even hit rate {rate:5.1}% \
-             (minimum hit rate for net benefit; 预筛开始净收益所需的最低命中率)"
+             (minimum hit rate for net benefit)"
         );
     }
     println!(

@@ -39,6 +39,35 @@ pub struct CacheScope {
     pub group: String,
 }
 
+/// Encode the scope identity exactly as [`response_key`] hashes it.
+///
+/// This is the single authority for the byte layout: benches and tests must call
+/// it instead of re-encoding by hand, so the moment the layout or version changes
+/// every downstream measurement fails to compile rather than drifting silently.
+/// `#[doc(hidden)]` marks it as bench plumbing, not a consumer-facing API.
+#[doc(hidden)]
+#[must_use]
+pub fn request_identity_bytes(
+    scope: &CacheScope,
+    model: &str,
+    protocol: &str,
+    version: u8,
+) -> Vec<u8> {
+    let parts: [&[u8]; 4] = [
+        scope.user_key.as_bytes(),
+        scope.group.as_bytes(),
+        model.as_bytes(),
+        protocol.as_bytes(),
+    ];
+    let mut out = Vec::with_capacity(8 + parts.iter().map(|part| part.len() + 8).sum::<usize>());
+    out.extend_from_slice([version].as_slice());
+    for part in parts {
+        out.extend_from_slice(&(part.len() as u64).to_be_bytes());
+        out.extend_from_slice(part);
+    }
+    out
+}
+
 /// Opaque response-cache key for an isolation-scoped request identity.
 ///
 /// Holds two raw SHA-256 digests: `scope` covers the identity fields (user,
@@ -50,6 +79,23 @@ pub struct CacheScope {
 pub struct CacheKey {
     pub(crate) scope: [u8; 32],
     pub(crate) body: [u8; 32],
+}
+
+impl CacheKey {
+    /// Raw 64-byte view (scope || body) for benchmarks and tests.
+    ///
+    /// `#[doc(hidden)]`: this is not a consumer-facing API. It exists so the
+    /// bench harness can assert its hand-built layout matches production — the
+    /// drift being tested is exactly what would otherwise show up as silently
+    /// wrong measurement numbers.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn as_bytes(&self) -> [u8; 64] {
+        let mut out = [0u8; 64];
+        out[..32].copy_from_slice(&self.scope);
+        out[32..].copy_from_slice(&self.body);
+        out
+    }
 }
 
 /// Version of the cache key space.
@@ -88,17 +134,10 @@ pub fn response_key_versioned(
     body: &[u8],
     version: u8,
 ) -> CacheKey {
+    let identity = request_identity_bytes(scope, model, protocol, version);
+
     let mut scope_hasher = Sha256::new();
-    scope_hasher.update([version]);
-    for part in [
-        scope.user_key.as_bytes(),
-        scope.group.as_bytes(),
-        model.as_bytes(),
-        protocol.as_bytes(),
-    ] {
-        scope_hasher.update((part.len() as u64).to_be_bytes());
-        scope_hasher.update(part);
-    }
+    scope_hasher.update(&identity);
 
     let mut body_hasher = Sha256::new();
     body_hasher.update((body.len() as u64).to_be_bytes());

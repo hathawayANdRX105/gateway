@@ -13,11 +13,12 @@
 //! hit path is the only one that saves anything. This module models exactly those
 //! three costs and nothing else; no production code is wired to it.
 //!
-//! The full key is derived the way `response_key` derives it (scope digest over the
-//! four isolation fields plus body digest, each length-prefixed), and the corpus
+//! The full key is derived from the production authority's identity stream
+//! (`gateway_cache::request_identity_bytes`) plus the raw body, so a layout or
+//! version change upstream breaks the compile here instead of drifting. The corpus
 //! comes from the shared `hash_candidates` module, so the numbers line up with
-//! `benches/hash_candidates.rs`. Expected to be included as a sibling of that module
-//! under the name `support`, which is how the corpus is reached (`super::support`).
+//! `benches/hash_candidates.rs`. Expected to be included as a sibling of that
+//! module under the name `support`, which is how the corpus is reached (`super::support`).
 
 use std::collections::HashMap;
 
@@ -57,29 +58,19 @@ pub fn quick_fp(body: &[u8]) -> [u8; 16] {
     fp
 }
 
-/// Derive the full key for `case` exactly as `response_key` does.
+/// Derive the full key for `case` from the production authority's streams.
+///
+/// `response_key` owns the layout; this wrapper only concatenates its two
+/// digests, so a layout or version change upstream surfaces as a compile-time
+/// error here instead of a silently wrong measurement.
 #[must_use]
 pub fn full_key(case: &RequestCase) -> FullKey {
-    let mut scope_hasher = Sha256::new();
-    for part in [
-        case.user_key.as_bytes(),
-        case.group.as_bytes(),
-        case.model.as_bytes(),
-        case.protocol.as_bytes(),
-    ] {
-        scope_hasher.update((part.len() as u64).to_be_bytes());
-        scope_hasher.update(part);
-    }
-
-    let mut body_hasher = Sha256::new();
-    body_hasher.update((case.body.len() as u64).to_be_bytes());
-    body_hasher.update(&case.body);
-
-    let scope: [u8; 32] = scope_hasher.finalize().into();
-    let body: [u8; 32] = body_hasher.finalize().into();
+    let (identity, body) = case.streams();
+    let scope_hash = Sha256::digest(&identity);
+    let body_hash = Sha256::digest(body);
     let mut key = [0u8; FULL_KEY_LEN];
-    key[..32].copy_from_slice(&scope);
-    key[32..].copy_from_slice(&body);
+    key[..32].copy_from_slice(&scope_hash);
+    key[32..].copy_from_slice(&body_hash);
     key
 }
 

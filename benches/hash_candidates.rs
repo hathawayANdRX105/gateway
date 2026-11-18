@@ -20,15 +20,18 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use support::{Algorithm, BODY_SIZES, RequestCase, corpus};
+use support::{Algorithm, BODY_SIZES, corpus};
 
 /// One encoded request per body size, reused across candidates so the comparison is
 /// byte-for-byte identical.
-fn cases() -> Vec<(usize, Vec<u8>)> {
+fn cases() -> Vec<(usize, Vec<u8>, Vec<u8>)> {
     let samples = corpus(BODY_SIZES.len());
     samples
         .iter()
-        .map(|case: &RequestCase| (case.body.len(), case.encode()))
+        .map(|case| {
+            let (identity, body) = case.streams();
+            (case.body.len(), identity, body)
+        })
         .collect()
 }
 
@@ -40,15 +43,12 @@ fn hash_candidates_bench(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(2));
     group.warm_up_time(Duration::from_secs(1));
 
-    for (body_len, encoded) in &inputs {
+    for (body_len, identity, body) in &inputs {
         // Report MB/s: the metric that does not change with machine class.
-        group.throughput(Throughput::Bytes(encoded.len() as u64));
+        group.throughput(Throughput::Bytes((identity.len() + body.len()) as u64));
         for algorithm in Algorithm::ALL {
             group.bench_function(format!("{}/body_{body_len}", algorithm.label()), |b| {
-                b.iter(|| {
-                    let digest = algorithm.digest(black_box(encoded));
-                    black_box(digest)
-                });
+                b.iter(|| black_box(algorithm.key_bytes(identity, body)));
             });
         }
     }

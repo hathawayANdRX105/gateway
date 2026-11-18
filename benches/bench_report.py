@@ -187,7 +187,8 @@ def environment(root: Path) -> list[str]:
         f"- CPU scaling MHz: {scaling}",
         f"- Load average (1m): {load}",
         f"- Toolchain: {rustc}",
-        "- Benchmark profile: Cargo default bench profile (inherits release, LLVM).",
+        "- Benchmark profile: Cargo default bench profile (inherits release; codegen backend",
+        "# is this repo's rustc default, not a repo-pinned setting).",
         "- Source: `target/criterion/*/*/new/estimates.json`.",
     ]
 

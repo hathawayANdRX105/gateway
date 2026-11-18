@@ -6,9 +6,11 @@
 use std::time::Duration;
 
 use bytes::Bytes;
+use sha2::{Digest, Sha256};
+
 use gateway_cache::{
-    CACHE_KEY_VERSION, CacheScope, CachedResponse, CachedUsage, ResponseCache, TtlCache,
-    response_key, response_key_versioned,
+    CacheScope, CachedResponse, CachedUsage, ResponseCache, TtlCache, response_key,
+    response_key_versioned,
 };
 
 fn entry(status: u16, body: &[u8], channel: &str) -> CachedResponse {
@@ -197,12 +199,40 @@ fn stats_and_invalidate() {
 /// constant, which would split reads and writes across two key spaces.
 #[test]
 fn default_key_uses_the_declared_version() {
+    // Derive the version-1 identity stream by hand and hash it exactly the way
+    // production does; a deletion of `update([version])` (or a reordering of the
+    // length-prefixed fields) changes the digest and fails this test.
     let scope = scope("u-1", "default");
-    let expected = response_key_versioned(&scope, "gpt-4o", "openai", b"body", CACHE_KEY_VERSION);
+    let mut identity = vec![1u8]; // hand-encoded CACHE_KEY_VERSION = 1
+    for part in [
+        b"u-1".as_slice(),
+        b"default".as_slice(),
+        b"gpt-4o".as_slice(),
+        b"openai".as_slice(),
+    ] {
+        identity.extend_from_slice(&(part.len() as u64).to_be_bytes());
+        identity.extend_from_slice(part);
+    }
+
+    let expected_key = response_key_versioned(&scope, "gpt-4o", "openai", b"body", 1);
     assert_eq!(
         response_key(&scope, "gpt-4o", "openai", b"body"),
-        expected,
+        expected_key,
         "response_key must derive under CACHE_KEY_VERSION"
+    );
+
+    let body_digest_input = {
+        let mut bytes = (4u64).to_be_bytes().to_vec();
+        bytes.extend_from_slice(b"body");
+        bytes
+    };
+    let mut expected_bytes = [0u8; 64];
+    expected_bytes[..32].copy_from_slice(Sha256::digest(&identity).as_slice());
+    expected_bytes[32..].copy_from_slice(Sha256::digest(&body_digest_input).as_slice());
+    assert_eq!(
+        expected_key.as_bytes(),
+        expected_bytes,
+        "hand-derived version-1 bytes must match the production key"
     );
 }
 

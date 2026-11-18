@@ -5,14 +5,15 @@ from benchmark tool output; this script does not estimate or invent values.
 
 ## Environment
 
-- Generated: 2026-11-18 08:04:33 UTC
-- Commit: 1c091c8
-- Runner: GitHub Actions 1000023339
-- CPU: AMD EPYC 7763 64-Core Processor
-- CPU scaling MHz: unknown
-- Load average (1m): 2.07
+- Generated: 2026-11-18 16:04:40 UTC
+- Commit: 5165305
+- Runner: unknown
+- CPU: Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz
+- CPU scaling MHz: 97%
+- Load average (1m): 2.09
 - Toolchain: rustc 1.100.0-nightly (f7d782a3b 2026-08-19)
-- Benchmark profile: Cargo default bench profile (inherits release, LLVM).
+- Benchmark profile: Cargo default bench profile (inherits release; codegen backend
+# is this repo's rustc default, not a repo-pinned setting).
 - Source: `target/criterion/*/*/new/estimates.json`.
 
 ## Measured functions (slowest first)
@@ -23,75 +24,46 @@ are per sequence, not per chunk.
 
 | Crate | Benchmark | Mean (ns) | Median (ns) | vs base |
 | --- | --- | ---: | ---: | ---: |
-| gateway-security | `word_filter/stream_push_small_chunks` | 59721.1 | 59592.3 | +49.1% |
-| gateway-dispatch | `selector_latency/pick_digest_mounted` | 34043.9 | 33947.3 | +75.8% |
-| gateway-dispatch | `selector_latency/pick_ewma_baseline` | 25808.0 | 25761.1 | +70.7% |
-| gateway-cache | `hash_candidates/sha256_body_32768` | 20667.7 | 20658.2 | - |
-| gateway-security | `word_filter/filter` | 20562.6 | 20534.7 | +48.2% |
-| gateway-cache | `hash_candidates/siphash24_128_body_32768` | 14119.1 | 14079.9 | - |
-| gateway-cache | `hash_candidates/blake3_128_body_32768` | 8012.7 | 8003.1 | - |
-| gateway-cache | `hash_candidates/blake3_256_body_32768` | 8012.2 | 8003.4 | - |
-| gateway-protocol-bridge | `codec_ops/translate_response` | 4572.1 | 4556.7 | +69.3% |
-| gateway-metering | `metering_ops/estimate_tokens` | 3809.5 | 3799.4 | +77.3% |
-| gateway-metering | `metering_ops/stream_scan` | 3124.9 | 3119.8 | +85.6% |
-| gateway-cache | `hash_candidates/ahash_fixed_body_32768` | 2990.2 | 2988.6 | - |
-| gateway-cache | `cache_ops/response_key_large` | 2764.1 | 2762.4 | +34.8% |
-| gateway-cache | `hash_candidates/sha256_body_4096` | 2684.1 | 2683.3 | - |
-| gateway-protocol-bridge | `codec_ops/translate_request` | 2098.4 | 2090.7 | +74.2% |
-| gateway-proxy | `proxy_ops/adapter_for_vless` | 1917.9 | 1912.3 | +75.2% |
-| gateway-cache | `hash_candidates/siphash24_128_body_4096` | 1809.8 | 1803.2 | - |
-| gateway-cache | `hash_candidates/blake3_256_body_4096` | 1741.3 | 1720.6 | - |
-| gateway-cache | `hash_candidates/blake3_128_body_4096` | 1726.4 | 1720.3 | - |
-| gateway-cache | `hash_candidates/foldhash_fixed_body_32768` | 1416.5 | 1414.9 | - |
-| gateway-cache | `hash_candidates/xxh3_128_body_32768` | 1271.1 | 1263.2 | - |
-| gateway-cache | `hash_candidates/xxh3_64_body_32768` | 1267.0 | 1256.6 | - |
-| gateway-protocol-bridge | `codec_ops/sse_push` | 955.8 | 952.8 | +78.5% |
-| gateway-metering | `metering_ops/estimate_prompt_tokens` | 945.5 | 939.1 | +71.1% |
-| gateway-cache | `hash_candidates/blake3_128_body_512` | 749.9 | 749.1 | - |
-| gateway-cache | `hash_candidates/blake3_256_body_512` | 749.8 | 749.4 | - |
-| gateway-cache | `cache_ops/response_cache_store` | 664.5 | 665.1 | +28.7% |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_json` | 585.5 | 581.2 | +82.0% |
-| gateway-metering | `metering_ops/extract_usage` | 562.4 | 560.4 | +86.8% |
-| gateway-cache | `cache_ops/ttl_insert` | 498.9 | 496.9 | +21.7% |
-| gateway-protocol-bridge | `codec_ops/map_error` | 478.1 | 477.3 | +93.0% |
-| gateway-cache | `cache_ops/response_key_medium` | 474.7 | 474.0 | +34.8% |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_from_body` | 442.9 | 441.2 | +69.7% |
-| gateway-cache | `hash_candidates/sha256_body_512` | 438.2 | 438.0 | - |
-| gateway-cache | `hash_candidates/ahash_fixed_body_4096` | 386.6 | 385.7 | - |
-| gateway-proxy | `proxy_ops/manager_acquire` | 376.4 | 374.8 | +3.0% |
-| gateway-dispatch | `state_ops/tdigest_quantile` | 339.1 | 338.4 | +74.6% |
-| gateway-cache | `hash_candidates/siphash24_128_body_512` | 264.2 | 263.8 | - |
-| gateway-forward | `pipeline_ops/sanitize_client_headers` | 204.5 | 202.3 | +80.4% |
-| gateway-cache | `cache_ops/response_key_small` | 188.5 | 188.3 | +39.0% |
-| gateway-cache | `hash_candidates/foldhash_fixed_body_4096` | 184.5 | 184.1 | - |
-| gateway-cache | `hash_candidates/xxh3_128_body_4096` | 177.7 | 176.5 | - |
-| gateway-cache | `hash_candidates/xxh3_64_body_4096` | 175.1 | 173.5 | - |
-| gateway-cache | `cache_ops/response_cache_lookup` | 139.7 | 138.3 | +22.7% |
-| gateway-dispatch | `state_ops/sticky_lookup` | 124.4 | 123.3 | +22.6% |
-| gateway-dispatch | `state_ops/latency_digest_quantiles_with_weight` | 109.6 | 109.6 | +80.2% |
-| gateway-cache | `cache_ops/ttl_get_hit` | 107.7 | 107.5 | +18.0% |
-| gateway-dispatch | `state_ops/token_budget_admit_window` | 80.3 | 80.1 | +34.7% |
-| gateway-dispatch | `state_ops/tdigest_add` | 62.0 | 61.4 | +51.2% |
-| gateway-cache | `hash_candidates/ahash_fixed_body_512` | 54.3 | 54.4 | - |
-| gateway-proxy | `proxy_ops/pool_pick` | 52.5 | 52.4 | +41.9% |
-| gateway-forward | `pipeline_ops/classify_status_401` | 48.6 | 48.5 | +93.1% |
-| gateway-dispatch | `state_ops/sliding_window_admits_weighted` | 45.0 | 45.0 | +19.0% |
-| gateway-forward | `pipeline_ops/classify_status_429` | 43.4 | 43.2 | +91.2% |
-| gateway-security | `word_filter/has_match` | 42.3 | 42.2 | +149.7% |
-| gateway-forward | `pipeline_ops/classify_status_502` | 42.0 | 41.9 | +85.0% |
-| gateway-cache | `hash_candidates/xxh3_128_body_512` | 40.3 | 40.2 | - |
-| gateway-cache | `hash_candidates/xxh3_64_body_512` | 37.8 | 37.8 | - |
-| gateway-cache | `hash_candidates/foldhash_fixed_body_512` | 29.8 | 29.7 | - |
-| gateway-forward | `pipeline_ops/resolve_upstream_model_override` | 24.3 | 24.2 | +66.2% |
-| gateway-proxy | `proxy_ops/tcp_metadata` | 19.9 | 19.8 | +100.7% |
-| gateway-protocol-bridge | `codec_ops/resolve` | 17.3 | 17.1 | +17.6% |
-| gateway-proxy | `proxy_ops/validate_url_ip_literal` | 14.7 | 14.6 | +78.2% |
-| gateway-proxy | `proxy_ops/validate_url_domain` | 11.0 | 11.0 | +139.3% |
-| gateway-metering | `metering_ops/price_of` | 9.5 | 9.4 | +83.2% |
-| gateway-proxy | `proxy_ops/check_ip_public_v4` | 8.1 | 8.1 | +68.5% |
-| gateway-forward | `pipeline_ops/rewrite_upstream_model_passthrough` | 4.7 | 4.7 | +92.0% |
-| gateway-forward | `pipeline_ops/capture_prompt_body` | 3.4 | 3.1 | +31.0% |
-| gateway-proxy | `proxy_ops/adapter_for_socks5` | 3.1 | 3.1 | +28.9% |
+| gateway-cache | `hash_candidates/sha256_body_32768` | 257417.8 | 244233.4 | - |
+| gateway-cache | `prefilter_probe/sha256_only_body_32768` | 194483.7 | 185611.1 | +42.0% |
+| gateway-cache | `prefilter_probe/prefilter_miss_body_32768` | 152234.1 | 150170.6 | -11.8% |
+| gateway-cache | `prefilter_probe/prefilter_miss_body_4096` | 28530.1 | 26909.2 | +27.2% |
+| gateway-cache | `cache_ops/response_key_large` | 24759.4 | 23624.5 | +32.6% |
+| gateway-cache | `prefilter_probe/sha256_only_body_4096` | 21204.1 | 21356.8 | -5.9% |
+| gateway-cache | `hash_candidates/sha256_body_4096` | 17382.8 | 17320.1 | - |
+| gateway-cache | `hash_candidates/siphash24_128_body_32768` | 14127.9 | 13546.1 | - |
+| gateway-cache | `hash_candidates/blake3_256_body_32768` | 10535.3 | 10314.4 | - |
+| gateway-cache | `hash_candidates/blake3_128_body_32768` | 10334.6 | 10228.8 | - |
+| gateway-cache | `prefilter_probe/sha256_only_body_512` | 4042.1 | 4076.6 | +0.2% |
+| gateway-cache | `prefilter_probe/prefilter_miss_body_512` | 3595.2 | 3402.3 | -18.4% |
+| gateway-cache | `hash_candidates/sha256_body_512` | 3258.4 | 3214.2 | - |
+| gateway-cache | `hash_candidates/ahash_fixed_body_32768` | 2991.2 | 3005.0 | - |
+| gateway-cache | `cache_ops/response_key_medium` | 2872.2 | 2751.1 | -20.1% |
+| gateway-cache | `hash_candidates/blake3_128_body_4096` | 2225.2 | 2202.5 | - |
+| gateway-cache | `hash_candidates/foldhash_fixed_body_32768` | 1926.0 | 1643.1 | - |
+| gateway-cache | `hash_candidates/blake3_256_body_4096` | 1883.8 | 1845.2 | - |
+| gateway-cache | `hash_candidates/xxh3_128_body_32768` | 1783.2 | 1725.5 | - |
+| gateway-cache | `hash_candidates/siphash24_128_body_4096` | 1763.7 | 1729.9 | - |
+| gateway-cache | `hash_candidates/xxh3_64_body_32768` | 1529.8 | 1473.3 | - |
+| gateway-cache | `cache_ops/response_key_small` | 1038.3 | 1033.3 | -4.4% |
+| gateway-cache | `cache_ops/response_cache_store` | 975.8 | 959.7 | +1.9% |
+| gateway-cache | `hash_candidates/blake3_128_body_512` | 624.9 | 611.0 | - |
+| gateway-cache | `hash_candidates/blake3_256_body_512` | 620.3 | 609.8 | - |
+| gateway-cache | `cache_ops/ttl_insert` | 594.6 | 582.7 | -19.4% |
+| gateway-cache | `prefilter_probe/prefilter_hit_body_4096` | 347.0 | 308.6 | +73.7% |
+| gateway-cache | `hash_candidates/ahash_fixed_body_4096` | 316.0 | 298.9 | - |
+| gateway-cache | `hash_candidates/siphash24_128_body_512` | 295.8 | 294.3 | - |
+| gateway-cache | `prefilter_probe/prefilter_hit_body_32768` | 284.5 | 270.7 | +1.3% |
+| gateway-cache | `hash_candidates/xxh3_128_body_4096` | 250.7 | 243.5 | - |
+| gateway-cache | `cache_ops/response_cache_lookup` | 221.1 | 209.2 | +2.5% |
+| gateway-cache | `hash_candidates/xxh3_64_body_4096` | 210.6 | 199.2 | - |
+| gateway-cache | `cache_ops/ttl_get_hit` | 153.1 | 151.3 | -7.8% |
+| gateway-cache | `hash_candidates/foldhash_fixed_body_4096` | 149.9 | 147.5 | - |
+| gateway-cache | `prefilter_probe/prefilter_hit_body_512` | 61.4 | 60.6 | -12.7% |
+| gateway-cache | `hash_candidates/ahash_fixed_body_512` | 46.6 | 46.4 | - |
+| gateway-cache | `hash_candidates/xxh3_128_body_512` | 42.3 | 42.0 | - |
+| gateway-cache | `hash_candidates/xxh3_64_body_512` | 41.8 | 41.5 | - |
+| gateway-cache | `hash_candidates/foldhash_fixed_body_512` | 40.2 | 38.6 | - |
 
 ## Hash candidate throughput (MiB/s)
 
@@ -101,60 +73,37 @@ Candidates marked not cross-process stable cannot key a shared cache.
 
 | Algorithm | Body (B) | MiB/s | Cross-process stable |
 | --- | ---: | ---: | --- |
-| `ahash_fixed` | 32768 | 10475.5 | no |
-| `ahash_fixed` | 4096 | 10285.1 | no |
-| `ahash_fixed` | 512 | 10124.6 | no |
-| `blake3_128` | 32768 | 3909.2 | yes |
-| `blake3_128` | 4096 | 2302.9 | yes |
-| `blake3_128` | 512 | 733.8 | yes |
-| `blake3_256` | 32768 | 3909.5 | yes |
-| `blake3_256` | 4096 | 2283.3 | yes |
-| `blake3_256` | 512 | 733.9 | yes |
-| `foldhash_fixed` | 32768 | 22113.7 | no |
-| `foldhash_fixed` | 4096 | 21552.0 | no |
-| `foldhash_fixed` | 512 | 18467.4 | no |
-| `sha256` | 32768 | 1515.6 | yes |
-| `sha256` | 4096 | 1481.3 | yes |
-| `sha256` | 512 | 1255.9 | yes |
-| `siphash24_128` | 32768 | 2218.5 | yes |
-| `siphash24_128` | 4096 | 2196.9 | yes |
-| `siphash24_128` | 512 | 2082.9 | yes |
-| `xxh3_128` | 32768 | 24643.0 | yes |
-| `xxh3_128` | 4096 | 22375.6 | yes |
-| `xxh3_128` | 512 | 13662.4 | yes |
-| `xxh3_64` | 32768 | 24722.3 | yes |
-| `xxh3_64` | 4096 | 22704.7 | yes |
-| `xxh3_64` | 512 | 14553.4 | yes |
+| `ahash_fixed` | 32768 | 10471.9 | no |
+| `ahash_fixed` | 4096 | 12580.7 | no |
+| `ahash_fixed` | 512 | 11802.8 | no |
+| `blake3_128` | 32768 | 3030.9 | yes |
+| `blake3_128` | 4096 | 1786.8 | yes |
+| `blake3_128` | 512 | 880.6 | yes |
+| `blake3_256` | 32768 | 2973.2 | yes |
+| `blake3_256` | 4096 | 2110.5 | yes |
+| `blake3_256` | 512 | 887.0 | yes |
+| `foldhash_fixed` | 32768 | 16263.5 | no |
+| `foldhash_fixed` | 4096 | 26516.2 | no |
+| `foldhash_fixed` | 512 | 13671.8 | no |
+| `sha256` | 32768 | 121.7 | yes |
+| `sha256` | 4096 | 228.7 | yes |
+| `sha256` | 512 | 168.9 | yes |
+| `siphash24_128` | 32768 | 2217.1 | yes |
+| `siphash24_128` | 4096 | 2254.2 | yes |
+| `siphash24_128` | 512 | 1860.3 | yes |
+| `xxh3_128` | 32768 | 17565.7 | yes |
+| `xxh3_128` | 4096 | 15858.5 | yes |
+| `xxh3_128` | 512 | 13003.2 | yes |
+| `xxh3_64` | 32768 | 20475.6 | yes |
+| `xxh3_64` | 4096 | 18881.9 | yes |
+| `xxh3_64` | 512 | 13176.4 | yes |
 
 ## CPU sample breakdown
 
-Source: `benches/perf-folded.txt` (callgrind Ir instructions on gateway-cache/cache_ops (25 functions).).
-`share` is the fraction of the profiler's total cost.
+Not collected. Reason from the sampling step:
 
-| Function | Cost | Share (%) |
-| --- | ---: | ---: |
-| `sha256::compress256` | 2094950 | 56.49 |
-| `TinyTemplate>::add_template` | 151166 | 4.08 |
-| `format::format_inner` | 121346 | 3.27 |
-| `ResponseCache>::store` | 120414 | 3.25 |
-| `Hasher>::write` | 117540 | 3.17 |
-| `String, u32>>::insert` | 108572 | 2.93 |
-| `fmt::write` | 102701 | 2.77 |
-| `response::response_key` | 77264 | 2.08 |
-| `Write>::write_str` | 75493 | 2.04 |
-| `Formatter>::pad_integral` | 66976 | 1.81 |
-| `RandomState>>::do_run_pending_tasks` | 61269 | 1.65 |
-| `response::CachedResponse>>>>>` | 58347 | 1.57 |
-| `string::String, u32>>>>` | 57260 | 1.54 |
-| `Display>::fmt` | 55854 | 1.51 |
-| `TemplateCompiler>::consume_tag` | 52736 | 1.42 |
-| `Iterator>::next` | 48506 | 1.31 |
-| `do_insert_with_hash::{closure#1}` | 46678 | 1.26 |
-| `find::<&str>` | 44270 | 1.19 |
-| `StrSearcher>::new` | 42762 | 1.15 |
-| `RandomState>>::handle_admit` | 39935 | 1.08 |
-| `Clone>::clone` | 36455 | 0.98 |
-| `Guard>::flush` | 34353 | 0.93 |
-| `<<char>::is_whitespace>` | 32954 | 0.89 |
-| `TemplateCompiler>::trim_last_whitespace` | 31094 | 0.84 |
-| `string::String>` | 29728 | 0.80 |
+> No CPU sampling was run for this report.
+
+On a host with perf_event permission, `bash scripts/bench-cpu.sh` fills this
+table with leaf functions ranked by sample count. CI runners commonly set
+perf_event_paranoid=4 (denied), so this table stays empty there by design.

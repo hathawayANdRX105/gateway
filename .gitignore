@@ -69,3 +69,4 @@ __pycache__/
 # CPU sampling run artifacts (bench-cpu.sh); REPORT.md itself is committed.
 benches/perf-folded.txt
 benches/perf-status.txt
+benches/callgrind-annotate.txt

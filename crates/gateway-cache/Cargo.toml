@@ -29,7 +29,6 @@ criterion = "0.5" # bench harness: not a workspace dep
 # Dev-only: none of these reach the shipped dependency graph.
 blake3 = "1"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
-twox-hash = "2"
 siphasher = "1"
 ahash = "0.8"
 foldhash = "0.2"

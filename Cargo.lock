@@ -1246,7 +1246,6 @@ dependencies = [
  "sha2",
  "siphasher",
  "tracing",
- "twox-hash",
  "xxhash-rust",
 ]
 
@@ -4123,15 +4122,6 @@ dependencies = [
  "rand 0.9.5",
  "sha1 0.10.7",
  "thiserror 2.0.21",
-]
-
-[[package]]
-name = "twox-hash"
-version = "2.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86a801b3cea342a06d468c8710662aa29e5e05e4f5c0d62f00bbb7f2ad7941c2"
-dependencies = [
- "rand 0.10.3",
 ]
 
 [[package]]

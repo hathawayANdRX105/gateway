@@ -24,16 +24,20 @@ mod support;
 
 use std::collections::HashSet;
 
-use support::hash_candidates::{Algorithm, RequestCase, boundary_pairs, corpus};
+use gateway_cache::{CacheScope, response_key};
+use support::hash_candidates::{Algorithm, boundary_pairs, corpus};
 
 /// Sample count for the collision/isolation sweep. Above 2000 as requested, and large
 /// enough that an accidental collision or a broken encoding shows up immediately.
 const SAMPLE_COUNT: usize = 2048;
 
-fn encoded_corpus() -> Vec<Vec<u8>> {
+fn encoded_corpus() -> Vec<(Vec<u8>, Vec<u8>)> {
     corpus(SAMPLE_COUNT)
         .iter()
-        .map(RequestCase::encode)
+        .map(|case| {
+            let (identity, body) = case.streams();
+            (identity, body.clone())
+        })
         .collect()
 }
 
@@ -42,9 +46,9 @@ fn encoded_corpus() -> Vec<Vec<u8>> {
 fn digests_have_declared_width_and_are_deterministic() {
     let samples = encoded_corpus();
     for algorithm in Algorithm::ALL {
-        for (index, bytes) in samples.iter().enumerate() {
-            let first = algorithm.digest(bytes);
-            let second = algorithm.digest(bytes);
+        for (index, (identity, body)) in samples.iter().enumerate() {
+            let first = algorithm.key_bytes(identity, body);
+            let second = algorithm.key_bytes(identity, body);
             assert_eq!(
                 first.len(),
                 algorithm.digest_len(),
@@ -68,8 +72,8 @@ fn no_collisions_across_2048_distinct_requests() {
     let samples = encoded_corpus();
     for algorithm in Algorithm::ALL {
         let mut seen: HashSet<Vec<u8>> = HashSet::with_capacity(samples.len());
-        for (index, bytes) in samples.iter().enumerate() {
-            let digest = algorithm.digest(bytes);
+        for (index, (identity, body)) in samples.iter().enumerate() {
+            let digest = algorithm.key_bytes(identity, body);
             assert!(
                 seen.insert(digest),
                 "{} collided at sample {index}",
@@ -91,17 +95,17 @@ fn no_collisions_across_2048_distinct_requests() {
 fn isolation_boundaries_never_collide() {
     for algorithm in Algorithm::ALL {
         for (description, left, right) in boundary_pairs() {
-            let left_bytes = left.encode();
-            let right_bytes = right.encode();
+            let (left_id, left_body) = left.streams();
+            let (right_id, right_body) = right.streams();
             assert_ne!(
-                left_bytes,
-                right_bytes,
-                "{}: encoded bytes are identical for case {description}",
+                (left_id.clone(), left_body.clone()),
+                (right_id.clone(), right_body.clone()),
+                "{}: request bytes are identical for case {description}",
                 algorithm.label()
             );
             assert_ne!(
-                algorithm.digest(&left_bytes),
-                algorithm.digest(&right_bytes),
+                algorithm.key_bytes(&left_id, &left_body),
+                algorithm.key_bytes(&right_id, &right_body),
                 "{} collided on case {description}",
                 algorithm.label()
             );
@@ -135,9 +139,9 @@ fn stable_candidates_are_reproducible_across_independent_hashers() {
         if !algorithm.is_cross_process_stable() {
             continue;
         }
-        for (index, bytes) in samples.iter().take(64).enumerate() {
-            let a = algorithm.digest(bytes);
-            let b = algorithm.digest(bytes);
+        for (index, (identity, body)) in samples.iter().take(64).enumerate() {
+            let a = algorithm.key_bytes(identity, body);
+            let b = algorithm.key_bytes(identity, body);
             assert_eq!(
                 a,
                 b,
@@ -145,6 +149,31 @@ fn stable_candidates_are_reproducible_across_independent_hashers() {
                 algorithm.label()
             );
         }
+    }
+}
+
+/// The harness must measure the production layout byte-for-byte: the baseline
+/// candidate's output equals what `response_key` stores.
+/// Bug it catches: `request_identity_bytes` changing (layout / version / framing)
+/// while the harness keeps hashing stale bytes — measurements would silently
+/// describe a key the production no longer produces.
+#[test]
+fn harness_baseline_matches_production_key_bytes() {
+    for case in &corpus(64) {
+        let scope = CacheScope {
+            user_key: case.user_key.clone(),
+            group: case.group.clone(),
+        };
+        let (identity, body) = case.streams();
+        // response_key takes the RAW body and adds its own length prefix; the
+        // harness stream already carries that prefix, so hand over the raw bytes.
+        let expected = response_key(&scope, &case.model, &case.protocol, &case.body).as_bytes();
+        let produced = Algorithm::Sha256.key_bytes(&identity, &body);
+        assert_eq!(
+            produced, expected,
+            "harness layout drifted from production for user {}",
+            case.user_key
+        );
     }
 }
 

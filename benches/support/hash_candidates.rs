@@ -5,11 +5,15 @@
 //! `crates/gateway-cache/tests/hash_consistency.rs` (correctness + stability)
 //! cannot drift apart.
 //!
-//! Every candidate hashes the same pre-encoded buffer: isolation fields and the
-//! request body, each length-prefixed with 8 big-endian bytes. That prefix is what
-//! prevents boundary collisions (`("u-1","23gpt-4o")` vs `("u-123","gpt-4o")`), so it
-//! must stay identical across candidates — otherwise the comparison measures
-//! different semantics, not different hash functions.
+//! The byte layout is **owned by production**: candidates consume
+//! `gateway_cache::request_identity_bytes` plus the raw body — never a
+//! hand-rolled copy. When the production layout changes, this harness stops
+//! compiling instead of silently measuring stale bytes.
+//!
+//! Digest semantics per candidate mirror how it would replace the production key:
+//! SHA-256 keeps the production shape (one digest over the identity stream, one
+//! over the body, concatenated); every alternative folds both streams through a
+//! single state and emits its own digest width.
 
 #![allow(dead_code)] // Each consumer binary uses a different subset of this module.
 
@@ -20,9 +24,9 @@ use rand::rngs::StdRng;
 /// Digest widths the response cache would store, per candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Algorithm {
-    /// Production baseline: SHA-256, 32-byte digest.
+    /// Production baseline: SHA-256, two 32-byte digests (identity + body).
     Sha256,
-    /// BLAKE3, 32-byte digest.
+    /// BLAKE3, single 32-byte digest over both streams.
     Blake3,
     /// BLAKE3 extended output, first 16 bytes kept.
     Blake3Truncated128,
@@ -31,8 +35,9 @@ pub enum Algorithm {
     /// XXH3 64-bit. Collision margin too small for cross-user isolation keys; kept
     /// only to show the speed/collision trade-off.
     Xxh3_64,
-    /// SipHash-2-4 with a fixed key: deterministic across processes (unlike the
-    /// randomized std hasher), so it is measurable as a stable fingerprint.
+    /// SipHash-2-4 (128-bit variant) with a fixed key: deterministic across
+    /// processes (unlike the randomized std hasher), so it is measurable as a
+    /// stable fingerprint.
     SipHash24,
     /// ahash with fixed seeds. Included to show it is not reproducible across
     /// builds/platforms, which disqualifies it as a shared cache key.
@@ -69,11 +74,15 @@ impl Algorithm {
         }
     }
 
-    /// Digest width in bytes that this candidate would store in a cache key.
+    /// Key width in bytes that this candidate would store per entry.
+    ///
+    /// The production baseline stores 64 bytes (two 32-byte digests); every
+    /// alternative stores a single digest of its own width.
     #[must_use]
     pub fn digest_len(self) -> usize {
         match self {
-            Algorithm::Sha256 | Algorithm::Blake3 => 32,
+            Algorithm::Sha256 => 64,
+            Algorithm::Blake3 => 32,
             Algorithm::Blake3Truncated128 | Algorithm::Xxh3_128 | Algorithm::SipHash24 => 16,
             Algorithm::Xxh3_64 | Algorithm::AHashFixed | Algorithm::FoldHashFixed => 8,
         }
@@ -96,21 +105,46 @@ impl Algorithm {
         }
     }
 
-    /// Compute the digest of `input` with this candidate.
+    /// Cache-key bytes for one request, exactly as this candidate would produce them.
+    ///
+    /// `identity` is the production authority's scope stream
+    /// (`request_identity_bytes`), `body` the raw request bytes. SHA-256 mirrors
+    /// the production split; every alternative folds both streams into one state.
     #[must_use]
-    pub fn digest(self, input: &[u8]) -> Vec<u8> {
+    pub fn key_bytes(self, identity: &[u8], body: &[u8]) -> Vec<u8> {
         match self {
             Algorithm::Sha256 => {
-                use sha2::{Digest, Sha256};
-                Sha256::digest(input).to_vec()
+                use sha2::Digest as _;
+                let mut out = Vec::with_capacity(64);
+                out.extend_from_slice(sha2::Sha256::digest(identity).as_slice());
+                out.extend_from_slice(sha2::Sha256::digest(body).as_slice());
+                out
             }
-            Algorithm::Blake3 => blake3::hash(input).as_bytes().to_vec(),
+            Algorithm::Blake3 => blake3::Hasher::new()
+                .update(identity)
+                .update(body)
+                .finalize()
+                .as_bytes()
+                .to_vec(),
             Algorithm::Blake3Truncated128 => {
-                let out = blake3::hash(input);
-                out.as_bytes()[..16].to_vec()
+                let hash = blake3::Hasher::new()
+                    .update(identity)
+                    .update(body)
+                    .finalize();
+                hash.as_bytes()[..16].to_vec()
             }
-            Algorithm::Xxh3_128 => xxhash_rust::xxh3::xxh3_128(input).to_le_bytes().to_vec(),
-            Algorithm::Xxh3_64 => xxhash_rust::xxh3::xxh3_64(input).to_le_bytes().to_vec(),
+            Algorithm::Xxh3_128 => {
+                let mut hasher = xxhash_rust::xxh3::Xxh3Default::new();
+                hasher.update(identity);
+                hasher.update(body);
+                hasher.digest128().to_le_bytes().to_vec()
+            }
+            Algorithm::Xxh3_64 => {
+                let mut hasher = xxhash_rust::xxh3::Xxh3Default::new();
+                hasher.update(identity);
+                hasher.update(body);
+                hasher.digest().to_le_bytes().to_vec()
+            }
             Algorithm::SipHash24 => {
                 // 128-bit output variant: the 64-bit `sip::SipHasher24` would give only a
                 // 2^32 birthday bound, which is the same weakness as XXH3-64.
@@ -122,7 +156,8 @@ impl Algorithm {
                     0x0700_0900_0500_0b00,
                     0x0d00_0f00_1100_1300,
                 );
-                hasher.write(input);
+                hasher.write(identity);
+                hasher.write(body);
                 u128::from(hasher.finish128()).to_le_bytes().to_vec()
             }
             Algorithm::AHashFixed => {
@@ -134,20 +169,22 @@ impl Algorithm {
                     0x5555_6666_7777_8888,
                 );
                 let mut hasher = state.build_hasher();
-                hasher.write(input);
+                hasher.write(identity);
+                hasher.write(body);
                 hasher.finish().to_le_bytes().to_vec()
             }
             Algorithm::FoldHashFixed => {
                 use core::hash::{BuildHasher as _, Hasher as _};
                 let mut hasher = foldhash::fast::FixedState::default().build_hasher();
-                hasher.write(input);
+                hasher.write(identity);
+                hasher.write(body);
                 hasher.finish().to_le_bytes().to_vec()
             }
         }
     }
 }
 
-/// The four isolation fields plus the request body, as the production key sees them.
+/// One request under test: the identity fields plus the raw body.
 #[derive(Debug, Clone)]
 pub struct RequestCase {
     pub user_key: String,
@@ -158,30 +195,34 @@ pub struct RequestCase {
 }
 
 impl RequestCase {
-    /// Encode exactly the byte layout `response_key` feeds to the hash.
+    /// Byte streams for the candidates, straight from the production authority.
     ///
-    /// Each component carries an 8-byte big-endian length prefix; the body does too.
+    /// The body stream carries the 8-byte big-endian length prefix, because
+    /// `response_key` hashes `len || body` — feeding the bare body here would
+    /// measure a different digest than production writes.
     #[must_use]
-    pub fn encode(&self) -> Vec<u8> {
-        let parts: [&[u8]; 5] = [
-            self.user_key.as_bytes(),
-            self.group.as_bytes(),
-            self.model.as_bytes(),
-            self.protocol.as_bytes(),
-            self.body.as_slice(),
-        ];
-        let mut out = Vec::with_capacity(parts.iter().map(|part| part.len() + 8).sum());
-        for part in parts {
-            out.extend_from_slice(&(part.len() as u64).to_be_bytes());
-            out.extend_from_slice(part);
+    pub fn streams(&self) -> (Vec<u8>, Vec<u8>) {
+        let identity = gateway_cache::request_identity_bytes(
+            &self.scope(),
+            &self.model,
+            &self.protocol,
+            gateway_cache::CACHE_KEY_VERSION,
+        );
+        let mut body = (self.body.len() as u64).to_be_bytes().to_vec();
+        body.extend_from_slice(&self.body);
+        (identity, body)
+    }
+
+    fn scope(&self) -> gateway_cache::CacheScope {
+        gateway_cache::CacheScope {
+            user_key: self.user_key.clone(),
+            group: self.group.clone(),
         }
-        out
     }
 }
 
-/// Body sizes that cover the observed request distribution: a short chat request,
-/// a tool-carrying request, a long-context one, and a 32 KiB worst case.
-pub const BODY_SIZES: [usize; 4] = [512, 4 * 1024, 16 * 1024, 32 * 1024];
+/// Body sizes that cover the observed request distribution.
+pub const BODY_SIZES: [usize; 3] = [512, 4 * 1024, 32 * 1024];
 
 /// Build a corpus of distinct requests with a fixed seed so every run is identical.
 ///

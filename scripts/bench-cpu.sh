@@ -105,6 +105,9 @@ PY
 
 if [ -s "$out" ]; then
     log "wrote $(wc -l < "$out") function rows from callgrind"
+    # Keep the raw annotate table next to the other run artifacts so a reviewer
+    # can trace any reported hotspot back to callgrind's own output.
+    cp "$annotate" benches/callgrind-annotate.txt 2>/dev/null || true
     status_note "callgrind Ir instructions on $crate/$bench ($(wc -l < "$out") functions)."
 else
     msg="callgrind produced no annotated functions; CPU table left empty."

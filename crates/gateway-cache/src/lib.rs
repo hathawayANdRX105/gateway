@@ -27,6 +27,6 @@ pub mod ttl;
 
 pub use response::{
     CACHE_KEY_VERSION, CacheKey, CacheScope, CachedResponse, CachedUsage, ResponseCache,
-    response_key, response_key_versioned,
+    request_identity_bytes, response_key, response_key_versioned,
 };
 pub use ttl::{CacheStats, TtlCache};
