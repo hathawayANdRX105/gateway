@@ -37,6 +37,7 @@ mod stage_concurrency;
 mod stage_retry;
 mod stage_sticky;
 mod stage_telemetry;
+pub mod status;
 pub mod stream;
 pub mod stream_resilience;
 

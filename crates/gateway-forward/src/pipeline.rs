@@ -211,7 +211,7 @@ pub async fn forward_once(
         // non-streaming path (the error-shape contract locked by #238).
         if !(200..=299).contains(&status) {
             let preview = read_error_preview(resp.into_body_stream(), timeouts.total_ms).await;
-            return Err(crate::egress::classify_status(
+            return Err(crate::status::classify_status(
                 status,
                 &preview,
                 retry_after,

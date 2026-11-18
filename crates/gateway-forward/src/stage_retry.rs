@@ -492,7 +492,7 @@ impl ForwardStage {
         // via Ok(400)) — the retry loop answers by raising the dispatch floor, so the
         // next selection lands on a strictly larger window.
         let window_overflow =
-            gateway_dispatch::failure_scope::is_context_overflow(e.status, &e.message);
+            gateway_core::failure_scope::is_context_overflow(e.status, &e.message);
         // Each failed attempt emits one zero-cost observation event: when the budget is exhausted /
         // Fatal terminates, the troubleshooting side still needs a trace that the request happened.
         // Must be called before `e` is moved into the return struct.

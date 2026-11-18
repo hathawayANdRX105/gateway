@@ -116,7 +116,7 @@ pub enum AttemptOutcome {
     },
     /// Upstream rejected the request because it does not fit the model's context
     /// window (context-window-exceeded family, detected by
-    /// `failure_scope::is_context_overflow`). The retry loop answers by
+    /// `gateway_core::failure_scope::is_context_overflow`). The retry loop answers by
     /// **raising the dispatch floor** to the failed candidate's window, so the
     /// next selection can only land on strictly larger windows; when the failed
     /// channel has no window bound (unlimited), the loop passes the stashed

@@ -9,17 +9,17 @@
 //!
 //! Every Claude field name is declared exactly once, as a serde field of a DTO in
 //! [`wire`]; the codec body is decode → [`wire::Request::into_ir`] and IR → wire
-//! struct → bytes. Wire DTOs decode leniently (nested [`ir::Lenient`] fields
+//! Wire DTOs decode leniently (nested [`crate::codec_kit::Lenient`] fields
 //! degrade type mismatches to defaults — the same contract the old
 //! `.and_then(Value::as_).unwrap_or_default()` chains had), and unmodeled
 //! top-level fields land in the flattened `extra` map, so the hand-maintained
 //! "known keys" list is gone. Two shapes need more than `Option`: the shared
-//! [`ir::Present`] keeps "key absent" apart from "explicit null" (`tool_use.input`
+//! [`crate::codec_kit::Present`] keeps "key absent" apart from "explicit null" (`tool_use.input`
 //! and the `thinking`/`text` fallback map those two differently), and `wire::Block`
 //! captures its original JSON so the `ContentBlock::Unknown` escape hatch and the
 //! `StreamEvent::Raw` re-emit stay faithful to the sender's bytes.
 //!
-//! [`ir::Lenient`]: crate::ir
+//! [`crate::codec_kit::Lenient`]: crate::codec_kit
 //!
 //! ## Three pre-existing defects this module fixes (G1)
 //!
@@ -46,11 +46,11 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 use crate::adaptor::{AdaptorError, Protocol};
-use crate::format_codec::{FormatCodec, StreamEncoder};
-use crate::ir::{
-    LlmRequest, LlmResponse, StopReason, StreamEvent, Usage, apply_extra_fields, decode_body,
-    encode_object, encode_value, struct_to_map, wire_value,
+use crate::codec_kit::{
+    apply_extra_fields, decode_body, encode_object, encode_value, struct_to_map, wire_value,
 };
+use crate::format_codec::{FormatCodec, StreamEncoder};
+use crate::ir::{LlmRequest, LlmResponse, StopReason, StreamEvent, Usage};
 use crate::sse::event_frame;
 
 /// Claude Messages format codec.
@@ -454,10 +454,10 @@ mod wire {
     use serde_json::{Map, Value, json};
 
     use super::{claude_stop_reason, claude_stop_reason_str, encode_usage};
+    use crate::codec_kit::{Lenient, Present, event_index, from_event, sampling_params};
     use crate::ir::{
-        ContentBlock, Lenient, LlmRequest, LlmResponse, Message as IrMessage, Present, Role,
-        StopReason, StreamEvent, TextBlock, ToolChoice, ToolDef, Usage, event_index, from_event,
-        sampling_params,
+        ContentBlock, LlmRequest, LlmResponse, Message as IrMessage, Role, StopReason, StreamEvent,
+        TextBlock, ToolChoice, ToolDef, Usage,
     };
 
     /// Claude `max_tokens` is required; this default applies when IR carries none
@@ -624,7 +624,7 @@ mod wire {
     }
 
     /// Claude `system` field (string or block array). Unlike `OpenAI`'s helper
-    /// (`ir::decode_text_blocks`, deliberately unused here), a Claude empty
+    /// (`crate::codec_kit::decode_text_blocks`, deliberately unused here), a Claude empty
     /// string IS a system block of its own.
     #[derive(Debug, Deserialize)]
     #[serde(untagged)]

@@ -41,6 +41,7 @@
 
 pub mod adaptor;
 pub mod claude;
+mod codec_kit;
 pub mod error_mapping;
 pub mod format_codec;
 pub mod gemini;
