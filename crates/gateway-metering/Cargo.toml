@@ -21,5 +21,13 @@ bytes    = { workspace = true }
 # matching the rule applied to every immediately-unwrapped std lock.
 parking_lot = "0.12"
 
+[dev-dependencies]
+criterion = "0.5" # bench harness: not a workspace dep
+
+[[bench]]
+name = "metering_ops"
+path = "../../benches/metering_ops.rs"
+harness = false
+
 [lints]
 workspace = true

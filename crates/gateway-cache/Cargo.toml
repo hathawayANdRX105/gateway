@@ -25,6 +25,12 @@ bytes   = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+criterion = "0.5" # bench harness: not a workspace dep
+
+[[bench]]
+name = "cache_ops"
+path = "../../benches/cache_ops.rs"
+harness = false
 
 [lints]
 workspace = true

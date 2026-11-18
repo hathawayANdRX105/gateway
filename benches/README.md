@@ -102,6 +102,75 @@ config/
 - `jq`
 - `python3` + `PyYAML`（`python3 -c 'import yaml'` 能通过）
 
+## Rust 微基准与性能报告
+
+端到端压测回答“整条数据面能扛多少”，微基准回答“哪个具体函数的单次调用最贵”。
+两类互补，都不进 CI；`just check` / `just clippy` 带 `--all-targets`，会编译 bench target。
+bench 文件集中在本目录，各 crate 用 `[[bench]] path = "../../benches/<name>.rs"` 认领自己的 target，
+所以归档只在一处，编译归属和 crate 名仍保留。
+根包设了 `autobenches = false`，否则 Cargo 会把本目录的 `.rs` 当成 gateway-daemon 的 bench。
+
+| crate                   | bench 文件                                                            | 覆盖点                                                          |
+| ----------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------- |
+| gateway-cache           | `benches/cache_ops.rs`                           | `response_key`、TtlCache get/insert、ResponseCache store/lookup |
+| gateway-security        | `benches/word_filter.rs`                      | `WordFilter::filter` / `has_match`、`StreamFilter::push`        |
+| gateway-metering        | `benches/metering_ops.rs`                     | token 估算、prompt 估算、流式扫描、价格算术、usage 提取         |
+| gateway-dispatch        | `benches/selector_latency.rs`、`state_ops.rs` | P2C 选择、限流、sticky、t-digest、延迟分位、token 预算          |
+| gateway-protocol-bridge | `benches/codec_ops.rs`                 | codec resolve/translate、SSE 解码、错误映射                     |
+| gateway-forward         | `benches/pipeline_ops.rs`                      | 请求体/模型名/请求头纯函数、状态码分类                          |
+| gateway-proxy           | `benches/proxy_ops.rs`                           | SSRF 校验、IP 检查、节点元数据与 adapter、pool/manager 选择     |
+
+命令：
+
+```bash
+just bench                                        # 跑全部微基准
+cargo bench -p gateway-cache --bench cache_ops     # 跑单个 bench 文件
+just bench-report                                 # 从 Criterion JSON 重建 benches/REPORT.md
+just bench-report --perf-folded benches/perf-folded.txt   # 附上 CPU 采样函数表
+```
+
+### CI 手动入口
+
+`.github/workflows/benchmark.yml` 只在 GitHub Actions 页面手动触发（Actions → Benchmark (manual) → Run workflow）：
+
+- `destination = none`（默认）：跑完上传 artifact，并把表格写进 workflow 的 job summary。
+- `destination = issue` / `pr` 并填 `number`：额外把同一张表贴到指定 issue 或 PR。
+- 本地和 CI 共用 `scripts/bench.sh`：本地 `just bench`，CI 直接调脚本，表格格式一致，区别只是机器环境。
+- CI 表格不会自动提交进仓库；要把 CI 数字固化到文档，下载 artifact 覆盖 `benches/REPORT.md` 再提交。
+
+CI 还会做两件事：
+
+- **基线对比**：`target/criterion` 通过 `actions/cache` 跨 run 保存。每当次 run 起，报告的 `vs base` 列就是 Criterion
+  自己算出的回归百分比；首轮显示 `-`。本地也可复现：先跑一次 `just bench`（产出 `base/`），之后每次跑都会带上对比列。
+- **CPU 采样**：`scripts/bench-cpu.sh` 用 callgrind 对 bench 进程做用户态插桩，产出函数级热点表
+  （cost = 指令数 Ir，与延迟列互补）。callgrind 不需要内核 perf 权限，适合 GitHub hosted runner；
+  `Cargo.toml` 的 `[profile.bench]` 保留符号供 `callgrind_annotate` 反查函数名。
+  这是尽力而为步骤：valgrind 不可用或采样失败时，CPU 表写明原因，不影响主 benchmark。
+  本机若有 perf 权限，也可用 perf 采样，报告对两种来源的成本行都兼容。
+
+`benches/REPORT.md` 是提交进仓库的分析表：每行数值来自 Criterion 写出的
+`target/criterion/<group>/<function>/new/estimates.json`，脚本不估算、不造数。
+把新机器的结果贴进 PR / issue 时，重新跑 `just bench` 即可。
+
+### 找 CPU 热点函数
+
+Criterion 给出“哪个函数慢”，CPU 采样给出“这个函数里哪行最贵”。
+采样工具在本机不可用：`perf`、`flamegraph`、`valgrind` 均未安装，
+且 `/proc/sys/kernel/perf_event_paranoid = 2` 限制非特权 perf 事件。
+在有权限的机器上：
+
+```bash
+cargo bench -p gateway-cache --bench cache_ops -- --profile-time 20
+# bench 运行期间另开终端：
+perf record -F 99 -g -p <bench-pid> -- sleep 20
+perf script | stackcollapse-perf.pl > benches/perf-folded.txt
+just bench-report --perf-folded benches/perf-folded.txt
+```
+
+报告会新增按采样数排序的函数表（函数、样本数、占比），数值来自折叠栈计数。
+Rust 原生替代是 `pprof` crate，同样依赖 perf_event 权限；LTO 下函数可能被内联，
+读采样表时结合 Criterion 的 bench ID 一起看。
+
 ## 业界参考
 
 - [hyperium/hyper](https://github.com/hyperium/hyper) — `cargo bench` + `github-action-benchmark` + gh-pages 存结果

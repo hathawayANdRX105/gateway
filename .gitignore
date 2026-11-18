@@ -65,3 +65,7 @@ todo/
 __pycache__/
 *.pyc
 .perch/
+
+# CPU sampling run artifacts (bench-cpu.sh); REPORT.md itself is committed.
+benches/perf-folded.txt
+benches/perf-status.txt

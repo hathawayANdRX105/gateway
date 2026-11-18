@@ -41,6 +41,12 @@ utls = ["meow-config/boring-tls"]
 [dev-dependencies]
 # Tests build vmess:// payloads, which are base64-encoded JSON.
 base64 = { workspace = true }
+criterion = "0.5" # bench harness: not a workspace dep
+
+[[bench]]
+name = "proxy_ops"
+path = "../../benches/proxy_ops.rs"
+harness = false
 
 [lints]
 workspace = true

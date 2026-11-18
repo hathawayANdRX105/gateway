@@ -34,6 +34,15 @@ test:
 test-fast base="origin/main":
     bash scripts/test-fast.sh "{{base}}"
 
+# Shared local/CI entry: Criterion benches + Markdown report (manual workflow only)
+bench:
+    bash scripts/bench.sh benches/REPORT.md
+
+# Rebuild the Markdown benchmark report from Criterion JSON.
+# Usage: just bench-report [--perf-folded benches/perf-folded.txt]
+bench-report *args:
+    python3 benches/bench_report.py {{args}}
+
 # Normative checks (rust-specs dylint, pre-built library loading). Usage:
 #   just spec-check          # run the lint gate (skips with a notice when nightly/dylint/libs are missing)
 #   just spec-check build    # (re)build the pre-built lint libraries from rust-specs
