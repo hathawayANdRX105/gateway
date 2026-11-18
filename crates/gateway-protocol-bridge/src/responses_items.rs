@@ -2,15 +2,16 @@
 //! and stream sides (an internal part of the `responses` codec).
 //!
 //! One serde field per wire key (the crate's `wire` DTO pattern); hostile payloads
-//! degrade through [`Lenient`](crate::ir::Lenient), and escape-hatch shapes capture
+//! degrade through [`Lenient`](crate::codec_kit::Lenient), and escape-hatch shapes capture
 //! the ORIGINAL JSON first so a re-emit is verbatim, never a re-serialization.
 //!
-//! [`Lenient`]: crate::ir::Lenient
+//! [`Lenient`]: crate::codec_kit::Lenient
 
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 
-use crate::ir::{ContentBlock, Lenient, Message, Present, Role, Usage};
+use crate::codec_kit::{Lenient, Present};
+use crate::ir::{ContentBlock, Message, Role, Usage};
 
 /// `call_id` wins whenever the KEY EXISTS; the fallback to `id` fires only when
 /// `call_id` is ABSENT — never when it is present-but-garbage (the old
