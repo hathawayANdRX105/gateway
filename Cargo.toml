@@ -188,3 +188,11 @@ debug = "line-tables-only"
 [profile.bench]
 strip = false
 debug = 1
+
+# rust-specs dylint 规则库：git-tag 版本化接入（dylint 原生 metadata entry）。
+# `cargo +nightly-2026-08-20 dylint --all` 自动拉取 tag、编译 lints/* 并加载；
+# 升级规则 = 改下面的 tag。发布流程见 ~/homono/specs/rust-specs-projects.md §6。
+[workspace.metadata.dylint]
+libraries = [
+    { git = "https://github.com/hathawayANdRX105/rust-specs.git", tag = "lints-v2026.11.21", pattern = "lints/*" },
+]
