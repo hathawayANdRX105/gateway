@@ -54,14 +54,11 @@ jobs:
         run: rustup component add --toolchain nightly-2026-08-20 rustc-dev llvm-tools
       - name: Install cargo-dylint
         run: cargo +nightly-2026-08-20 install cargo-dylint --locked
-      - name: Clone rust-specs (lint rule library)
-        run: git clone --depth 1 https://github.com/hathawayANdRX105/rust-specs.git "$HOME/rust-specs"
-      - name: Build pre-compiled lint libraries
-        run: |
-          RUST_SPECS_DIR="$HOME/rust-specs" bash scripts/spec-check.sh build
-      - name: Run dylint gate
-        run: |
-          RUST_SPECS_DIR="$HOME/rust-specs" bash scripts/spec-check.sh
+      # 规则库经 [workspace.metadata.dylint] 接入（root Cargo.toml，tag 固定
+      # lints-v2026.11.21）：dylint 自己拉取、编译并加载 lints/*，无需 clone
+      # rust-specs 或预编译库。升级规则 = 改 Cargo.toml 里的 tag。
+      - name: Run dylint gate (metadata entry, pinned tag)
+        run: cargo +nightly-2026-08-20 dylint --all --workspace
 
   # Job 3: tests. PR lane narrows to affected tests via testless (test-fast);
   # the main-push (merge) lane runs the full workspace. Both on the LLVM ci
