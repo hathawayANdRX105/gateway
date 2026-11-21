@@ -52,8 +52,8 @@ jobs:
       # when they are already in place.
       - name: Ensure rustc-dev / llvm-tools components
         run: rustup component add --toolchain nightly-2026-08-20 rustc-dev llvm-tools
-      - name: Install cargo-dylint
-        run: cargo +nightly-2026-08-20 install cargo-dylint --locked
+      - name: Install cargo-dylint + dylint-link
+        run: cargo +nightly-2026-08-20 install cargo-dylint dylint-link --locked
       # 规则库经 [workspace.metadata.dylint] 接入（root Cargo.toml，tag 固定
       # lints-v2026.11.21）：dylint 自己拉取、编译并加载 lints/*，无需 clone
       # rust-specs 或预编译库。升级规则 = 改 Cargo.toml 里的 tag。
