@@ -45,7 +45,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly-2026-08-20
-          components: rustfmt, clippy, rustc-dev, rust-src
+          # rustc-codegen-cranelift-preview: the workspace .cargo/config.toml
+          # selects codegen-backend=cranelift for profile.dev; without the
+          # component rustc fails with "failed to find a codegen-backends
+          # folder" when the dylint gate checks the consumer workspace.
+          components: rustfmt, clippy, rustc-dev, rust-src, rustc-codegen-cranelift-preview
       # The dylint lint libraries link against rustc's LLVM runtime, which the
       # action's component install can leave half-applied on the runner image.
       # Re-assert the two components before building; rustup makes this a no-op
